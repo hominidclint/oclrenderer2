@@ -1,0 +1,128 @@
+# depslib dependency file v1.0
+1345205509 source:c:\users\james\desktop\projects\proj\triangle.cpp
+	"triangle.hpp"
+
+1345210857 c:\users\james\desktop\projects\proj\triangle.hpp
+	"vertex.hpp"
+
+1346972273 c:\users\james\desktop\projects\proj\vertex.hpp
+	<cl/cl.h>
+
+1345203717 source:c:\users\james\desktop\projects\proj\vertex.cpp
+	"vertex.hpp"
+
+1354486549 source:c:\users\james\desktop\projects\proj\object.cpp
+	"object.hpp"
+	"clstate.h"
+
+1354486494 c:\users\james\desktop\projects\proj\object.hpp
+	<vector>
+	"triangle.hpp"
+	<string>
+	<cl/cl.h>
+
+1356130261 source:c:\users\james\desktop\projects\proj\obj_load.cpp
+	"obj_load.hpp"
+	<cstdio>
+	<cstdlib>
+	<vector>
+	<iostream>
+	<cstdio>
+	<string.h>
+	"triangle.hpp"
+	"texture.hpp"
+
+1345253236 c:\users\james\desktop\projects\proj\obj_load.hpp
+	<string>
+	"object.hpp"
+	"objects_container.hpp"
+
+1356130261 source:c:\users\james\desktop\projects\proj\main.cpp
+	<cstdio>
+	<string>
+	<iostream>
+	<windows.h>
+	<gl/gl.h>
+	"clstate.h"
+	"obj_load.hpp"
+	"objects_container.hpp"
+	"texture.hpp"
+	"ocl.h"
+	"engine.hpp"
+	"obj_mem_manager.hpp"
+	"obj_g_descriptor.hpp"
+
+1347034584 c:\users\james\desktop\projects\proj\objects_container.hpp
+	"object.hpp"
+
+1346891224 source:c:\users\james\desktop\projects\proj\objects_container.cpp
+	"objects_container.hpp"
+
+1356668577 source:c:\users\james\desktop\projects\proj\texture.cpp
+	"texture.hpp"
+	"clstate.h"
+	<iostream>
+	<math.h>
+
+1356313093 c:\users\james\desktop\projects\proj\texture.hpp
+	<sfml/graphics.hpp>
+	<cl/cl.h>
+	<vector>
+
+1336872076 source:c:\users\james\desktop\projects\proj\clstate.cpp
+	"clstate.h"
+
+1336872085 c:\users\james\desktop\projects\proj\clstate.h
+	<cl/opencl.h>
+
+1355894179 c:\users\james\desktop\projects\proj\ocl.h
+	<cstdio>
+	<CL/cl.h>
+	<iostream>
+	<sfml/graphics.hpp>
+	"clstate.h"
+	<windows.h>
+
+1356130261 source:c:\users\james\desktop\projects\proj\engine.cpp
+	"engine.hpp"
+	<math.h>
+	<gl/gl3.h>
+	<gl/glext.h>
+	"clstate.h"
+	<iostream>
+	<gl/gl.h>
+	"obj_mem_manager.hpp"
+	<stdio.h>
+	<limits.h>
+
+1354490990 c:\users\james\desktop\projects\proj\engine.hpp
+	<SFML/graphics.hpp>
+	"object.hpp"
+	<vector>
+	"objects_container.hpp"
+
+1347034593 source:c:\users\james\desktop\projects\proj\obj_info_struct.cpp
+	"obj_info_struct.hpp"
+
+1347032116 c:\users\james\desktop\projects\proj\obj_info_struct.hpp
+	<cl/cl.h>
+	<vector>
+
+1354679963 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
+	"object.hpp"
+	<vector>
+
+1356669776 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
+	"obj_mem_manager.hpp"
+	<CL/CL.h>
+	"clstate.h"
+	"triangle.hpp"
+	<iostream>
+	<windows.h>
+	<algorithm>
+	"obj_g_descriptor.hpp"
+	"texture.hpp"
+
+1354599731 c:\users\james\desktop\projects\proj\obj_g_descriptor.hpp
+	<CL/CL.h>
+

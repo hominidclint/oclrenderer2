@@ -21,7 +21,6 @@
 int main(int argc, char *argv[])
 {
 
-    //std::cout << sizeof(obj_g_descriptor);
     sf::Clock clo;
     objects_container *sponza=obj_load("sponza/spz.obj");
     //std::cout << clo.getElapsedTime().asMilliseconds() << std::endl;
@@ -29,16 +28,6 @@ int main(int argc, char *argv[])
 
     obj_mem_manager g_manage;
 
-
-    //std::cout << sponza->objs.size();
-
-    //for(std::vector<texture>::iterator it=texture::texturelist.begin(); it!=texture::texturelist.end(); it++)
-    //{
-        //std::cout << (*it).location << std::endl;
-    //} ///textures load in successfully
-
-
-    //std::cout << sizeof(vertex);
 
     engine window;
     oclstuff();
@@ -49,7 +38,6 @@ int main(int argc, char *argv[])
 
     for(std::vector<object>::iterator it=sponza->objs.begin(); it!=sponza->objs.end(); it++)
     {
-        // (*it).g_alloc();
         g_manage.obj_list.push_back(&(*it));
     }
 
@@ -58,13 +46,6 @@ int main(int argc, char *argv[])
 
     GLint texSize=0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &texSize);
-
-    //std::cout << texSize << std::endl;
-
-    //sf::Keyboard key;
-    //sf::Event event;
-
-
 
 
     sf::Event Event;
@@ -92,11 +73,6 @@ int main(int argc, char *argv[])
 
     }
 
-    //system("pause");
-
-
-
-    //std::cout << texture::gidc;
 
 
     ///success

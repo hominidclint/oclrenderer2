@@ -180,7 +180,7 @@ char *file_contents(const char *filename, int *length)
 
 cl_program loadprogram(std::string relative_path, cl_context &context)
 {
-// Program Setup
+    // Program Setup
     int pl=0;
     size_t program_length;
 
@@ -259,11 +259,9 @@ void oclstuff()
     size_t src_size=0;
     const char *source;
 
-    //#ifndef IS_BASE
-    //    source=file_contents("base/cl.cl", (int*)&src_size);
-    //#else
-        source=file_contents("cl.cl", (int*)&src_size);
-    //#endif
+
+    source=file_contents("cl.cl", (int*)&src_size);
+
 
     cl::program = clCreateProgramWithSource(cl::context, 1, &source, &src_size, &cl::error);
 
@@ -310,9 +308,6 @@ void oclstuff()
     delete[] build_log;
 
 
-
-
-    //exit(1);
     // Extracting the kernel
     cl::kernel = clCreateKernel(cl::program, "part1", &cl::error);
 
@@ -323,16 +318,12 @@ void oclstuff()
 
 
     cl::kernel2 = clCreateKernel(cl::program, "part2", &cl::error);
-    //clCreateKernel(cl::program, "test_3d", &cl::error);
+
 
     if(cl::error!=0)
     {
         std::cout << "kernelcreation " << cl::error << std::endl;
     }
-
-    //cl::kernel3 = clCreateKernel(cl::program, "part3", &cl::error);
-
-    //cl::klight = clCreateKernel(cl::program, "light", &cl::error);
 
 
 

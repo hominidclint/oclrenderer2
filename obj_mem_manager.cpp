@@ -186,80 +186,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
     ///if textures.arechanged or some shit, but anyway
 
-    //int i2048depth=2;
 
-    /*cl_uint4*** d2048 = new cl_uint4**[i2048depth];
-
-    for(int i=0; i<i2048depth; i++)
-    {
-        d2048[i]=new cl_uint4*[2048];
-        for(int j=0; j<2048; j++)
-        {
-            d2048[i][j]=new cl_uint4[2048];
-        }
-
-    }
-
-    for(int i=0; i<i2048depth; i++)
-    {
-        //cl_uint4 **pp=(cl_uint4**)texture::texturelist[i].c_image.GetPixelsPtr();
-        //d2048[i]=new cl_uint4*[2048];
-        for(int j=0; j<texture::texturelist[desc[i].tid].c_image.GetWidth(); j++)
-        {
-            //d2048[i][j]=new cl_uint4[2048];
-            for(int n=0; n<texture::texturelist[desc[i].tid].c_image.GetWidth(); n++)
-            {
-                sf::Color col;
-                col=texture::texturelist[desc[i].tid].c_image.GetPixel(j, n);
-                d2048[i][j][n].x=col.r; ///whoops
-                d2048[i][j][n].y=col.g; ///whoops
-                d2048[i][j][n].z=col.b; ///whoops
-            }
-        }
-    }*/
-
-
-
-    /*cl_mem initTexture3D(uchar *h_volume, const size_t volumeSize[3])
-    {
-        cl_int ciErrNum;
-
-        // create 3D array and copy data to device
-        cl_image_format volume_format;
-        volume_format.image_channel_order = CL_RGBA;
-        volume_format.image_channel_data_type = CL_UNORM_INT8;
-        uchar* h_tempVolume =(uchar*)malloc(volumeSize[0] * volumeSize[1] * volumeSize[2] * 4);
-        for(unsigned int i = 0; i<(volumeSize[0] * volumeSize[1] * volumeSize[2]); i++)
-        {
-            h_tempVolume[4 * i] = h_volume[i];
-        }
-        cl_mem d_volume = clCreateImage3D(cxGPUContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &volume_format,
-                                            volumeSize[0], volumeSize[1], volumeSize[2],
-                                            (volumeSize[0] * 4), (volumeSize[0] * volumeSize[1] * 4),
-                                            h_tempVolume, &ciErrNum);
-        oclCheckErrorEX(ciErrNum, CL_SUCCESS, pCleanup);
-        free (h_tempVolume);
-        return d_volume;
-    }*/
-
-    //cl_uchar4* d2048=(cl_uchar4*)malloc(2048*2048*2*4);
-
-    /*for(int n=0; n<i2048depth; n++)
-    {
-        for(int i=0; i<texture::texturelist[n].c_image.GetWidth(); i++)
-        {
-            for(int j=0; j<texture::texturelist[n].c_image.GetHeight(); j++)
-            {
-                sf::Color col=texture::texturelist[n].c_image.GetPixel(i, j);
-
-                d2048[i + j*2048 + n*2048*2048].x=col.r;
-                d2048[i + j*2048 + n*2048*2048].y=col.g;
-                d2048[i + j*2048 + n*2048*2048].z=col.b;
-            }
-        }
-        //std::cout << texture::texturelist[n].location << std::endl;
-        //break;
-    }*/
 
     //cl_uchar4 *d2048=gen_3d(1, 2, 256);
     std::cout << texture::texturelist.size() << std::endl;
@@ -291,23 +218,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
     ///now, we need to lump texture sizes into catagories
 
-    /*int *ar=new int[n];
 
-    for(int i=0; i<texture::texturelist.size(); i++)
-    {
-        int size=texture::texturelist[i].c_image.GetWidth();
-        ar[i]=size;
-    }*/
-    ///so, now we have an array of sizes;
-
-
-
-
-
-    /*for(unsigned int i=0; i<n; i++)
-    {
-        std::cout << desc[i].start << std::endl;
-    }*/
 
     //std::cout << sizeof (obj_g_descriptor) << std::endl;
 

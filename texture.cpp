@@ -245,7 +245,7 @@ void tile_4_1(sf::Image *img, sf::Image *c1, sf::Image *c2, sf::Image *c3, sf::I
 }
 
 
-void texture::generate_mipmaps() ///move this to graphics card
+void texture::generate_mipmaps() ///move this to graphics card?
 {
 
 

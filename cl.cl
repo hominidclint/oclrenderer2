@@ -62,22 +62,22 @@ float form(float x1, float y1, float x2, float y2, float x3, float y3, float x, 
 
 } ///triangle equations
 
+__constant float depth_far=7000; ///in non logarithmic coordinates
+__constant uint mulint=UINT_MAX;
+__constant float depth_cutoff=0.22f;
 
 
 float dcalc(float value)
 {
-    float depth_far=7000;
     bool t=false;
 
     value=(log(value + 1)/(log(depth_far + 1)));
-
 
     return value;
 }
 
 float idcalc(float val)
 {
-    float depth_far=7000;
     return (depth_far + 1)*exp(val) - 1;
 }
 
@@ -104,8 +104,6 @@ float4 rot(float4 point, float4 c_pos, float4 c_rot)
 
 } ///pass in the value of sin(c_rot.y); etc
 
-__constant uint mulint=UINT_MAX;
-__constant float depth_cutoff=0.22f;
 
 
 
@@ -130,103 +128,9 @@ float rerror(float a, float b)
 }
 
 
-/*void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 spos, float depth, float4 c_pos, float4 c_rot, uint which, float4 *col) ///attempt to bring pixel to world space, too many problems
-{
-    ///pixels are specified by their top left coordinate.
-    ///reverse project screen space pixels.
-
-    int height=800;
-    int width=600;
-
-    float z=idcalc(depth);
-    float4 spss[4];
-    for(int i=0; i<4; i++)
-    {
-        spss[i].x=spos.x;
-        spss[i].y=spos.y;
-        spss[i].z=z;
-    }
-
-    spss[1].x+=1;
-    spss[2].y+=1;
-    spss[3].x+=1;
-    spss[3].y+=1;
 
 
-    //float4 ssp={spos.x, spos.y, z, 0};
-    //ssp.x-=width/2.0f;
-    //ssp.y-=height/2.0f;
-
-    //ssp.x=ssp.x*ssp.z/700.0f;
-    //ssp.y=ssp.y*ssp.z/700.0f;
-
-    float4 ac_rot={-c_rot.x, -c_rot.y, -c_rot.z, 0};
-    float4 worlds[4];
-    for(int i=0; i<4; i++)
-    {
-        spss[i].x-=width/2.0f;
-        spss[i].y-=height/2.0f;
-        spss[i].x=spss[i].x*spss[i].z/700.0f;
-        spss[i].y=spss[i].y*spss[i].z/700.0f;
-        worlds[i]=rot(spss[i], c_pos, ac_rot);
-    }
-
-    global struct triangle * tri=&triangles[id];
-    int y1;
-    y1 = round(rotpoints[0].y);
-    int y2;
-    y2 = round(rotpoints[1].y);
-    int y3;
-    y3 = round(rotpoints[2].y);
-
-    int x1;
-    x1 = round(rotpoints[0].x);
-    int x2;
-    x2 = round(rotpoints[1].x);
-    int x3;
-    x3 = round(rotpoints[2].x);
-
-    int miny;
-    miny=min3(y1, y2, y3)-1; ///oh, wow
-    int maxy;
-    maxy=max3(y1, y2, y3);
-    int minx;
-    minx=min3(x1, x2, x3)-1;
-    int maxx;
-    maxx=max3(x1, x2, x3);
-
-    int rconstant=(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
-    float area=form(x1, y1, x2, y2, x3, y3, 0, 0, 0);
-
-    if(rconstant==0)
-    {
-        return;
-    }
-
-    for(int i=0; i<4; i++)
-    {
-        float x=worlds[i].x;
-        float y=worlds[]
-
-        float s1=fabs(((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2.0) + fabs(((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2.0) + fabs(((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2.0);
-
-
-
-        if(s1 < area + 0.001 && s1 > area - 0.001) /// DO NOT USE 0.0001 THIS CAUSES HOELELELELEL
-        {
-
-
-
-        }
-
-
-
-    }
-}*/
-
-
-
-float4 return_col(float4 coord, int which, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
+float4 return_col(float4 coord, int which, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048) ///takes a normalised input
 {
 
     float4 col;
@@ -282,7 +186,7 @@ float4 return_col(float4 coord, int which, __read_only image3d_t i256, __read_on
 
 }
 
-float4 return_smooth_col(float4 coord, int which, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
+float4 return_smooth_col(float4 coord, int which, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048) ///takes a normalised input
 {
 
     float4 col;
@@ -311,7 +215,7 @@ float4 return_smooth_col(float4 coord, int which, __read_only image3d_t i256, __
 
 }
 
-float4 return_bilinear_col(float4 coord, float width, int which, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
+float4 return_bilinear_col(float4 coord, float width, int which, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048) ///takes a normalised input
 {
 
     /*u = u * tex.size - 0.5;
@@ -520,11 +424,8 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, uint u
     float power=8+which; ///find size of image
     float tw=pow(2.0f, power);
 
-    for(int i=num; i<4; i++)
-    {
-        //tcoord[i]=tcoord[0];
-    }
 
+    ///triangle is now rotated into screenspace
 
 
 
@@ -557,7 +458,7 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, uint u
 
     /*float adepth=(rotpoints[0].z + rotpoints[1].z + rotpoints[2].z) / 3.0f;
 
-    if(fabs(idcalc(adepth))<1000)
+    if(fabs(idcalc(adepth))<1000) ///does not work, figure out why
     {
         step_size=0;
     }*/
@@ -588,6 +489,7 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, uint u
     for(float i=mitx ; i<matx ; i+=(xstep)) //slow as poop
     {
         for(float j=mity ; j<maty ; j+=(ystep)) ///perhaps the only solution is bilinear filtering
+                                                ///Nope, this needs fixing
         {
             //float xd2c=(i-xcentre)*(i-xcentre);
             //float yd2c=(j-ycentre)*(j-ycentre);
@@ -615,9 +517,7 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, uint u
                 //div+=weight;
                 n1+=1;
             }
-            //break;
         }
-        //break;
     }
 
     //colsum/=div;
@@ -638,6 +538,7 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, uint u
 //__kernel void part2(global struct triangle* triangles, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global float4* c_pos, global float4* c_rot, __write_only image2d_t screen, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
 __kernel void part2(global struct triangle* triangles, global float4 *c_pos, global float4 *c_rot, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global struct obj_g_descriptor* gobj, global uint * gnum, __write_only image2d_t screen, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
 {
+    //perform deferred part of renderer
 
     unsigned int tx=get_global_id(0);
     unsigned int ty=get_global_id(1);
@@ -704,25 +605,10 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
             __global uint4 *ftm=&texture_map[ty*width + tx];
 
 
-
-
-            //global struct obj_g_descriptor *obj=gobj;
-
             uint ttid=0;
 
             uint thisid=*fi;
 
-            //thisid=184000;
-
-
-
-            /*for(int i=0; i<(*gnum); i++)
-            {
-                if(thisid >= gobj[i].start && thisid < gobj[i].start + gobj[i].tri_num)
-                {
-                    ttid=gobj[i].tid;
-                }
-            }*/
 
             ttid=gobj[(*ftm).z].tid;
 
@@ -749,13 +635,11 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
 
 
             ttid=ttid-num[which];
-            //ttid=ttid;
-            //
-            //ttid=2;
 
-            //float4 l1={0,300,0,0};
-            float4 l1={c_pos->x,c_pos->y,c_pos->z,0};
+            float4 l1={0,300,0,0};
+            //float4 l1={c_pos->x,c_pos->y,c_pos->z,0};
             l1=rot(l1, *c_pos, *c_rot);
+
             /*l1=rot(l1, *c_pos, *c_rot);
             l1.x=l1.x*700.0/l1.z;
             l1.y=l1.*700.0/l1.z;
@@ -779,65 +663,14 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
             light/=2.0f;
             light+=0.5;
 
-            //float4 col={(float)ftm->x/UINT_MAX, (float)ftm->y/UINT_MAX, 0, 1.0f};
 
             uint4 t_map=*ftm;
-            /*t_map.x*=get_image_width(i2048);
-            t_map.y*=get_image_width(i2048);
-            t_map.z=1;
-            t_map.w=0;*/
 
-            //float id=1;
 
-            float4 tcoord0={(1-(float)t_map.x/mulint)*get_image_width(i2048), (1-(float)t_map.y/mulint)*get_image_width(i2048), ttid, 0};
+            /*float4 tcoord0={(1-(float)t_map.x/mulint)*get_image_width(i2048), (1-(float)t_map.y/mulint)*get_image_width(i2048), ttid, 0};
             float4 tcoord1={(1-(float)t_map.x/mulint)*get_image_width(i1024), (1-(float)t_map.y/mulint)*get_image_width(i1024), ttid, 0};
             float4 tcoord2={(1-(float)t_map.x/mulint)*get_image_width(i512), (1-(float)t_map.y/mulint)*get_image_width(i512), ttid, 0};
-            float4 tcoord3={(1-(float)t_map.x/mulint)*get_image_width(i256), (1-(float)t_map.y/mulint)*get_image_width(i256), ttid, 0};
-
-            //float4 tcoord={((float)t_map.x/mulint)*256, ((float)t_map.y/mulint)*256, id, 0};
-
-            //int2 tcoord={t_map.x, t_map.y};
-
-
-
-            uint4 col[4];
-
-            /*col[0]=read_imageui(i256, sam, tcoord3);
-            col[1]=read_imageui(i512, sam, tcoord2);
-            col[2]=read_imageui(i1024, sam, tcoord1);
-            col[3]=read_imageui(i2048, sam, tcoord0);
-
-
-            float4 tcol;
-
-
-            for(int i=0; i<4; i++)
-            {
-                float t=0.01;
-                if(which==i)
-                {
-                    t=1;
-                }
-                tcol.x+=col[i].x * t;
-                tcol.y+=col[i].y * t;
-                tcol.z+=col[i].z * t;
-            }
-
-            //tcol=col[0];
-
-            //tcol.x=col[0].x*0.01 + 1;
-            //tcol.y=col[0].y*0.01 + 1;
-            //tcol.z=col[0].z*0.01 + 1;
-
-
-            //tcol.x=col[0].x;
-            //tcol.y=col[0].y;
-            //tcol.z=col[0].z;
-
-
-            tcol.x/=255.0f;
-            tcol.y/=255.0f;
-            tcol.z/=255.0f;*/
+            float4 tcoord3={(1-(float)t_map.x/mulint)*get_image_width(i256), (1-(float)t_map.y/mulint)*get_image_width(i256), ttid, 0};*/
 
             float4 tcol;
 
@@ -850,7 +683,7 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
         }                                        ///END_DO_SHIT
 
         depth_buffer[ty*width + tx]=UINT_MAX;
-        //id_buffer[ty*width + tx]=UINT_MAX;
+
     }
     else if((tx==0 || ty==0 || tx==width-1 || ty==height-1) && tx < width && ty < height)
     {
@@ -869,6 +702,7 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
 
 __kernel void part1(global struct triangle* triangles, global float4* pc_pos, global float4* pc_rot, global uint* tri_num, global uint* depth_buffer, global float4* normal_map, global uint* id_buffer, global uint4* texture_map, global struct obj_g_descriptor* desc, global uint* num)//, __write_only image2d_t screen)
 {
+    //rotate triangles into screenspace and draw them
 
     unsigned int width=800;
     unsigned int height=600;

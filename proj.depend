@@ -52,7 +52,7 @@
 	"obj_mem_manager.hpp"
 	"obj_g_descriptor.hpp"
 
-1347034584 c:\users\james\desktop\projects\proj\objects_container.hpp
+1356819964 c:\users\james\desktop\projects\proj\objects_container.hpp
 	"object.hpp"
 
 1346891224 source:c:\users\james\desktop\projects\proj\objects_container.cpp
@@ -64,7 +64,7 @@
 	<iostream>
 	<math.h>
 
-1356313093 c:\users\james\desktop\projects\proj\texture.hpp
+1356820053 c:\users\james\desktop\projects\proj\texture.hpp
 	<sfml/graphics.hpp>
 	<cl/cl.h>
 	<vector>
@@ -104,7 +104,7 @@
 1347034593 source:c:\users\james\desktop\projects\proj\obj_info_struct.cpp
 	"obj_info_struct.hpp"
 
-1347032116 c:\users\james\desktop\projects\proj\obj_info_struct.hpp
+1356820069 c:\users\james\desktop\projects\proj\obj_info_struct.hpp
 	<cl/cl.h>
 	<vector>
 

@@ -29,9 +29,10 @@ struct texture
 
     static cl_uint idquerystring(std::string);
 
+    static void generate_mipmaps();
+
     cl_uint loadtomaster(std::string);
 
-    static void generate_mipmaps();
 
     void unload();
 

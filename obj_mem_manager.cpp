@@ -23,6 +23,46 @@ cl_mem obj_mem_manager::i512;
 cl_mem obj_mem_manager::i1024;
 cl_mem obj_mem_manager::i2048;
 
+cl_mem obj_mem_manager::g_texture_array;
+
+cl_uchar4* obj_mem_manager::c_texture_array;
+
+texture_array_descriptor obj_mem_manager::tdescrip;
+
+//cl_uint max_tex_size=2048;
+
+cl_uint return_max_num(int size)
+{
+
+    return (max_tex_size/size) *(max_tex_size/size);
+
+}
+
+
+cl_uchar4 * return_first_free(int size)
+{
+    texture_array_descriptor *T=&obj_mem_manager::tdescrip;
+
+    int maxsize=return_max_num(size);
+
+
+    for(int i=0; i<obj_mem_manager::tdescrip.texture_nums.size(); i++)
+    {
+
+        if(T->texture_nums[i] < size && T->texture_sizes[i]==size)
+        {
+            return &obj_mem_manager::c_texture_array[0*1 + 0*max_tex_size + i*max_tex_size*max_tex_size];
+        }
+
+
+    }
+    ///we didn't find a suitable texture array, which means create a new one! Realloc array and return pointer, as well as update both new buffers. That means all we have to do now is actually write the textures
+
+
+
+}
+
+
 
 
 int num_to_divide(int target, int tsize)

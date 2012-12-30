@@ -4,8 +4,21 @@
 #include "object.hpp"
 #include <vector>
 
+static cl_uint max_tex_size=2048;
+
+struct texture_array_descriptor
+{
+
+    std::vector<int> texture_nums;
+    std::vector<int> texture_sizes;
+
+
+} tad;
+
 struct obj_mem_manager
 {
+
+    static texture_array_descriptor tdescrip;
 
     static cl_uint tri_num;
 
@@ -20,6 +33,10 @@ struct obj_mem_manager
     static cl_mem g_obj_desc;
 
     static cl_mem g_obj_num;
+
+    static cl_uchar4* c_texture_array;
+
+    static cl_mem g_texture_array;
 
     static cl_mem i256;
     static cl_mem i512;

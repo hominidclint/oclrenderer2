@@ -39,24 +39,90 @@ cl_uint return_max_num(int size)
 }
 
 
-cl_uchar4 * return_first_free(int size)
+cl_uchar4 * return_first_free(int size, int &num) ///texture ids need to be embedded in texture
 {
     texture_array_descriptor *T=&obj_mem_manager::tdescrip;
 
-    int maxsize=return_max_num(size);
+    int maxnum=return_max_num(size);
 
 
     for(int i=0; i<obj_mem_manager::tdescrip.texture_nums.size(); i++)
     {
 
-        if(T->texture_nums[i] < size && T->texture_sizes[i]==size)
+        if(T->texture_nums[i] < maxnum && T->texture_sizes[i]==size)
         {
-            return &obj_mem_manager::c_texture_array[0*1 + 0*max_tex_size + i*max_tex_size*max_tex_size];
+            ///so, T->texture_nums[i] is the position of the new element to return
+            num=i;
+            return &obj_mem_manager::c_texture_array[0*1 + 0*max_tex_size + T->texture_nums[i]*size*size + i*max_tex_size*max_tex_size]; ///so, i is the layer, T->texture_nums[i]*size*size is the texture number
         }
 
 
     }
     ///we didn't find a suitable texture array, which means create a new one! Realloc array and return pointer, as well as update both new buffers. That means all we have to do now is actually write the textures
+
+    int length=T->texture_nums.size();
+    length++;
+
+    cl_uchar4 *newarray=new cl_uchar4[max_tex_size*max_tex_size*length];
+
+    memcpy(newarray, obj_mem_manager::c_texture_array, sizeof(cl_uchar4)*max_tex_size*max_tex_size*(length-1));
+
+    delete [] obj_mem_manager::c_texture_array;
+    obj_mem_manager::c_texture_array=newarray;
+
+    T->texture_sizes.push_back(size);
+    T->texture_nums.push_back(0);
+
+    return return_first_free(size, num);
+
+
+
+}
+
+void add_texture(int size, sf::Image &tex)
+{
+    int num=0;
+    cl_uchar4 *firstfree=return_first_free(size, num);
+
+
+    for(int i=0; i<size; i++)
+    {
+        for(int j=0; j<size; j++)
+        {
+            sf::Color c=tex.getPixel(i, j);
+            firstfree[i + size*j].x=c.r;
+            firstfree[i + size*j].y=c.g;
+            firstfree[i + size*j].z=c.b;
+
+        }
+
+    }
+
+    obj_mem_manager::tdescrip.texture_nums[num]++;
+
+
+
+}
+
+void gen_tile_textures()
+{
+
+
+    for(std::vector<texture>::iterator it=texture::texturelist.begin(); it!=texture::texturelist.end(); it++)
+    {
+
+        sf::Image *T=&(*it).c_image;
+
+        add_texture(T->getSize().x, *T);
+
+
+
+
+
+    }
+
+
+
 
 
 

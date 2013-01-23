@@ -135,7 +135,7 @@ void add_texture(texture &tex, int &newid)
     int blockalongy = which / (max_tex_size/size);
     int blockalongx = which % (max_tex_size/size);
 
-    std::cout << "blockx: " << blockalongx << " blocky: " << blockalongy << std::endl;
+    //std::cout << "blockx: " << blockalongx << " blocky: " << blockalongy << std::endl;
 
 
     int ti=0, tj=0;
@@ -155,7 +155,7 @@ void add_texture(texture &tex, int &newid)
 
 
 
-    for(int i=0; i<size; i++)
+    /*for(int i=0; i<size; i++)
     {
         for(int j=0; j<size; j++)
         {
@@ -167,7 +167,7 @@ void add_texture(texture &tex, int &newid)
 
         }
 
-    }
+    }*/
     // cl_uint *badidea=(cl_uint*)firstfree;
     //*badidea=tex.id;
 

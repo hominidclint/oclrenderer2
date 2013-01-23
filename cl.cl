@@ -398,7 +398,6 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, uint u
 
 
 
-
             f1=tri->vertices[0].vt.y/rotpoints[0].z;
             f2=tri->vertices[1].vt.y/rotpoints[1].z;
             f3=tri->vertices[2].vt.y/rotpoints[2].z;
@@ -535,8 +534,94 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, uint u
 }
 
 
+
+uint return_max_num(int size)
+{
+    int max_tex_size=2048;
+
+    return (max_tex_size/size) * (max_tex_size/size);
+
+}
+
+
+float4 read_tex_array(float x, float y, int tid, global uint *num, global uint *size, __read_only image3d_t array)
+{
+
+    sampler_t sam = CLK_NORMALIZED_COORDS_FALSE |
+               CLK_ADDRESS_CLAMP_TO_EDGE        |
+               CLK_FILTER_NEAREST;
+
+    int d=get_image_depth(array);
+
+    tid=tid-1; /////////////////////////////////////////////
+
+    int slice = num[tid] >> 16;
+    //slice=d-slice;
+    int which = num[tid] & 0x0000FFFF;
+
+
+
+    //which=0;
+
+    //slice=7;
+
+    int width=size[slice];
+    //slice=0;
+    //width=2048;
+
+    //width=1024;
+
+    x=1-x;
+    y=1-y;
+
+
+    x*=width;
+    y*=width;
+
+    int max_tex_size=2048;
+
+    int hnum=max_tex_size/width;
+    ///max horizontal and vertical nums
+
+    float tnumx=which % hnum;
+    float tnumy=which / hnum;
+
+
+    //int tx = which*width/max_tex_size;
+    //int ty = which*width;
+
+    float tx=tnumx*width;
+    float ty=tnumy*width;
+
+    //tx=0;
+    //ty=0;
+    //slice=0;
+    //tx=0;
+    //ty=0;
+
+    //tx=0, ty=0;
+
+
+
+
+
+    float4 coord={tx + x, ty + y, slice, 0};
+
+    uint4 col;
+    col=read_imageui(array, sam, coord);
+    float4 t;
+    t.x=col.x/255.0f;
+    t.y=col.y/255.0f;
+    t.z=col.z/255.0f;
+
+    return t;
+}
+
+
 //__kernel void part2(global struct triangle* triangles, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global float4* c_pos, global float4* c_rot, __write_only image2d_t screen, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
-__kernel void part2(global struct triangle* triangles, global float4 *c_pos, global float4 *c_rot, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global struct obj_g_descriptor* gobj, global uint * gnum, __write_only image2d_t screen, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
+//__kernel void part2(global struct triangle* triangles, global float4 *c_pos, global float4 *c_rot, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global struct obj_g_descriptor* gobj, global uint * gnum, __write_only image2d_t screen, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
+
+__kernel void part2(global struct triangle* triangles, global float4 *c_pos, global float4 *c_rot, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global struct obj_g_descriptor* gobj, global uint * gnum, __write_only image2d_t screen, global int *nums, global int *sizes, __read_only image3d_t array)
 {
     //perform deferred part of renderer
 
@@ -614,7 +699,7 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
 
             uint which=-1;
 
-            int num[5];
+            /*int num[5];
             num[0]=0;
             num[1]=get_image_depth(i256)  + num[0];
             num[2]=get_image_depth(i512)  + num[1];
@@ -634,7 +719,7 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
             uint utid=ttid;
 
 
-            ttid=ttid-num[which];
+            ttid=ttid-num[which];*/
 
             float4 l1={0,300,0,0};
             //float4 l1={c_pos->x,c_pos->y,c_pos->z,0};
@@ -675,8 +760,12 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
             float4 tcol;
 
 
-            texture_filter(triangles, *fi, ttid, utid, coord, *ft, *c_pos, *c_rot, which, &tcol, i256, i512, i1024, i2048);
+            //texture_filter(triangles, *fi, ttid, utid, coord, *ft, *c_pos, *c_rot, which, &tcol, i256, i512, i1024, i2048);
 
+            tcol=read_tex_array((float)t_map.x/mulint, (float)t_map.y/mulint, t_map.z, nums, sizes, array);
+
+            //tcol=read_tex_array((float)tx/800.0f, (float)ty/600.0f, t_map.z, nums, sizes, array);
+            //tcol.x=1.0;
 
             write_imagef(screen, coord, tcol*light);
 
@@ -960,7 +1049,10 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
 
 
-                            uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, o_id, 0};
+                            //uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, o_id, 0};
+                            uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, desc[o_id].tid, 0};
+                            ///texture coords are between 0 and 1
+                            ///?
 
 
 

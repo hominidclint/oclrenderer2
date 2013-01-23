@@ -32,11 +32,6 @@ struct object
 
 
 
-
-
-
-
-
 };
 
 

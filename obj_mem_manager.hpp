@@ -6,14 +6,8 @@
 
 static cl_uint max_tex_size=2048;
 
-struct texture_array_descriptor
-{
+struct texture_array_descriptor;
 
-    std::vector<int> texture_nums;
-    std::vector<int> texture_sizes;
-
-
-} tad;
 
 struct obj_mem_manager
 {
@@ -42,6 +36,10 @@ struct obj_mem_manager
     static cl_mem i512;
     static cl_mem i1024;
     static cl_mem i2048;
+
+    static cl_mem g_texture_sizes;
+
+    static cl_mem g_texture_nums;
 
 
 

@@ -254,7 +254,7 @@ void engine::input()
 
 
 
-void engine::draw_tile_objs()
+/*void engine::draw_tile_objs()
 {
     ///rotate triangles
     ///for every block, split into half and sort triangles
@@ -262,7 +262,7 @@ void engine::draw_tile_objs()
 
 
 
-}
+}*/
 
 void engine::draw_bulk_objs()
 {
@@ -348,10 +348,13 @@ void engine::draw_bulk_objs()
     cl::error |= clSetKernelArg(cl::kernel2, 7, sizeof(cl_mem), &obj_mem_manager::g_obj_desc);
     cl::error |= clSetKernelArg(cl::kernel2, 8, sizeof(cl_mem), &obj_mem_manager::g_obj_num);
     cl::error |= clSetKernelArg(cl::kernel2, 9, sizeof(cl_mem), &g_screen);
-    cl::error |= clSetKernelArg(cl::kernel2, 10, sizeof(cl_mem), &obj_mem_manager::i256);
-    cl::error |= clSetKernelArg(cl::kernel2, 11, sizeof(cl_mem), &obj_mem_manager::i512);
-    cl::error |= clSetKernelArg(cl::kernel2, 12, sizeof(cl_mem), &obj_mem_manager::i1024);
-    cl::error |= clSetKernelArg(cl::kernel2, 13, sizeof(cl_mem), &obj_mem_manager::i2048);
+    cl::error |= clSetKernelArg(cl::kernel2, 10, sizeof(cl_mem),&obj_mem_manager::g_texture_nums);
+    cl::error |= clSetKernelArg(cl::kernel2, 11, sizeof(cl_mem),&obj_mem_manager::g_texture_sizes);
+    cl::error |= clSetKernelArg(cl::kernel2, 12, sizeof(cl_mem),&obj_mem_manager::g_texture_array);
+    //cl::error |= clSetKernelArg(cl::kernel2, 10, sizeof(cl_mem), &obj_mem_manager::i256);
+    //cl::error |= clSetKernelArg(cl::kernel2, 11, sizeof(cl_mem), &obj_mem_manager::i512);
+    //cl::error |= clSetKernelArg(cl::kernel2, 12, sizeof(cl_mem), &obj_mem_manager::i1024);
+    //cl::error |= clSetKernelArg(cl::kernel2, 13, sizeof(cl_mem), &obj_mem_manager::i2048);
 
     c.restart();
     cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::kernel2, 2, NULL, work_dim, local_r, 0, NULL, NULL);

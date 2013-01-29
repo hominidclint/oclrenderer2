@@ -2,7 +2,7 @@
 #include "clstate.h"
 #include <iostream>
 #include <math.h>
-cl_uint texture::gidc=1;
+cl_uint texture::gidc=0;
 
 std::vector<texture> texture::texturelist;
 
@@ -16,7 +16,7 @@ texture::texture()
 
 cl_uint texture::idquerystring(std::string name)
 {
-   cl_uint id=0;
+   cl_uint id=-1;
 
    for(std::vector<texture>::iterator it=texturelist.begin(); it!=texturelist.end(); it++)
    {
@@ -29,7 +29,7 @@ cl_uint texture::idquerystring(std::string name)
 
    }
 
-    return 0;
+    return -1;
 }
 
 bool texture::t_compare(texture one, texture two)
@@ -39,12 +39,20 @@ bool texture::t_compare(texture one, texture two)
 
 }
 
+cl_uint texture::init()
+{
+    id=gidc++;
+    loaded=true;
+    texturelist.push_back(*this);
+    return id;
+}
+
 cl_uint texture::loadtomaster(std::string loc)
 {
     //std::cout << loc << std::endl;
 
-    cl_uint idq=0;
-    if((idq=idquerystring(loc))==0)
+    cl_uint idq=-1;
+    if((idq=idquerystring(loc))==-1)
     {
         //std::cout << "hi";
 

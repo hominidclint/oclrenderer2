@@ -1,21 +1,22 @@
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
 #pragma OPENCL EXTENSION cl_khr_int64_extended_atomics : enable
 
+#define MIP_LEVELS 4
 
-
-int min3(float x, float y, float z)
+float min3(float x, float y, float z)
 {
 
     return min(min(x,y),z);
 
 }
 
-int max3( float x,  float y,  float z)
+float max3( float x,  float y,  float z)
 {
 
     return max(max(x,y),z);
 
 }
+
 
 struct obj_g_descriptor
 {
@@ -25,6 +26,7 @@ struct obj_g_descriptor
     uint tri_num;
     uint tid;           ///texture id
     uint size;
+    uint mip_level_ids[MIP_LEVELS];
 };
 
 
@@ -138,7 +140,7 @@ uint return_max_num(int size)
 }
 
 
-float4 read_tex_array(float x, float y, int tid, global uint *num, global uint *size, __read_only image3d_t array)
+float4 read_tex_array(float4 coords, int tid, global uint *num, global uint *size, __read_only image3d_t array)
 {
 
     sampler_t sam = CLK_NORMALIZED_COORDS_FALSE |
@@ -147,7 +149,10 @@ float4 read_tex_array(float x, float y, int tid, global uint *num, global uint *
 
     int d=get_image_depth(array);
 
-    tid=tid-1; /////////////////////////////////////////////
+    float x=coords.x;
+    float y=coords.y;
+
+    //tid=tid-1; /////////////////////////////////////////////
 
     int slice = num[tid] >> 16;
     //slice=d-slice;
@@ -321,7 +326,7 @@ float4 return_smooth_col(float4 coord, int which, __read_only image3d_t i256, __
 
 }
 
-float4 return_bilinear_col(float4 coord, float width, int which, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048) ///takes a normalised input
+float4 return_bilinear_col_2(float4 coord, float width, int which, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048) ///takes a normalised input
 {
 
     /*u = u * tex.size - 0.5;
@@ -380,8 +385,275 @@ float4 return_bilinear_col(float4 coord, float width, int which, __read_only ima
 
 }
 
+float4 return_bilinear_col(float4 coord, uint tid, global uint *nums, global uint *sizes, __read_only image3d_t array) ///takes a normalised input
+{
 
-void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 spos, float depth, float4 c_pos, float4 c_rot, float4 *col, int tid2 , global uint *nums, global uint *sizes, __read_only image3d_t array) ///bring triangle to screenspace
+
+    float4 mcoord;
+
+    int which=nums[tid];
+    float width=sizes[which >> 16];
+
+    mcoord.x=coord.x*width - 0.5;
+    mcoord.y=coord.y*width - 0.5;
+    mcoord.z=coord.z;
+
+    float4 coords[4];
+
+    int2 pos={floor(mcoord.x), floor(mcoord.y)};
+
+    coords[0].x=pos.x, coords[0].y=pos.y;
+    coords[1].x=pos.x+1, coords[1].y=pos.y;
+    coords[2].x=pos.x, coords[2].y=pos.y+1;
+    coords[3].x=pos.x+1, coords[3].y=pos.y+1;
+
+
+
+    float4 colours[4];
+    for(int i=0; i<4; i++)
+    {
+        coords[i].x/=width;
+        coords[i].y/=width;
+        coords[i].z=coord.z;
+
+        //colours[i]=return_col(coords[i], which, i256, i512, i1024, i2048);
+        colours[i]=read_tex_array(coords[i], tid, nums, sizes, array);
+    }
+
+
+    //return_col(coord, which, i256, i512, i1024, i2048)
+
+    float2 uvratio={mcoord.x-pos.x, mcoord.y-pos.y};
+
+    float2 buvr={1.0-uvratio.x, 1.0-uvratio.y};
+
+    float4 result;
+    result.x=(colours[0].x*buvr.x + colours[1].x*uvratio.x)*buvr.y + (colours[2].x*buvr.x + colours[3].x*uvratio.x)*uvratio.y;
+    result.y=(colours[0].y*buvr.x + colours[1].y*uvratio.x)*buvr.y + (colours[2].y*buvr.x + colours[3].y*uvratio.x)*uvratio.y;
+    result.z=(colours[0].z*buvr.x + colours[1].z*uvratio.x)*buvr.y + (colours[2].z*buvr.x + colours[3].z*uvratio.x)*uvratio.y;
+
+
+    return result;
+
+}
+
+void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 spos, float4 vt, float depth, float4 c_pos, float4 c_rot, float4 *col, int tid2, global uint* mipd , global uint *nums, global uint *sizes, __read_only image3d_t array)
+{
+
+    ///find z coord of texture pixel, work out distance of transition between the adjacent 2 texture levels (+ which 2 texture levels), bilinearly interpolate the two pixels, then interpolate the result
+
+    global struct triangle *tri;
+    tri=&triangles[id];
+
+    int width=800;
+    int height=600;
+
+    float4 rotpoints[3];
+    for(int j=0; j<3; j++)
+    {
+        rotpoints[j]=rot(tri->vertices[j].pos, c_pos, c_rot);
+
+        float rx;
+        rx=rotpoints[j].x * (700.0f/rotpoints[j].z);
+        float ry;
+        ry=rotpoints[j].y * (700.0f/rotpoints[j].z);
+
+        rx+=width/2.0f;
+        ry+=height/2.0f;
+
+
+        rotpoints[j].x=rx;
+        rotpoints[j].y=ry;
+        //rotpoints[j].z=dcalc(rotpoints[j].z);
+        //i want linear z coordinates
+    }
+
+    float adepth=(rotpoints[0].z + rotpoints[1].z + rotpoints[2].z)/3.0f;
+
+    ///maths works out to be z = 700*n where n is 1/2, 1/4 of the size etc
+    ///so, if z of pixel is between 0-700, use least, then first, then second, etc
+
+    int tids[MIP_LEVELS+1];
+    tids[0]=tid2;
+    for(int i=1; i<MIP_LEVELS+1; i++)
+    {
+        tids[i]=mipd[i-1];
+    }
+
+    float mipdistance=700;
+
+    float part=0;
+    //adepth=fabs(adepth);
+    if(adepth<1)
+    {
+        adepth=1;
+    }
+    float aclevel=adepth/mipdistance;
+    //int whichlevel=log2(floor((adepth/mipdistance))+1); ///n needs to be power of 2, atm it is not
+
+    int wc=0;
+    int wc1;
+    float mdist;
+    float fdist;
+
+    int slice=nums[tid2] >> 16;
+    int twidth=sizes[slice];
+
+
+
+    float minvx=min3(rotpoints[0].x, rotpoints[1].x, rotpoints[2].x); ///these are screenspace coordinates, used relative to each other so +width/2.0 cancels
+    float maxvx=max3(rotpoints[0].x, rotpoints[1].x, rotpoints[2].x);
+
+    float minvy=min3(rotpoints[0].y, rotpoints[1].y, rotpoints[2].y);
+    float maxvy=max3(rotpoints[0].y, rotpoints[1].y, rotpoints[2].y);
+
+    float mintx=min3(tri->vertices[0].vt.x, tri->vertices[1].vt.x, tri->vertices[2].vt.x);
+    float maxtx=max3(tri->vertices[0].vt.x, tri->vertices[1].vt.x, tri->vertices[2].vt.x);
+
+    float minty=min3(tri->vertices[0].vt.y, tri->vertices[1].vt.y, tri->vertices[2].vt.y);
+    float maxty=max3(tri->vertices[0].vt.y, tri->vertices[1].vt.y, tri->vertices[2].vt.y);
+
+    float txdif=maxtx-mintx;
+    float tydif=maxty-minty;
+    if(txdif==0)
+    {
+        return;
+    }
+    float vxdif=maxvx-minvx;
+    float vydif=maxvy-minvy;
+
+    float xtexelsperpixel=txdif*twidth/vxdif;
+    float ytexelsperpixel=tydif*twidth/vydif;
+
+    float texelsperpixel = xtexelsperpixel > ytexelsperpixel ? xtexelsperpixel : ytexelsperpixel;
+
+
+
+    //float effectivewidth=texturewidth/texelsperpixel
+    //700*texturewidth/(texturewidth/texelsperpixel);
+
+    float effectivedistance=mipdistance*texelsperpixel;
+
+    if(effectivedistance<0)
+    {
+        return;
+    }
+
+    float corrected_depth=adepth + effectivedistance;
+
+
+
+
+    for(int i=0; i<5; i++) //fundementally broken, using width of polygon when it needs to be using
+                            //texture width to calculate miplevel
+    {
+        //i=2;
+        wc=i;
+        if(i==4)
+        {
+            mdist=(pow(2.0f, (float)i)-1)*mipdistance;
+            fdist=(pow(2.0f, (float)i)-1)*mipdistance;
+            break;
+        }
+        mdist=(pow(2.0f, (float)i)-1)*mipdistance;
+        fdist=(pow(2.0f, (float)i+1.0f)-1)*mipdistance;
+
+        if(corrected_depth > mdist && corrected_depth < fdist)
+        {
+            break;
+        }
+        //break;
+    }
+
+    wc1=wc+1;
+    part=(fdist-corrected_depth)/(fdist-mdist);
+
+    if(wc==4)
+    {
+        wc1=4;
+        part=1;
+    }
+
+
+    //part=0;
+    //wc=0;
+    //wc1=1;
+
+
+
+
+
+
+
+
+
+
+
+
+    /*int higher=whichlevel+1;
+    if(higher==5)
+    {
+        higher=4;
+    }
+    if(whichlevel<0)
+    {
+        whichlevel=0;
+    }
+    if(whichlevel>=5)
+    {
+        whichlevel=4;
+        higher=4;
+    }
+    //whichlevel=3;
+    //part=(float)((whichlevel+1)*mipdistance - (adepth))/mipdistance;
+
+    if(whichlevel==4)
+    {
+        part=0;
+    }*/
+
+    ///how far away from the upper mip level are we, between 0 and 1;
+    //x, y, tid, num, size, array;
+
+
+
+    ////int slice = nums[tid2];
+    //float twidth = sizes[slice >> 16];
+
+    float4 coord={(float)vt.x, (float)vt.y, 0, 0};
+
+
+
+    float4 acol={0,0,0,0};
+
+    float4 col1=return_bilinear_col(coord, tids[wc], nums, sizes, array);
+
+    float4 col2=return_bilinear_col(coord, tids[wc1], nums, sizes, array);
+
+
+    float4 final=col1*(part) + col2*(1-part);
+
+
+
+
+
+
+
+    col->x=final.x;
+    col->y=final.y;
+    col->z=final.z;
+
+    //col->x=wc/5.0f + 0.001*final.x;
+    //col->y=wc/5.0f;
+    //col->z=wc/5.0f;
+
+
+
+}
+
+void texture_filter_2(global struct triangle* triangles, uint id, uint tid, int2 spos, float depth, float4 c_pos, float4 c_rot, float4 *col, int tid2, global uint* mipd, global uint *nums, global uint *sizes, __read_only image3d_t array) ///bring triangle to screenspace
+
+//void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 spos, float4 vt, float depth, float4 c_pos, float4 c_rot, float4 *col, int tid2, global uint* mipd , global uint *nums, global uint *sizes, __read_only image3d_t array)
 {
 
     int width=800;
@@ -622,7 +894,7 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
 
 
                 //colsum+=return_col(vt, which, i256, i512, i1024, i2048);
-                colsum+=read_tex_array(vt.x, vt.y, tid2, nums, sizes, array);
+                colsum+=read_tex_array(vt, tid2, nums, sizes, array);
                 //div+=weight;
                 n1+=1;
             }
@@ -780,16 +1052,15 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
 
             uint4 t_map=*ftm;
 
+            float4 vt={(float)t_map.x/mulint, (float)t_map.y/mulint, 0, 0};
 
-            /*float4 tcoord0={(1-(float)t_map.x/mulint)*get_image_width(i2048), (1-(float)t_map.y/mulint)*get_image_width(i2048), ttid, 0};
-            float4 tcoord1={(1-(float)t_map.x/mulint)*get_image_width(i1024), (1-(float)t_map.y/mulint)*get_image_width(i1024), ttid, 0};
-            float4 tcoord2={(1-(float)t_map.x/mulint)*get_image_width(i512), (1-(float)t_map.y/mulint)*get_image_width(i512), ttid, 0};
-            float4 tcoord3={(1-(float)t_map.x/mulint)*get_image_width(i256), (1-(float)t_map.y/mulint)*get_image_width(i256), ttid, 0};*/
 
             float4 tcol;
 
 
-            texture_filter(triangles, *fi, ttid, coord, *ft, *c_pos, *c_rot, &tcol, t_map.z, nums, sizes, array);
+            texture_filter(triangles, *fi, ttid, coord, vt, *ft, *c_pos, *c_rot, &tcol, gobj[t_map.z].tid, gobj[t_map.z].mip_level_ids, nums, sizes, array);
+
+
 
             //tcol=read_tex_array((float)t_map.x/mulint, (float)t_map.y/mulint, t_map.z, nums, sizes, array);
 
@@ -975,7 +1246,7 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                             volatile __global uint *ft=&depth_buffer [(int)y*width + (int)x];
                             volatile __global uint *fi=&id_buffer    [(int)y*width + (int)x];
                             volatile __global float4 *fn=&normal_map [(int)y*width + (int)x];
-                            volatile __global uint4 *ftm=&texture_map [(int)y*width + (int)x];
+                            volatile __global uint4 *ftm=&texture_map[(int)y*width + (int)x];
 
 
 
@@ -1079,7 +1350,7 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
 
                             //uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, o_id, 0};
-                            uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, desc[o_id].tid, 0};
+                            uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, o_id, 0};
                             ///texture coords are between 0 and 1
                             ///?
 

@@ -13,7 +13,7 @@
 	</File>
 	<File name="obj_load.cpp" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="10986" topLine="367" />
+			<Cursor1 position="9353" topLine="113" />
 		</Cursor>
 	</File>
 	<File name="obj_load.hpp" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
@@ -23,22 +23,17 @@
 	</File>
 	<File name="obj_mem_manager.cpp" open="1" top="0" tabpos="24" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="3875" topLine="104" />
+			<Cursor1 position="14019" topLine="449" />
 		</Cursor>
 	</File>
 	<File name="obj_mem_manager.hpp" open="1" top="0" tabpos="20" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="833" topLine="0" />
+			<Cursor1 position="474" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="object.cpp" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="591" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="engine.cpp" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="9645" topLine="283" />
+			<Cursor1 position="586" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="object.hpp" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
@@ -46,19 +41,9 @@
 			<Cursor1 position="157" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="engine.hpp" open="1" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="638" topLine="0" />
-		</Cursor>
-	</File>
 	<File name="objects_container.cpp" open="1" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="217" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="main.cpp" open="1" top="0" tabpos="23" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="551" topLine="16" />
 		</Cursor>
 	</File>
 	<File name="objects_container.hpp" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
@@ -66,39 +51,34 @@
 			<Cursor1 position="174" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="obj_g_descriptor.hpp" open="1" top="0" tabpos="22" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="368" topLine="0" />
-		</Cursor>
-	</File>
 	<File name="ocl.h" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="83" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="cl.cl" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+	<File name="engine.cpp" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="3479" topLine="133" />
+			<Cursor1 position="629" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="texture.cpp" open="1" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="371" topLine="21" />
+			<Cursor1 position="301" topLine="238" />
 		</Cursor>
 	</File>
-	<File name="clstate.cpp" open="1" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+	<File name="engine.hpp" open="1" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="0" topLine="0" />
+			<Cursor1 position="638" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="texture.hpp" open="1" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="626" topLine="0" />
+			<Cursor1 position="726" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="clstate.h" open="1" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+	<File name="main.cpp" open="1" top="0" tabpos="23" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="0" topLine="0" />
+			<Cursor1 position="1105" topLine="13" />
 		</Cursor>
 	</File>
 	<File name="triangle.cpp" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
@@ -106,9 +86,19 @@
 			<Cursor1 position="0" topLine="0" />
 		</Cursor>
 	</File>
+	<File name="obj_g_descriptor.hpp" open="1" top="0" tabpos="22" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="116" topLine="0" />
+		</Cursor>
+	</File>
 	<File name="triangle.hpp" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="128" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="cl.cl" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="8474" topLine="370" />
 		</Cursor>
 	</File>
 	<File name="vertex.cpp" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
@@ -116,9 +106,19 @@
 			<Cursor1 position="23" topLine="0" />
 		</Cursor>
 	</File>
+	<File name="clstate.cpp" open="1" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="0" topLine="0" />
+		</Cursor>
+	</File>
 	<File name="vertex.hpp" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="211" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="clstate.h" open="1" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="0" topLine="0" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

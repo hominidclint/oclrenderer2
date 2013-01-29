@@ -4,6 +4,8 @@
 #include <cl/cl.h>
 #include <vector>
 
+#include "obj_g_descriptor.hpp"
+
 struct texture
 {
 
@@ -22,8 +24,12 @@ struct texture
     cl_uint id; ///starts from 1
     static cl_uint gidc;
 
+    cl_uint mip_level_ids[MIP_LEVELS];
+
 
     texture();
+
+
 
     static bool t_compare(texture one, texture two);
 
@@ -32,6 +38,8 @@ struct texture
     static void generate_mipmaps();
 
     cl_uint loadtomaster(std::string);
+
+    cl_uint init();
 
 
     void unload();

@@ -62,10 +62,11 @@
 	"object.hpp"
 	"objects_container.hpp"
 
-1356820053 c:\users\james\desktop\projects\proj\texture.hpp
+1359250259 c:\users\james\desktop\projects\proj\texture.hpp
 	<sfml/graphics.hpp>
 	<cl/cl.h>
 	<vector>
+	"obj_g_descriptor.hpp"
 
 1356820000 c:\users\james\desktop\projects\proj\ocl.h
 	<cstdio>
@@ -75,7 +76,7 @@
 	"clstate.h"
 	<windows.h>
 
-1354599731 c:\users\james\desktop\projects\proj\obj_g_descriptor.hpp
+1359277780 c:\users\james\desktop\projects\proj\obj_g_descriptor.hpp
 	<CL/CL.h>
 
 1347034593 source:c:\users\james\desktop\projects\proj\obj_info_struct.cpp
@@ -96,7 +97,7 @@
 	"triangle.hpp"
 	"texture.hpp"
 
-1358905263 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
+1359277700 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
 	"obj_mem_manager.hpp"
 	<CL/CL.h>
 	"clstate.h"
@@ -114,7 +115,7 @@
 1346891224 source:c:\users\james\desktop\projects\proj\objects_container.cpp
 	"objects_container.hpp"
 
-1356820020 source:c:\users\james\desktop\projects\proj\texture.cpp
+1359262234 source:c:\users\james\desktop\projects\proj\texture.cpp
 	"texture.hpp"
 	"clstate.h"
 	<iostream>

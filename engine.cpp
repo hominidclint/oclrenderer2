@@ -272,6 +272,8 @@ void engine::draw_bulk_objs()
     clFinish(cl::cqueue);
 
 
+
+
     cl::error |= clSetKernelArg(cl::kernel, 0, sizeof(cl_mem), &obj_mem_manager::g_tri_mem);
     //cl::error |= clSetKernelArg(cl::kernel, 1, sizeof(cl_mem), &g_screen);
     cl::error |= clSetKernelArg(cl::kernel, 1, sizeof(cl_mem), &g_c_pos);
@@ -283,6 +285,7 @@ void engine::draw_bulk_objs()
     cl::error |= clSetKernelArg(cl::kernel, 7, sizeof(cl_mem), &g_texture_screen);
     cl::error |= clSetKernelArg(cl::kernel, 8, sizeof(cl_mem), &obj_mem_manager::g_obj_desc);
     cl::error |= clSetKernelArg(cl::kernel, 9, sizeof(cl_mem), &obj_mem_manager::g_obj_num);
+
     ///pass obj descriptor and size to kernel
     //cl::error |= clSetKernelArg(cl::kernel, 7, sizeof(cl_mem), &g_screen);
 
@@ -299,6 +302,8 @@ void engine::draw_bulk_objs()
         }
 
     }*/ //id buffer is fucked
+
+    //sf::Clock t;
 
     size_t global_ws = obj_mem_manager::tri_num;
 
@@ -317,7 +322,10 @@ void engine::draw_bulk_objs()
 
     }
 
+
+
     //exit(1);
+
 
     sf::Clock c;
     cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::kernel, 1, NULL, &global_ws, &local, 0, NULL, NULL);
@@ -357,6 +365,7 @@ void engine::draw_bulk_objs()
     //cl::error |= clSetKernelArg(cl::kernel2, 13, sizeof(cl_mem), &obj_mem_manager::i2048);
 
     c.restart();
+
     cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::kernel2, 2, NULL, work_dim, local_r, 0, NULL, NULL);
     clFinish(cl::cqueue);
     //std::cout << "c2 " << c.getElapsedTime().asMilliseconds() << std::endl;
@@ -366,10 +375,11 @@ void engine::draw_bulk_objs()
     }
 
 
+
     clEnqueueReleaseGLObjects(cl::cqueue, 1, &g_screen, 0, NULL, NULL);
     clFinish(cl::cqueue);
     glFinish();
-
+    //std::cout << "t " <<  t.getElapsedTime().asMilliseconds() << std::endl;
 
 
 }

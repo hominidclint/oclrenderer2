@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
     {
 
         sf::Clock c;
+
         if (window.window.pollEvent(Event))
         {
             if (Event.type == sf::Event::Closed)

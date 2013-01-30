@@ -475,6 +475,7 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
 
     int tids[MIP_LEVELS+1];
     tids[0]=tid2;
+
     for(int i=1; i<MIP_LEVELS+1; i++)
     {
         tids[i]=mipd[i-1];
@@ -483,13 +484,11 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
     float mipdistance=700;
 
     float part=0;
-    //adepth=fabs(adepth);
+
     if(adepth<1)
     {
         adepth=1;
     }
-    float aclevel=adepth/mipdistance;
-    //int whichlevel=log2(floor((adepth/mipdistance))+1); ///n needs to be power of 2, atm it is not
 
     int wc=0;
     int wc1;
@@ -515,10 +514,8 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
 
     float txdif=maxtx-mintx;
     float tydif=maxty-minty;
-    if(txdif==0)
-    {
-        return;
-    }
+
+
     float vxdif=maxvx-minvx;
     float vydif=maxvy-minvy;
 
@@ -527,10 +524,6 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
 
     float texelsperpixel = xtexelsperpixel > ytexelsperpixel ? xtexelsperpixel : ytexelsperpixel;
 
-
-
-    //float effectivewidth=texturewidth/texelsperpixel
-    //700*texturewidth/(texturewidth/texelsperpixel);
 
     float effectivedistance=mipdistance*texelsperpixel;
 
@@ -547,7 +540,6 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
     for(int i=0; i<5; i++) //fundementally broken, using width of polygon when it needs to be using
                             //texture width to calculate miplevel
     {
-        //i=2;
         wc=i;
         if(i==4)
         {
@@ -555,6 +547,7 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
             fdist=(pow(2.0f, (float)i)-1)*mipdistance;
             break;
         }
+
         mdist=(pow(2.0f, (float)i)-1)*mipdistance;
         fdist=(pow(2.0f, (float)i+1.0f)-1)*mipdistance;
 
@@ -562,7 +555,6 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
         {
             break;
         }
-        //break;
     }
 
     wc1=wc+1;
@@ -575,80 +567,23 @@ void texture_filter(global struct triangle* triangles, uint id, uint tid, int2 s
     }
 
 
-    //part=0;
-    //wc=0;
-    //wc1=1;
-
-
-
-
-
-
-
-
-
-
-
-
-    /*int higher=whichlevel+1;
-    if(higher==5)
-    {
-        higher=4;
-    }
-    if(whichlevel<0)
-    {
-        whichlevel=0;
-    }
-    if(whichlevel>=5)
-    {
-        whichlevel=4;
-        higher=4;
-    }
-    //whichlevel=3;
-    //part=(float)((whichlevel+1)*mipdistance - (adepth))/mipdistance;
-
-    if(whichlevel==4)
-    {
-        part=0;
-    }*/
-
     ///how far away from the upper mip level are we, between 0 and 1;
     //x, y, tid, num, size, array;
-
-
-
-    ////int slice = nums[tid2];
-    //float twidth = sizes[slice >> 16];
 
     float4 coord={(float)vt.x, (float)vt.y, 0, 0};
 
 
-
-    float4 acol={0,0,0,0};
-
     float4 col1=return_bilinear_col(coord, tids[wc], nums, sizes, array);
 
+    //float4 col2=return_bilinear_col(coord, tids[wc1], nums, sizes, array);
     float4 col2=return_bilinear_col(coord, tids[wc1], nums, sizes, array);
 
 
     float4 final=col1*(part) + col2*(1-part);
 
-
-
-
-
-
-
     col->x=final.x;
     col->y=final.y;
     col->z=final.z;
-
-    //col->x=wc/5.0f + 0.001*final.x;
-    //col->y=wc/5.0f;
-    //col->z=wc/5.0f;
-
-
-
 }
 
 void texture_filter_2(global struct triangle* triangles, uint id, uint tid, int2 spos, float depth, float4 c_pos, float4 c_rot, float4 *col, int tid2, global uint* mipd, global uint *nums, global uint *sizes, __read_only image3d_t array) ///bring triangle to screenspace

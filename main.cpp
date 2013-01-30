@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 {
 
     sf::Clock clo;
-    objects_container *sponza=obj_load("sponza/spz.obj");
+    objects_container *sponza=obj_load("Sponza/testspz.obj");
     //std::cout << clo.getElapsedTime().asMilliseconds() << std::endl;
 
 

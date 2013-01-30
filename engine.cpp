@@ -323,7 +323,7 @@ void engine::draw_bulk_objs()
     cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::kernel, 1, NULL, &global_ws, &local, 0, NULL, NULL);
     clFinish(cl::cqueue);
 
-    //std::cout << "c1 " << c.GetElapsedTime() << std::endl;
+    //std::cout << "c1 " << c.getElapsedTime().asMilliseconds() << std::endl;
 
     if(cl::error!=0){
         std::cout << "Error In kernel 1" << std::endl;
@@ -359,7 +359,7 @@ void engine::draw_bulk_objs()
     c.restart();
     cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::kernel2, 2, NULL, work_dim, local_r, 0, NULL, NULL);
     clFinish(cl::cqueue);
-    //std::cout << "c2 " << c.GetElapsedTime() << std::endl;
+    //std::cout << "c2 " << c.getElapsedTime().asMilliseconds() << std::endl;
     if(cl::error!=0){
         std::cout << "Error In kernel 2" << std::endl;
         exit(cl::error);

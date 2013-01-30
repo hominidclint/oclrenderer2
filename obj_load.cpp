@@ -158,6 +158,7 @@ objects_container* obj_load(std::string filename)
     }
 
     fclose(pFile);
+    float scale=1; /// /////////////////////////////// ///scale!!!         !!!!!!!!!!!!!!!!!!!!!!
     //bool first=true;
     objects_container *objs = new objects_container;
     for(std::vector<char>::iterator it=file.begin(); it!=file.end(); it++)
@@ -175,7 +176,7 @@ objects_container* obj_load(std::string filename)
             for(int i=0; i<3; i++)
             {
                 std::string str=getfollowingword(it);
-                vertex_coords.push_back(atof(str.c_str()));
+                vertex_coords.push_back(atof(str.c_str())*scale);
             }
 
 

@@ -64,7 +64,7 @@ float form(float x1, float y1, float x2, float y2, float x3, float y3, float x, 
 
 } ///triangle equations
 
-__constant float depth_far=7000; ///in non logarithmic coordinates
+__constant float depth_far=140000; ///in non logarithmic coordinates
 __constant uint mulint=UINT_MAX;
 __constant float depth_cutoff=0.22f;
 
@@ -1067,6 +1067,9 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
             //tcol=read_tex_array((float)tx/800.0f, (float)ty/600.0f, t_map.z, nums, sizes, array);
             //tcol.x=1.0;
 
+
+            //light=0.7;
+
             write_imagef(screen, coord, tcol*light);
 
         }                                        ///END_DO_SHIT
@@ -1117,6 +1120,8 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
             break;
         }
     }
+
+    //o_id=5;
 
 
 
@@ -1215,13 +1220,13 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
             {
 
 
-                if(!out_of_bounds(x, minx, maxx) && !out_of_bounds(y, miny, maxy))
+                //if(!out_of_bounds(x, minx, maxx) && !out_of_bounds(y, miny, maxy))
                 {
-                    float s1=fabs(((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2.0) + fabs(((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2.0) + fabs(((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2.0);
+                        float s1=fabs(((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2.0) + fabs(((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2.0) + fabs(((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2.0);
 
 
 
-                        if(x>=width)
+                        /*if(x>=width)
                         {
                             continue;
                         }
@@ -1236,7 +1241,7 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                         if(y<0)
                         {
                             continue;
-                        }
+                        }*/
 
 
                         if(s1 < area + 0.001 && s1 > area - 0.001) /// DO NOT USE 0.0001 THIS CAUSES HOELELELELEL
@@ -1268,7 +1273,7 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
                             float cdepth=(A*x + B*y + C);
 
-                            if(cdepth<depth_cutoff)
+                            if(cdepth<depth_cutoff) //use ldepth
                             {
                                 continue;
                             }
@@ -1357,7 +1362,7 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
 
                             uint mydepth=floor(cdepth*(mulint));///dont need interpolated depth yet
-                            float4 col={1.0f, 1.0f, 1.0f, 0};
+
 
 
                             uint4 tmap;
@@ -1368,14 +1373,17 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                                 uint4 arr;
                                 //while(*ft!=mydepth)// || *fi!=i)// || (*fn).x!=inormal.x || (*fn).y!=inormal.y || (*fn).z!=inormal.z) ///needs looking at
                                 //while(*ft!=mydepth || t.x!=inormal.x || t.y!=inormal.y || t.z!=inormal.z || arr.z!=vt.z) ///needs looking at
-                                while(*ft!=mydepth || t.x!=inormal.x || (*ftm).z!=vt.z) ///needs looking at
+                                //
+                                //while(*ft!=mydepth || (*ftm).z!=vt.z) ///needs looking at
+                                //while(*ft!=mydepth || (*fn).x!=inormal.x || (*ftm).z!=vt.z) ///needs looking at
+                                while(*ft!=mydepth)
                                 {
                                     if(mydepth<*ft)
                                     {
                                         *ft=mydepth;
                                         *fn=inormal;
                                         *ftm=vt;
-                                        t=*fn;
+                                        //t=*fn;
                                         *fi=i;
                                         //arr=*ftm;
 

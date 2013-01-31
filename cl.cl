@@ -922,40 +922,18 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
         {
 
             __global uint *ft=&depth_buffer [ty*width + tx];
-            __global uint *fi=&id_buffer    [ty*width + tx];
+            //__global uint *fi=&id_buffer    [ty*width + tx];
             __global uint4 *ftm=&texture_map[ty*width + tx];
 
 
             uint ttid=0;
 
-            uint thisid=*fi;
+            //uint thisid=*fi;
+
+            uint thisid=(*ftm).w;
 
 
             ttid=gobj[(*ftm).z].tid;
-
-            uint which=-1;
-
-            /*int num[5];
-            num[0]=0;
-            num[1]=get_image_depth(i256)  + num[0];
-            num[2]=get_image_depth(i512)  + num[1];
-            num[3]=get_image_depth(i1024) + num[2];
-            num[4]=get_image_depth(i2048) + num[3];
-            //num[4]=num[3]+1;
-
-            for(int i=0; i<4; i++)
-            {
-                if(ttid >= num[i] && ttid < num[i+1])
-                {
-                    which=i;
-                }
-            }
-
-
-            uint utid=ttid;
-
-
-            ttid=ttid-num[which];*/
 
             float4 l1={0,300,0,0};
             //float4 l1={c_pos->x,c_pos->y,c_pos->z,0};
@@ -993,7 +971,7 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
             float4 tcol;
 
 
-            texture_filter(triangles, *fi, ttid, coord, vt, *ft, *c_pos, *c_rot, &tcol, gobj[t_map.z].tid, gobj[t_map.z].mip_level_ids, nums, sizes, array);
+            texture_filter(triangles, thisid, ttid, coord, vt, *ft, *c_pos, *c_rot, &tcol, gobj[t_map.z].tid, gobj[t_map.z].mip_level_ids, nums, sizes, array);
 
 
 
@@ -1142,6 +1120,7 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
 
         int rconstant=(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
+        //float rconstant2=1.0f/rconstant;
         float area=form(x1, y1, x2, y2, x3, y3, 0, 0, 0); ///add 1 to area to get point cloud!
 
         if(rconstant==0)
@@ -1201,6 +1180,10 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                             float f3=rotpoints[2].z;
 
 
+
+                            //float A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
+                            //float B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
+                            //float C=f1-A*x1 - B*y1;
 
                             float A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
                             float B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
@@ -1290,7 +1273,8 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
 
                             //uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, o_id, 0};
-                            uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, o_id, 0};
+                            uint4 vt={(vtx/ldepth)*mulint, (vty/ldepth)*mulint, o_id, i};
+                            //uint4 vt={0, 0, 0, 0};
                             ///texture coords are between 0 and 1
                             ///?
 
@@ -1300,12 +1284,12 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
 
 
-                            uint4 tmap;
+                            //uint4 tmap;
 
                             if(mydepth>0 && mydepth<*ft) ///have two buffers, write to both, extract most correct information in second kernel
                             {
-                                float4 t;
-                                uint4 arr;
+                                //float4 t;
+                                //uint4 arr;
                                 //while(*ft!=mydepth)// || *fi!=i)// || (*fn).x!=inormal.x || (*fn).y!=inormal.y || (*fn).z!=inormal.z) ///needs looking at
                                 //while(*ft!=mydepth || t.x!=inormal.x || t.y!=inormal.y || t.z!=inormal.z || arr.z!=vt.z) ///needs looking at
                                 //
@@ -1319,9 +1303,8 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                                         *fn=inormal;
                                         *ftm=vt;
                                         //t=*fn;
-                                        *fi=i;
+                                        //*fi=i;
                                         //arr=*ftm;
-
                                     }
                                     else
                                     {

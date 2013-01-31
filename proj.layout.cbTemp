@@ -3,7 +3,7 @@
 	<ActiveTarget name="Release" />
 	<File name="engine.cpp" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="10062" topLine="306" />
+			<Cursor1 position="10910" topLine="306" />
 		</Cursor>
 	</File>
 	<File name="engine.hpp" open="1" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
@@ -51,19 +51,9 @@
 			<Cursor1 position="474" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="vertex.cpp" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="23" topLine="0" />
-		</Cursor>
-	</File>
 	<File name="object.cpp" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="586" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="vertex.hpp" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="211" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="object.hpp" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
@@ -76,9 +66,19 @@
 			<Cursor1 position="217" topLine="0" />
 		</Cursor>
 	</File>
+	<File name="vertex.cpp" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="23" topLine="0" />
+		</Cursor>
+	</File>
 	<File name="objects_container.hpp" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="174" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="vertex.hpp" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="211" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="ocl.h" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
@@ -108,7 +108,7 @@
 	</File>
 	<File name="cl.cl" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="26688" topLine="1054" />
+			<Cursor1 position="10021" topLine="394" />
 		</Cursor>
 	</File>
 	<File name="clstate.cpp" open="1" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="-3" zoom_2="0">

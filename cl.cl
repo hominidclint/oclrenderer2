@@ -5,17 +5,15 @@
 
 float min3(float x, float y, float z)
 {
-
     return min(min(x,y),z);
-
 }
 
 float max3( float x,  float y,  float z)
 {
-
     return max(max(x,y),z);
-
 }
+
+#define IDENTIFICATION_BITS 10
 
 
 struct obj_g_descriptor
@@ -65,7 +63,8 @@ float form(float x1, float y1, float x2, float y2, float x3, float y3, float x, 
 } ///triangle equations
 
 __constant float depth_far=140000; ///in non logarithmic coordinates
-__constant uint mulint=UINT_MAX;
+///1024 is 2^10
+__constant uint mulint=UINT_MAX/1024;
 __constant float depth_cutoff=0.22f;
 
 
@@ -92,7 +91,6 @@ int out_of_bounds(float val, float min, float max)
         return false;
     }
     return true;
-
 }
 
 float4 rot(float4 point, float4 c_pos, float4 c_rot)
@@ -856,8 +854,95 @@ void texture_filter_2(global struct triangle* triangles, uint id, uint tid, int2
 
 //__kernel void part2(global struct triangle* triangles, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global float4* c_pos, global float4* c_rot, __write_only image2d_t screen, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
 //__kernel void part2(global struct triangle* triangles, global float4 *c_pos, global float4 *c_rot, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global struct obj_g_descriptor* gobj, global uint * gnum, __write_only image2d_t screen, __read_only image3d_t i256, __read_only image3d_t i512, __read_only image3d_t i1024, __read_only image3d_t i2048)
+float interpolate(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3, int rconstant)
+{
+    float A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
+    float B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
+    float C=f1-A*x1 - B*y1;
 
-__kernel void part2(global struct triangle* triangles, global float4 *c_pos, global float4 *c_rot, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global struct obj_g_descriptor* gobj, global uint * gnum, __write_only image2d_t screen, global int *nums, global int *sizes, __read_only image3d_t array)
+    float cdepth=(A*x + B*y + C);
+    return cdepth;
+}
+
+void full_rotate(global struct triangle *triangles, int trid, global float4 *c_pos, global float4 *c_rot, float4 *out)
+{
+    int width=800;
+    int height=600;
+
+    __global struct triangle *cur_tri=&triangles[trid]; ///shared memory?
+
+    out[0]=rot(cur_tri->vertices[0].pos, *c_pos, *c_rot);
+    out[1]=rot(cur_tri->vertices[1].pos, *c_pos, *c_rot);
+    out[2]=rot(cur_tri->vertices[2].pos, *c_pos, *c_rot);
+    //-Xptxas -dlcm=cg
+
+    for(int j=0; j<3; j++)
+    {
+        float rx;
+        rx=out[j].x * (700.0f/out[j].z);
+        float ry;
+        ry=out[j].y * (700.0f/out[j].z);
+
+        rx+=width/2.0f;
+        ry+=height/2.0f;
+
+
+        out[j].x=rx;
+        out[j].y=ry;
+        out[j].z=dcalc(out[j].z);
+    }
+
+}
+
+
+uint find_id(global struct triangle* triangles, global float4 *c_pos, global float4 *c_rot, uint4 ccoord, global uint *tri_num)
+{
+   uint id = ccoord.z & (0x3FF);
+   uint depth = (ccoord.z & (0x3FF ^ 0xFFFFFFFF)) >> IDENTIFICATION_BITS;
+   float fdepth=(float)depth/mulint;
+   float pdepth=idcalc(fdepth);
+
+   float4 fcoord={ccoord.x, ccoord.y, pdepth, 0};
+
+   float4 wcoord;
+
+   wcoord.x=fcoord.x*fcoord.z/700.0f;
+   wcoord.y=fcoord.y*fcoord.z/700.0f;
+   wcoord.z=fcoord.z;
+   wcoord.w=0;
+
+   float4 negative_camera=-(*c_rot);
+
+   float4 woc=rot(wcoord, *c_pos, negative_camera);
+
+
+   uint possible_ids=(*tri_num)/pow(2.0, (float)IDENTIFICATION_BITS);
+
+   for(uint i=id; i<id+possible_ids && i < *tri_num; i++)
+   {
+        global struct triangle *T=&triangles[i];
+        uint lx=min3(T->vertices[0].pos.x, T->vertices[1].pos.x, T->vertices[2].pos.x);
+        uint ly=min3(T->vertices[0].pos.y, T->vertices[1].pos.y, T->vertices[2].pos.y);
+        uint lz=min3(T->vertices[0].pos.z, T->vertices[1].pos.z, T->vertices[2].pos.z);
+
+        uint mx=max3(T->vertices[0].pos.x, T->vertices[1].pos.x, T->vertices[2].pos.x);
+        uint my=max3(T->vertices[0].pos.y, T->vertices[1].pos.y, T->vertices[2].pos.y);
+        uint mz=max3(T->vertices[0].pos.z, T->vertices[1].pos.z, T->vertices[2].pos.z);
+
+        if(woc.x > lx && woc.x < mx && woc.y > ly && woc.y < my && woc.z > lz && woc.z < mz)
+        {
+            return i;
+        }
+
+   }
+
+   return 0;
+
+
+}
+
+
+__kernel void part2(global struct triangle* triangles, global uint *tri_num, global float4 *c_pos, global float4 *c_rot, global uint* depth_buffer, global uint* id_buffer, global float4* normal_map, global uint4* texture_map, global struct obj_g_descriptor* gobj, global uint * gnum, __write_only image2d_t screen, global int *nums, global int *sizes, __read_only image3d_t array)
 {
     //perform deferred part of renderer
 
@@ -883,39 +968,66 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
 
 
 
-         float4 halfnormals;
+        float4 halfnormals;
 
-         float4 normals=normal_map[ty*width + tx];
+        float4 normals=normal_map[ty*width + tx];
 
-         float hnc=0;
+        float hnc=0;
 
-         for(int i=-1; i<2; i++)
-         {
-                for(int j=-1; j<2; j++)
+        for(int i=-1; i<2; i++)
+        {
+            for(int j=-1; j<2; j++)
+            {
+                if(abs(j)!=abs(i))// || (i==0 && j==0))
                 {
-                    if(abs(j)!=abs(i))// || (i==0 && j==0))
-                    {
-                        continue;
-                    }
-                    hnc+=1;
-                    halfnormals+=normal_map[(ty+j)*width + tx + i];
+                    continue;
                 }
+                hnc+=1;
+                halfnormals+=normal_map[(ty+j)*width + tx + i];
+            }
 
-         }
-         halfnormals/=hnc;
-         halfnormals=normalize(halfnormals);
-
-
-         float nerror=rerror(halfnormals.x, normals.x) + rerror(halfnormals.y, normals.y) + rerror(halfnormals.z, normals.z);
-
-         float4 anormal=*fn;
+        }
+        halfnormals/=hnc;
+        halfnormals=normalize(halfnormals);
 
 
-         if(nerror>1.0)
-         {
-            //*fn=halfnormals;
+        //float nerror=sqrt(pow(rerror(halfnormals.x, normals.x), 2) + pow(rerror(halfnormals.y, normals.y), 2) + pow(rerror(halfnormals.z, normals.z), 2));
+        float nerror=rerror(halfnormals.x, normals.x) + rerror(halfnormals.y, normals.y) + rerror(halfnormals.z, normals.z);
+
+        float4 anormal=*fn;
+
+
+        if(nerror>1.0)
+        {
+            // *fn=halfnormals;
             anormal=halfnormals;
-         }
+        }
+
+
+
+        //int ftmz=texture_map[ty*width + tx].z;
+
+        int ftsum=0;
+
+
+
+
+        /*for(int i=-1; i<2; i++)
+        {
+            //for(int j=-1; j<2; j++)
+            {
+                //if(abs(j)==abs(i))
+                {
+                   // continue;
+                }
+                int cz=texture_map[(ty)*width + tx + i].z;
+                ftsum+=cz;
+            }
+        }
+
+        ftsum=round(ftsum/3.0f);
+        ftmz=ftsum;*/
+
 
 
         if(depth_buffer[ty*width + tx]!=UINT_MAX) ///DO_SHIT
@@ -926,14 +1038,84 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
             __global uint4 *ftm=&texture_map[ty*width + tx];
 
 
+            int ftmz=(*ftm).z;
+
+            int idflag=0;
+
+            uint possible_id=((*ft) & (0x3FF));
+            uint buf_id=(*ftm).w;
+
+            uint bufidm=(buf_id >> (32-IDENTIFICATION_BITS)) & 0x3FF; ///Id buffer doesn't look like the thing to correct, o_id instead?
+
+            if(bufidm != possible_id)
+            {
+                //depth_buffer[ty*width + tx]=UINT_MAX;
+               //return;
+               idflag=1;
+            }
+            else
+            {
+                depth_buffer[ty*width + tx]=UINT_MAX;
+                //return;
+            }
+
+            /*if((buf_id >> IDENTIFICATION_BITS) & 0x3FF == possible_id)
+            {
+                depth_buffer[ty*width + tx]=UINT_MAX;
+                return;
+            }*/
+
+
+
+
+            float4 rp[3];
+
+            global struct triangle *ctri=&triangles[buf_id];
+
+            full_rotate(triangles, buf_id, c_pos, c_rot, rp);
+
+
+            int y1 = round(rp[0].y);
+            int y2 = round(rp[1].y);
+            int y3 = round(rp[2].y);
+
+            int x1 = round(rp[0].x);
+            int x2 = round(rp[1].x);
+            int x3 = round(rp[2].x);
+
+            int miny=min3(y1, y2, y3)-1;
+            int maxy=max3(y1, y2, y3);
+            int minx=min3(x1, x2, x3)-1;
+            int maxx=max3(x1, x2, x3);
+            int rconstant=(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
+
+            anormal.x=interpolate(ctri->vertices[0].normal.x, ctri->vertices[1].normal.x, ctri->vertices[2].normal.x, tx, ty, x1, x2, x3, y1, y2, y3, rconstant);
+            anormal.y=interpolate(ctri->vertices[0].normal.y, ctri->vertices[1].normal.y, ctri->vertices[2].normal.y, tx, ty, x1, x2, x3, y1, y2, y3, rconstant);
+            anormal.z=interpolate(ctri->vertices[0].normal.z, ctri->vertices[1].normal.z, ctri->vertices[2].normal.z, tx, ty, x1, x2, x3, y1, y2, y3, rconstant);
+
+
+
+
+
+
+
             uint ttid=0;
 
             //uint thisid=*fi;
 
             uint thisid=(*ftm).w;
+            //uint4 ccoord={tx, ty, *ft, 0};
+            //thisid=find_id(triangles, c_pos, c_rot, ccoord, tri_num);
+
+            //if(thisid==0)
+            //{
+            //    return;
+            //}
 
 
-            ttid=gobj[(*ftm).z].tid;
+
+
+            ttid=gobj[ftmz].tid;
 
             float4 l1={0,300,0,0};
             //float4 l1={c_pos->x,c_pos->y,c_pos->z,0};
@@ -963,25 +1145,27 @@ __kernel void part2(global struct triangle* triangles, global float4 *c_pos, glo
             light+=0.5;
 
 
-            uint4 t_map=*ftm;
+            //uint4 t_map=*ftm;
 
-            float4 vt={(float)t_map.x/mulint, (float)t_map.y/mulint, 0, 0};
+            float4 vt={(float)(*ftm).x/mulint, (float)(*ftm).y/mulint, 0, 0};
+
 
 
             float4 tcol;
 
-
-            texture_filter(triangles, thisid, ttid, coord, vt, *ft, *c_pos, *c_rot, &tcol, gobj[t_map.z].tid, gobj[t_map.z].mip_level_ids, nums, sizes, array);
-
-
-
-            //tcol=read_tex_array((float)t_map.x/mulint, (float)t_map.y/mulint, t_map.z, nums, sizes, array);
-
-            //tcol=read_tex_array((float)tx/800.0f, (float)ty/600.0f, t_map.z, nums, sizes, array);
-            //tcol.x=1.0;
+            uint depth=*ft;
+            depth = depth >> IDENTIFICATION_BITS;
 
 
-            //light=0.7;
+
+
+            texture_filter(triangles, thisid, ttid, coord, vt, depth, *c_pos, *c_rot, &tcol, gobj[ftmz].tid, gobj[ftmz].mip_level_ids, nums, sizes, array);
+            //if(idflag==1)
+            {
+                tcol.x=255;
+                tcol.y=255;
+                tcol.z=255;
+            }
 
             write_imagef(screen, coord, tcol*light);
 
@@ -1163,7 +1347,7 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
 
                             volatile __global uint *ft=&depth_buffer [(int)y*width + (int)x];
-                            volatile __global uint *fi=&id_buffer    [(int)y*width + (int)x];
+                            //volatile __global uint *fi=&id_buffer    [(int)y*width + (int)x];
                             volatile __global float4 *fn=&normal_map [(int)y*width + (int)x];
                             volatile __global uint4 *ftm=&texture_map[(int)y*width + (int)x];
 
@@ -1185,11 +1369,13 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                             //float B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
                             //float C=f1-A*x1 - B*y1;
 
-                            float A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
+                            /*float A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
                             float B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
                             float C=f1-A*x1 - B*y1;
 
-                            float cdepth=(A*x + B*y + C);
+                            float cdepth=(A*x + B*y + C);*/
+
+                            float cdepth=interpolate(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
 
                             if(cdepth<depth_cutoff) //use ldepth
                             {
@@ -1203,33 +1389,22 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                             f2=cur_tri->vertices[1].normal.x;
                             f3=cur_tri->vertices[2].normal.x;
 
-                            A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
-                            B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
-                            C=f1-A*x1 - B*y1;
-
-                            float inormalx=(A*x + B*y + C);
+                            float inormalx=interpolate(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
 
 
                             f1=cur_tri->vertices[0].normal.y;
                             f2=cur_tri->vertices[1].normal.y;
                             f3=cur_tri->vertices[2].normal.y;
 
-                            A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
-                            B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
-                            C=f1-A*x1 - B*y1;
 
-                            float inormaly=(A*x + B*y + C);
+                            float inormaly=interpolate(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
 
 
                             f1=cur_tri->vertices[0].normal.z;
                             f2=cur_tri->vertices[1].normal.z;
                             f3=cur_tri->vertices[2].normal.z;
 
-                            A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
-                            B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
-                            C=f1-A*x1 - B*y1;
-
-                            float inormalz=(A*x + B*y + C);
+                            float inormalz=interpolate(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
 
                             float4 inormal={inormalx, inormaly, inormalz, 0};
 
@@ -1239,23 +1414,14 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                             f2=1.0f/rotpoints[1].z;
                             f3=1.0f/rotpoints[2].z;
 
-                            A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
-                            B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
-                            C=f1-A*x1 - B*y1;
-
-                            float ldepth=A*x + B*y + C;
-
+                            float ldepth=interpolate(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
 
 
                             f1=cur_tri->vertices[0].vt.x/rotpoints[0].z;
                             f2=cur_tri->vertices[1].vt.x/rotpoints[1].z;
                             f3=cur_tri->vertices[2].vt.x/rotpoints[2].z;
 
-                            A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
-                            B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
-                            C=f1-A*x1 - B*y1;
-
-                            float vtx=A*x + B*y + C;
+                            float vtx=interpolate(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
 
 
 
@@ -1264,11 +1430,7 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
                             f2=cur_tri->vertices[1].vt.y/rotpoints[1].z;
                             f3=cur_tri->vertices[2].vt.y/rotpoints[2].z;
 
-                            A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
-                            B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
-                            C=f1-A*x1 - B*y1;
-
-                            float vty=A*x + B*y + C;
+                            float vty=interpolate(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
 
 
 
@@ -1288,30 +1450,57 @@ __kernel void part1(global struct triangle* triangles, global float4* pc_pos, gl
 
                             if(mydepth>0 && mydepth<*ft) ///have two buffers, write to both, extract most correct information in second kernel
                             {
-                                //float4 t;
-                                //uint4 arr;
-                                //while(*ft!=mydepth)// || *fi!=i)// || (*fn).x!=inormal.x || (*fn).y!=inormal.y || (*fn).z!=inormal.z) ///needs looking at
-                                //while(*ft!=mydepth || t.x!=inormal.x || t.y!=inormal.y || t.z!=inormal.z || arr.z!=vt.z) ///needs looking at
-                                //
-                                //while(*ft!=mydepth || (*ftm).z!=vt.z) ///needs looking at
-                                //while(*ft!=mydepth || (*fn).x!=inormal.x || (*ftm).z!=vt.z) ///needs looking at
-                                while(*ft!=mydepth)
+                                //while(*ft!=mydepth)
                                 {
-                                    if(mydepth<*ft)
+                                   // if(mydepth<*ft)
                                     {
                                         *ft=mydepth;
-                                        *fn=inormal;
-                                        *ftm=vt;
+                                        //*fn=inormal;
+                                        //*ftm=vt;
                                         //t=*fn;
-                                        //*fi=i;
+                                        // *fi=i;
                                         //arr=*ftm;
                                     }
-                                    else
+                                    //else
                                     {
-                                        break;
+                                    //    break;
                                     }
                                 }
                             }
+
+                            //if(mydepth>0 && mydepth<*ft)
+                            /*if(mydepth!=0)
+                            {
+
+                                uint idbits = IDENTIFICATION_BITS;
+                                uint idbitshex=0x3FF;
+                                ///id is i
+
+                                uint idshiftidbits = idbitshex & (i >> (32-idbits)); ///leaves idbits bits alive, most significant bits
+                                uint leftdepth = mydepth << idbits;
+                                uint leftblank = leftdepth & (idbitshex ^ 0xFFFFFFFF);
+
+                                uint mdepth=leftblank ^ idshiftidbits;
+
+
+                                uint ibdepth=atomic_min(ft, mdepth);
+                                if(mdepth < ibdepth)
+                                {
+                                    //*fn=inormal;
+                                    *ftm=vt;
+                                }
+
+                            }*/
+
+                            /*if(mydepth!=0)
+                            {
+                                float ibdepth=atomic_min(ft, mydepth);
+                                if(mydepth < ibdepth)
+                                {
+                                    //*fn=inormal;
+                                    *ftm=vt;
+                                }
+                            }*/
                         }
                 }
             }

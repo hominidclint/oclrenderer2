@@ -101,7 +101,8 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
 
     c_pos.x=-800;
     c_pos.y=150;
-    c_pos.z=-700;
+    c_pos.z=-570;
+    ///700
 
     g_c_pos=clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4), &c_pos, &cl::error);
     g_c_rot=clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(cl_float4), NULL, &cl::error);
@@ -264,6 +265,103 @@ void engine::input()
 
 }*/
 
+
+void run_kernel_with_args(cl_kernel &kernel, cl_uint *global_ws, cl_uint *local_ws, int d, cl_mem **argv, int argc)
+{
+
+    for(int i=0; i<argc; i++)
+    {
+        cl::error |= clSetKernelArg(kernel, i, sizeof(cl_mem), argv[i]);
+        if(cl::error!=0)
+        {
+            std::cout << "Error in kernel setargs " << i << " " << cl::error << std::endl;
+            exit(1);
+        }
+    }
+
+
+    //size_t local=*local_ws;
+    //size_t local=*local_ws;
+
+    /*if(*global_ws % local!=0)
+    {
+        int rem=global_ws % local;
+        *global_ws-=(rem);
+        *global_ws+=local;
+    }*/
+
+    cl::error = clEnqueueNDRangeKernel(cl::cqueue, kernel, d, NULL, global_ws, local_ws, 0, NULL, NULL);
+    clFinish(cl::cqueue);
+
+    //std::cout << "c1 " << c.getElapsedTime().asMilliseconds() << std::endl;
+
+    if(cl::error!=0){
+        std::cout << "Error In kernel 1" << std::endl;
+        exit(cl::error);
+    }
+
+
+
+}
+
+
+void engine::draw_bulk_objs_n()
+{
+    int p0=0;
+
+    glFinish();
+    clEnqueueAcquireGLObjects(cl::cqueue, 1, &g_screen, 0, NULL, NULL);
+    clFinish(cl::cqueue);
+
+    cl_uint p1global_ws = obj_mem_manager::tri_num;
+    cl_uint local=256;
+
+    if(p1global_ws % local!=0)
+    {
+        int rem=p1global_ws % local;
+        p1global_ws-=(rem);
+        p1global_ws+=local;
+    }
+
+    clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_tri_anum, CL_TRUE, 0, sizeof(cl_uint), &p0, 0, NULL, NULL);
+    cl_mem *p1arglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer};
+    run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7);
+
+
+    int atom_count=0;
+
+    clEnqueueReadBuffer(cl::cqueue, obj_mem_manager::g_tri_anum, CL_TRUE, 0, sizeof(cl_uint), &atom_count, 0, NULL, NULL);
+
+
+
+    cl_uint p2global_ws=atom_count;
+    cl_uint local2=256;
+    if(p2global_ws % local2!=0)
+    {
+        int rem=p2global_ws % local2;
+        p2global_ws-=(rem);
+        p2global_ws+=local2;
+    }
+
+    //std::cout << p1global_ws << " " << atom_count << std::endl;
+
+    cl_mem *p2arglist[]={&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer, &g_id_screen};
+    run_kernel_with_args(cl::kernel2, &p2global_ws, &local2, 1, p2arglist, 4);
+
+
+    cl_uint p3global_ws[]={g_size, g_size};
+    cl_uint p3local_ws[]={32, 32};
+
+    cl_mem *p3arglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &depth_buffer, &g_id_screen, &obj_mem_manager::g_texture_array, &g_screen};
+    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 8);
+
+
+
+    clEnqueueReleaseGLObjects(cl::cqueue, 1, &g_screen, 0, NULL, NULL);
+    clFinish(cl::cqueue);
+    glFinish();
+}
+
 void engine::draw_bulk_objs()
 {
 
@@ -347,18 +445,19 @@ void engine::draw_bulk_objs()
 
     //cl::error |= clSetKernelArg(cl::kernel2, 0, sizeof(cl_mem), &obj_mem_manager::g_tri_mem);
     cl::error |= clSetKernelArg(cl::kernel2, 0, sizeof(cl_mem), &obj_mem_manager::g_tri_mem);
-    cl::error |= clSetKernelArg(cl::kernel2, 1, sizeof(cl_mem), &g_c_pos);
-    cl::error |= clSetKernelArg(cl::kernel2, 2, sizeof(cl_mem), &g_c_rot);
-    cl::error |= clSetKernelArg(cl::kernel2, 3, sizeof(cl_mem), &depth_buffer);
-    cl::error |= clSetKernelArg(cl::kernel2, 4, sizeof(cl_mem), &g_id_screen);
-    cl::error |= clSetKernelArg(cl::kernel2, 5, sizeof(cl_mem), &g_normals_screen);
-    cl::error |= clSetKernelArg(cl::kernel2, 6, sizeof(cl_mem), &g_texture_screen);
-    cl::error |= clSetKernelArg(cl::kernel2, 7, sizeof(cl_mem), &obj_mem_manager::g_obj_desc);
-    cl::error |= clSetKernelArg(cl::kernel2, 8, sizeof(cl_mem), &obj_mem_manager::g_obj_num);
-    cl::error |= clSetKernelArg(cl::kernel2, 9, sizeof(cl_mem), &g_screen);
-    cl::error |= clSetKernelArg(cl::kernel2, 10, sizeof(cl_mem),&obj_mem_manager::g_texture_nums);
-    cl::error |= clSetKernelArg(cl::kernel2, 11, sizeof(cl_mem),&obj_mem_manager::g_texture_sizes);
-    cl::error |= clSetKernelArg(cl::kernel2, 12, sizeof(cl_mem),&obj_mem_manager::g_texture_array);
+    cl::error |= clSetKernelArg(cl::kernel2, 1, sizeof(cl_mem), &obj_mem_manager::g_tri_num);
+    cl::error |= clSetKernelArg(cl::kernel2, 2, sizeof(cl_mem), &g_c_pos);
+    cl::error |= clSetKernelArg(cl::kernel2, 3, sizeof(cl_mem), &g_c_rot);
+    cl::error |= clSetKernelArg(cl::kernel2, 4, sizeof(cl_mem), &depth_buffer);
+    cl::error |= clSetKernelArg(cl::kernel2, 5, sizeof(cl_mem), &g_id_screen);
+    cl::error |= clSetKernelArg(cl::kernel2, 6, sizeof(cl_mem), &g_normals_screen);
+    cl::error |= clSetKernelArg(cl::kernel2, 7, sizeof(cl_mem), &g_texture_screen);
+    cl::error |= clSetKernelArg(cl::kernel2, 8, sizeof(cl_mem), &obj_mem_manager::g_obj_desc);
+    cl::error |= clSetKernelArg(cl::kernel2, 9, sizeof(cl_mem), &obj_mem_manager::g_obj_num);
+    cl::error |= clSetKernelArg(cl::kernel2, 10, sizeof(cl_mem), &g_screen);
+    cl::error |= clSetKernelArg(cl::kernel2, 11, sizeof(cl_mem),&obj_mem_manager::g_texture_nums);
+    cl::error |= clSetKernelArg(cl::kernel2, 12, sizeof(cl_mem),&obj_mem_manager::g_texture_sizes);
+    cl::error |= clSetKernelArg(cl::kernel2, 13, sizeof(cl_mem),&obj_mem_manager::g_texture_array);
     //cl::error |= clSetKernelArg(cl::kernel2, 10, sizeof(cl_mem), &obj_mem_manager::i256);
     //cl::error |= clSetKernelArg(cl::kernel2, 11, sizeof(cl_mem), &obj_mem_manager::i512);
     //cl::error |= clSetKernelArg(cl::kernel2, 12, sizeof(cl_mem), &obj_mem_manager::i1024);

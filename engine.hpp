@@ -52,6 +52,8 @@ struct engine
 
     void draw_bulk_objs();
 
+    void draw_bulk_objs_n();
+
     void draw_bulk_objs_new();
 
     void draw_bulk_objs_test();

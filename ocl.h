@@ -260,7 +260,7 @@ void oclstuff()
     const char *source;
 
 
-    source=file_contents("cl.cl", (int*)&src_size);
+    source=file_contents("cl2.cl", (int*)&src_size);
 
 
     cl::program = clCreateProgramWithSource(cl::context, 1, &source, &src_size, &cl::error);
@@ -313,7 +313,7 @@ void oclstuff()
 
     if(cl::error!=0)
     {
-        std::cout << "kernelcreation " << cl::error << std::endl;
+        std::cout << "kernelcreation  part1" << cl::error << std::endl;
     }
 
 
@@ -322,7 +322,16 @@ void oclstuff()
 
     if(cl::error!=0)
     {
-        std::cout << "kernelcreation " << cl::error << std::endl;
+        std::cout << "kernelcreation part2" << cl::error << std::endl;
+    }
+
+
+    cl::kernel3 = clCreateKernel(cl::program, "part3", &cl::error);
+
+
+    if(cl::error!=0)
+    {
+        std::cout << "kernelcreation part3" << cl::error << std::endl;
     }
 
 

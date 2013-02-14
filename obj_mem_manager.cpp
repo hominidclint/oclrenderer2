@@ -562,10 +562,17 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
     cl_uint running=0;
 
+    int obj_id=0;
+
     for(std::vector<object*>::iterator it=obj_list.begin(); it!=obj_list.end(); it++)
     {
+        for(int i=0; i<(*it)->tri_num; i++)
+        {
+            (*it)->tri_list[i].vertices[0].pad[1]=obj_id;
+        }
         clEnqueueWriteBuffer(cl::cqueue, g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it)->tri_num, (*it)->tri_list, 0, NULL, NULL);
         running+=(*it)->tri_num;
+        obj_id++;
     }
 
     //std::cout << running << std::endl;

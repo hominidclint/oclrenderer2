@@ -10,7 +10,7 @@ struct vertex
 
     cl_float vt[2];
 
-    cl_float goddampadding[2];
+    cl_float pad[2];
 
 
 };

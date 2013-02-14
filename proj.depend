@@ -5,7 +5,7 @@
 1336872085 c:\users\james\desktop\projects\proj\clstate.h
 	<cl/opencl.h>
 
-1360804380 source:c:\users\james\desktop\projects\proj\engine.cpp
+1360815519 source:c:\users\james\desktop\projects\proj\engine.cpp
 	"engine.hpp"
 	<math.h>
 	<gl/gl3.h>
@@ -32,7 +32,7 @@
 1345210857 c:\users\james\desktop\projects\proj\triangle.hpp
 	"vertex.hpp"
 
-1346972273 c:\users\james\desktop\projects\proj\vertex.hpp
+1360807589 c:\users\james\desktop\projects\proj\vertex.hpp
 	<cl/cl.h>
 
 1356819964 c:\users\james\desktop\projects\proj\objects_container.hpp
@@ -97,7 +97,7 @@
 	"triangle.hpp"
 	"texture.hpp"
 
-1360780026 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
+1360807714 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
 	"obj_mem_manager.hpp"
 	<CL/CL.h>
 	"clstate.h"

@@ -323,10 +323,11 @@ void engine::draw_bulk_objs_n()
         p1global_ws+=local;
     }
 
+    //sf::Clock c;
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_tri_anum, CL_TRUE, 0, sizeof(cl_uint), &p0, 0, NULL, NULL);
     cl_mem *p1arglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer};
     run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7);
-
+    //std::cout << "T: " << c.getElapsedTime().asMilliseconds() << std::endl;
 
     int atom_count=0;
 
@@ -335,7 +336,7 @@ void engine::draw_bulk_objs_n()
 
 
     cl_uint p2global_ws=atom_count;
-    cl_uint local2=256;
+    cl_uint local2=128;
     if(p2global_ws % local2!=0)
     {
         int rem=p2global_ws % local2;
@@ -349,11 +350,13 @@ void engine::draw_bulk_objs_n()
     run_kernel_with_args(cl::kernel2, &p2global_ws, &local2, 1, p2arglist, 4);
 
 
+
     cl_uint p3global_ws[]={g_size, g_size};
     cl_uint p3local_ws[]={32, 32};
 
-    cl_mem *p3arglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &depth_buffer, &g_id_screen, &obj_mem_manager::g_texture_array, &g_screen};
-    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 8);
+
+    cl_mem *p3arglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &depth_buffer, &g_id_screen, &obj_mem_manager::g_texture_array, &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num};
+    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 14);
 
 
 

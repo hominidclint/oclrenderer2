@@ -15,7 +15,7 @@ namespace cl
     extern cl_kernel kernel;
     extern cl_kernel kernel2;
     extern cl_kernel kernel3;
-    extern cl_kernel klight;
+    extern cl_kernel light_smap;
 
     extern size_t optimum;
 

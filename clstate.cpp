@@ -12,6 +12,6 @@ cl_kernel cl::kernel2;
 
 cl_kernel cl::kernel3;
 
-cl_kernel cl::klight;
+cl_kernel cl::light_smap;
 
 size_t cl::optimum=0;

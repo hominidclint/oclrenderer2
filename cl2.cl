@@ -577,7 +577,136 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
 }
 ///end of unrewritten code
 
-__kernel void part1(__global struct triangle* triangles, __global struct triangle *screen_triangles, __global uint* tri_num, __global uint *atomic_triangles, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer)
+///Shadow mapping works like this
+///Draw scene from perspective of light. Build depth buffer for light
+///Rotate triangles in part2 around light. If < depth buffer, that means that they are occluded.
+///Hmm. Regular projection only gives spotlight, need to project world onto sphere and unravel onto square
+
+///use xz for x coordinates of plane from sphere, use xy for y coordinates of plane from sphere
+///normalise coordinates to get the location on sphere
+///use old magnitude as depth from sphere
+
+__kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* light_depth_buffer, __global uint* slice)
+{
+
+    uint id = get_global_id(0);
+
+    struct interp_container icontainer;
+
+
+    ///rotate around camera
+    ///xyz coordinates
+    ///magnitude is depth
+    ///use xyz and map to square
+
+
+    int valid_tri=0;
+
+    if(id >= *tri_num)
+    {
+        return;
+    }
+
+    float odepth[3];
+
+    struct triangle tri=full_rotate(&triangles[id], c_pos, c_rot, &icontainer, odepth);
+
+
+    float4 pos=rot(&triangles[id].vertices[0].pos, *c_pos, *c_rot);
+    float4 npos=normalize(pos);
+    float cdepth=length(pos);
+
+    /*tri=full_rotate(&triangles[id], c_pos, c_rot, &icontainer, odepth);
+
+    for(int i=0; i<1000; i++)
+    {
+        struct triangle temp;
+        temp=full_rotate(&triangles[id], c_pos, c_rot, &icontainer, odepth);
+        tri.vertices[i].pos.x+=temp.vertices[i].pos.x*-;
+    }*/
+
+
+    if(icontainer.ybounds[1]-icontainer.ybounds[0] > MTRI_SIZE || icontainer.xbounds[1] - icontainer.xbounds[0] > MTRI_SIZE)
+    {
+        return;
+    }
+
+
+    int cont=0;
+
+    if((tri.vertices[0].pos.z) < dcalc(depth_icutoff) && (tri.vertices[1].pos.z) < dcalc(depth_icutoff) && (tri.vertices[2].pos.z) < dcalc(depth_icutoff))
+    {
+        return;
+    }
+
+
+    float4 p0={tri.vertices[0].pos.x, tri.vertices[0].pos.y, tri.vertices[0].pos.z, 0};
+    float4 p1={tri.vertices[1].pos.x, tri.vertices[1].pos.y, tri.vertices[1].pos.z, 0};
+    float4 p2={tri.vertices[2].pos.x, tri.vertices[2].pos.y, tri.vertices[2].pos.z, 0};
+
+    float4 p1p0=p1-p0;
+    float4 p2p0=p2-p0;
+
+    float4 cr=cross(p1p0, p2p0);
+
+
+
+    for(int i=0; i<3; i++)
+    {
+        float4 blank={0,0,0,0};
+        float4 fnormal=cr;
+
+        float4 local_vertex_position={tri.vertices[i].pos.x*tri.vertices[i].pos.z/FOV_CONST, tri.vertices[i].pos.y*tri.vertices[i].pos.z/FOV_CONST, tri.vertices[i].pos.z, 0};
+
+        float4 p2c=local_vertex_position;
+        float dotp=dot(fast_normalize(fnormal), fast_normalize(p2c));
+
+        if(dotp < 0)
+        {
+            cont=1;
+            break;
+        }
+    }
+
+    if(cont!=1)
+    {
+        return;
+    }
+
+
+    float depths[3]={tri.vertices[0].pos.z, tri.vertices[1].pos.z, tri.vertices[2].pos.z};
+
+    for(int y=icontainer.ybounds[0]; y<icontainer.ybounds[1]; y++)
+    {
+        for(int x=icontainer.xbounds[0]; x<icontainer.xbounds[1]; x++)
+        {
+            float s1=calc_third_areas(&icontainer, x, y);
+
+            if(s1 > icontainer.area - 1 && s1 < icontainer.area + 1)
+            {
+                __global uint *ft=&light_depth_buffer[*slice*SCREENWIDTH*SCREENHEIGHT + y*SCREENWIDTH + x];
+                ///does light resolution want to be different?
+
+                float fmydepth=interpolate(depths, &icontainer, x, y);
+
+                uint mydepth=fmydepth*mulint;
+
+                if(mydepth==0)
+                {
+                    continue;
+                }
+
+                uint sdepth=atomic_min(ft, mydepth);
+                if(!valid_tri && mydepth<sdepth)
+                {
+                    valid_tri=1;
+                }
+            }
+        }
+    }
+}
+
+__kernel void part1(__global struct triangle* triangles, __global struct triangle *screen_triangles, __global uint* tri_num, __global uint* atomic_triangles, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer)
 {
     ///rotate triangles into screenspace, clip, and probably perform rough hierarchical depth buffering
     ///lighting normals give you backface culling
@@ -603,7 +732,6 @@ __kernel void part1(__global struct triangle* triangles, __global struct triangl
     {
         return;
     }
-
 
     ///backface culling!
 
@@ -647,6 +775,22 @@ __kernel void part1(__global struct triangle* triangles, __global struct triangl
         return;
     }
 
+    /*int oobcheck=0;
+    for(int i=0; i<3; i++)
+    {
+
+        if(tri.vertices[i].pos.x >= 0 && tri.vertices[i].pos.x < SCREENWIDTH && tri.vertices[i].pos.y < SCREENHEIGHT && tri.vertices[i].pos.y >= 0)
+        {
+            oobcheck=1;
+            break;
+        }
+
+    }
+
+    if(oobcheck==0)
+    {
+        return;
+    }*/
 
     float depths[3]={tri.vertices[0].pos.z, tri.vertices[1].pos.z, tri.vertices[2].pos.z};
 

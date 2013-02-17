@@ -1,11 +1,11 @@
 # depslib dependency file v1.0
-1336872076 source:c:\users\james\desktop\projects\proj\clstate.cpp
+1360867265 source:c:\users\james\desktop\projects\proj\clstate.cpp
 	"clstate.h"
 
-1336872085 c:\users\james\desktop\projects\proj\clstate.h
+1360867257 c:\users\james\desktop\projects\proj\clstate.h
 	<cl/opencl.h>
 
-1360815519 source:c:\users\james\desktop\projects\proj\engine.cpp
+1360900970 source:c:\users\james\desktop\projects\proj\engine.cpp
 	"engine.hpp"
 	<math.h>
 	<gl/gl3.h>
@@ -68,7 +68,7 @@
 	<vector>
 	"obj_g_descriptor.hpp"
 
-1360718234 c:\users\james\desktop\projects\proj\ocl.h
+1360867203 c:\users\james\desktop\projects\proj\ocl.h
 	<cstdio>
 	<CL/cl.h>
 	<iostream>
@@ -126,4 +126,9 @@
 
 1345203717 source:c:\users\james\desktop\projects\proj\vertex.cpp
 	"vertex.hpp"
+
+1360867101 source:c:\users\james\desktop\projects\proj\light.cpp
+	"light.hpp"
+
+1360867096 c:\users\james\desktop\projects\proj\light.hpp
 

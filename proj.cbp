@@ -61,6 +61,8 @@
 		<Unit filename="clstate.h" />
 		<Unit filename="engine.cpp" />
 		<Unit filename="engine.hpp" />
+		<Unit filename="light.cpp" />
+		<Unit filename="light.hpp" />
 		<Unit filename="main.cpp" />
 		<Unit filename="obj_g_descriptor.hpp" />
 		<Unit filename="obj_info_struct.cpp" />

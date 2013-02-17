@@ -334,6 +334,14 @@ void oclstuff()
         std::cout << "kernelcreation part3" << cl::error << std::endl;
     }
 
+    cl::light_smap = clCreateKernel(cl::program, "construct_smap", &cl::error);
+
+
+    if(cl::error!=0)
+    {
+        std::cout << "kernelcreation shadowmapping" << cl::error << std::endl;
+    }
+
 
 
 }

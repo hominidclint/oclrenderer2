@@ -4,6 +4,7 @@
 #include "object.hpp"
 #include <vector>
 #include "objects_container.hpp"
+#include "light.hpp"
 
 struct engine
 {
@@ -39,7 +40,6 @@ struct engine
 
 
 
-
     sf::RenderWindow window;
 
     std::vector<object*> objects;
@@ -63,6 +63,10 @@ struct engine
     void render_buffers();
 
     void input();
+
+    int add_light(light l);
+
+    void update_lights();
 
 
 

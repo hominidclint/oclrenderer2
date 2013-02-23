@@ -94,8 +94,9 @@ cl_int oclGetPlatformID(cl_platform_id* clSelectedPlatformID)
     cl_uint i = 0;
 
     // Get OpenCL platform count
-    ciErrNum = clGetPlatformIDs (0, NULL, &num_platforms);
-    if (ciErrNum != CL_SUCCESS)
+    ciErrNum = clGetPlatformIDs(0, NULL, &num_platforms);
+
+    if(ciErrNum != CL_SUCCESS)
     {
         //shrLog(" Error %i in clGetPlatformIDs Call !!!\n\n", ciErrNum);
         printf(" Error %i in clGetPlatformIDs Call !!!\n\n", ciErrNum);
@@ -112,7 +113,7 @@ cl_int oclGetPlatformID(cl_platform_id* clSelectedPlatformID)
         else
         {
             // if there's a platform or more, make space for ID's
-            if ((clPlatformIDs = (cl_platform_id*)malloc(num_platforms * sizeof(cl_platform_id))) == NULL)
+            if((clPlatformIDs = (cl_platform_id*)malloc(num_platforms * sizeof(cl_platform_id))) == NULL)
             {
                 //shrLog("Failed to allocate memory for cl_platform ID's!\n\n");
                 printf("Failed to allocate memory for cl_platform ID's!\n\n");
@@ -120,14 +121,17 @@ cl_int oclGetPlatformID(cl_platform_id* clSelectedPlatformID)
             }
 
             // get platform info for each platform and trap the NVIDIA platform if found
-            ciErrNum = clGetPlatformIDs (num_platforms, clPlatformIDs, NULL);
+            ciErrNum = clGetPlatformIDs(num_platforms, clPlatformIDs, NULL);
             printf("Available platforms:\n");
+
             for(i = 0; i < num_platforms; ++i)
             {
-                ciErrNum = clGetPlatformInfo (clPlatformIDs[i], CL_PLATFORM_NAME, 1024, &chBuffer, NULL);
+                ciErrNum = clGetPlatformInfo(clPlatformIDs[i], CL_PLATFORM_NAME, 1024, &chBuffer, NULL);
+
                 if(ciErrNum == CL_SUCCESS)
                 {
                     printf("platform %d: %s\n", i, chBuffer);
+
                     if(strstr(chBuffer, "NVIDIA") != NULL)
                     {
                         printf("selected platform %d\n", 0);
@@ -159,7 +163,7 @@ char *file_contents(const char *filename, int *length)
     FILE *f = fopen(filename, "r");
     void *buffer;
 
-    if (!f)
+    if(!f)
     {
         fprintf(stderr, "Unable to open %s for reading\n", filename);
         return NULL;
@@ -215,7 +219,8 @@ void oclstuff()
 
     // Platform
     cl::error = oclGetPlatformID(&cl::platform);
-    if (cl::error != CL_SUCCESS)
+
+    if(cl::error != CL_SUCCESS)
     {
         std::cout << "Error getting platform id: ";
         exit(cl::error);
@@ -234,22 +239,27 @@ void oclstuff()
 
     // Device
     cl::error = clGetDeviceIDs(cl::platform, CL_DEVICE_TYPE_GPU, 1, &cl::device, NULL);
-    if (cl::error != CL_SUCCESS)
+
+    if(cl::error != CL_SUCCESS)
     {
         std::cout << "Error getting device ids: ";
         exit(cl::error);
     }
+
     // Context
     cl::context = clCreateContext(props, 1, &cl::device, NULL, NULL, &cl::error);
+
     //cl::context = cl::Context(CL_DEVICE_TYPE_GPU, props);
-    if (cl::error != CL_SUCCESS)
+    if(cl::error != CL_SUCCESS)
     {
         std::cout << "Error creating context: ";
         exit(cl::error);
     }
+
     // Command-queue
     cl::cqueue = clCreateCommandQueue(cl::context, cl::device, 0, &cl::error);
-    if (cl::error != CL_SUCCESS)
+
+    if(cl::error != CL_SUCCESS)
     {
         std::cout << "Error creating command queue: ";
         exit(cl::error);

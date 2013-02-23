@@ -37,8 +37,12 @@ std::string getfollowingword(std::vector<char>::iterator &it)
     {
         it++;
     }
+
     it++;
-    while(*it==' ') it++;
+
+    while(*it==' ')
+        it++;
+
     ///first letter of next word.
 
     std::vector<char>::iterator it2=it;
@@ -66,9 +70,11 @@ std::string getfollowingword(std::vector<char>::iterator &it)
 }
 
 std::string retrieve_diffuse(std::string fname, std::string name)
-{ ///implement as part of load_textures?
+{
+    ///implement as part of load_textures?
 
     FILE *pFile=fopen(fname.c_str(), "r");
+
     if(pFile==NULL)
     {
         std::cout << "Error in obj_load.cpp (retrieve_diffuse)" << std::endl;
@@ -81,6 +87,7 @@ std::string retrieve_diffuse(std::string fname, std::string name)
     {
         lines.push_back(fgetc(pFile));
     }
+
     fclose(pFile);
 
     std::string result;
@@ -131,6 +138,7 @@ objects_container* obj_load(std::string filename)
     tfname.append(".mtl");
 
     std::string tdir=filename;
+
     if(filename[filename.size()-1]=='\\' || filename[filename.size()-1] == '/')
     {
         tdir.append(filename, 0, filename.size()-1);
@@ -141,6 +149,7 @@ objects_container* obj_load(std::string filename)
     //std::cout << dir << std::endl;
 
     FILE *pFile=fopen(filename.c_str(), "r");
+
     if(pFile==NULL)
     {
         std::cout << "invalid file name in obj_load.cpp" << std::endl;
@@ -161,14 +170,16 @@ objects_container* obj_load(std::string filename)
     float scale=1; /// /////////////////////////////// ///scale!!!         !!!!!!!!!!!!!!!!!!!!!!
     //bool first=true;
     objects_container *objs = new objects_container;
+
     for(std::vector<char>::iterator it=file.begin(); it!=file.end(); it++)
     {
 
         char current=(*it);
 
-        char next=      (it == file.end()  ? '\0' : (*(it+1)));
+        char next= (it == file.end()  ? '\0' : (*(it+1)));
         char supernext= (it == file.end()  ? '\0' : (*(it+2)));
-        char prev=      (it == file.begin() ? '\0' : (*(it-1)));
+        char prev= (it == file.begin() ? '\0' : (*(it-1)));
+
         //printf("%c\n", next);
         if(current=='v' && next==' ')
         {
@@ -229,15 +240,15 @@ objects_container* obj_load(std::string filename)
             ///OH MY GOD A NEW MATERIAL HAS EMERGED
 
             //if(!first)
-           // {
+            // {
             //    first=false;
-           // }
+            // }
 
-           usemtl_pos.push_back(facenum);
-           //std::cout << facenum << std::endl;
-           usemtl_name.push_back(getfollowingword((it)));
-           //std::cout << *(usemtl_name.end()-1) << std::endl;
-           //facenum=0;
+            usemtl_pos.push_back(facenum);
+            //std::cout << facenum << std::endl;
+            usemtl_name.push_back(getfollowingword((it)));
+            //std::cout << *(usemtl_name.end()-1) << std::endl;
+            //facenum=0;
 
 
         }
@@ -311,31 +322,31 @@ objects_container* obj_load(std::string filename)
             }*/
 
 
-                for(int i=0; i<3; i++)
-                {
-                    vnum[i]=0;
-                    vtnum[i]=0;
-                    nnum[i]=0;
-                    std::string str=getfollowingword(it);
-                    //std::cout << i << " " <<  str << std::endl;
+            for(int i=0; i<3; i++)
+            {
+                vnum[i]=0;
+                vtnum[i]=0;
+                nnum[i]=0;
+                std::string str=getfollowingword(it);
+                //std::cout << i << " " <<  str << std::endl;
 
 
-                    face_decompose(str, &vnum[i], &vtnum[i], &nnum[i]);
-                }
+                face_decompose(str, &vnum[i], &vtnum[i], &nnum[i]);
+            }
 
 
-                faces.push_back(vnum[0]);
-                faces.push_back(vtnum[0]);
-                faces.push_back(nnum[0]);
+            faces.push_back(vnum[0]);
+            faces.push_back(vtnum[0]);
+            faces.push_back(nnum[0]);
 
-                faces.push_back(vnum[1]);
-                faces.push_back(vtnum[1]);
-                faces.push_back(nnum[1]);
+            faces.push_back(vnum[1]);
+            faces.push_back(vtnum[1]);
+            faces.push_back(nnum[1]);
 
-                faces.push_back(vnum[2]);
-                faces.push_back(vtnum[2]);
-                faces.push_back(nnum[2]);
-                facenum++;
+            faces.push_back(vnum[2]);
+            faces.push_back(vtnum[2]);
+            faces.push_back(nnum[2]);
+            facenum++;
 
 
 
@@ -364,6 +375,7 @@ objects_container* obj_load(std::string filename)
     int excounter=0;
     int faceposc=0;
     bool tempb=false;
+
     for(std::vector<int>::iterator it=faces.begin(); it<faces.end(); counter++)
     {
         triangle tri;
@@ -379,10 +391,10 @@ objects_container* obj_load(std::string filename)
 
                 if(false)
                 {
-                    end_cleanup:
-                        tempb=true;
+end_cleanup:
+                    tempb=true;
 
-                   // std::cout << "hi";
+                    // std::cout << "hi";
                 }
 
                 object obj;
@@ -412,6 +424,7 @@ objects_container* obj_load(std::string filename)
                 {
                     break;
                 }
+
                 //std::cout << "hihih";
 
 
@@ -480,6 +493,7 @@ objects_container* obj_load(std::string filename)
 
 
         tris[counter-excounter]=tri;
+
         if(it==faces.end())
         {
             goto end_cleanup; ///..... :OOOOOOOOOOOOOOOOO THE END IS NIGH

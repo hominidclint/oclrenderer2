@@ -112,13 +112,37 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     g_normals_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4)*g_size*g_size, blank, &cl::error);
     g_texture_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint4)*g_size*g_size, blank, &cl::error);
 
+    cl_uint zero=0;
+    obj_mem_manager::g_light_num=clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, &cl::error);
+
 
     //g_depth_screen=clCreateImage2D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, g_size, g_size, 0, blank, &cl::error);
 
+}
+
+void engine::update_lights() ///enqueuewritebuffer blah blah blah
+{
 
 
 
 
+}
+
+void realloc_light_gmem() ///for the moment, just reallocate everything
+{
+    cl_uint lnum=light::lightlist.size();
+    clReleaseMemObject(obj_mem_manager::g_light_mem);
+    obj_mem_manager::g_light_mem=clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(light)*lnum, light::lightlist.data(), &cl::error);
+    clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_light_num, CL_TRUE, 0, sizeof(cl_uint), &lnum, 0, NULL, NULL);
+}
+
+int engine::add_light(light l)
+{
+    int id;
+    light::lightlist.push_back(l);
+    id=light::lightlist.size()-1;
+    realloc_light_gmem();
+    return id;
 }
 
 cl_float4 rot(double x, double y, double z, cl_float4 rotation)
@@ -154,99 +178,107 @@ cl_float4 rot(double x, double y, double z, cl_float4 rotation)
 
 void engine::input()
 {
-        sf::Keyboard keyboard;
+    sf::Keyboard keyboard;
 
 
 
-        //double frametime=window.getframetime(); ///function no longer exists
-        //window.
+    //double frametime=window.getframetime(); ///function no longer exists
+    //window.
 
-        static int distance_multiplier=1;
+    static int distance_multiplier=1;
 
-        if(keyboard.isKeyPressed(sf::Keyboard::LShift))
-        {
-            distance_multiplier=10;
-        }
-        else
-        {
-            distance_multiplier=1;
-        }
+    if(keyboard.isKeyPressed(sf::Keyboard::LShift))
+    {
+        distance_multiplier=10;
+    }
+    else
+    {
+        distance_multiplier=1;
+    }
 
-        double distance=0.04*distance_multiplier*30;
+    double distance=0.04*distance_multiplier*30;
 
-        if(keyboard.isKeyPressed(sf::Keyboard::W))  ///get engine to do this itself. Engine.ProcessInput
-        {
-            cl_float4 t=rot(0, 0, distance, c_rot);
-            c_pos.x+=t.x;
-            c_pos.y+=t.y;
-            c_pos.z+=t.z;
-        }
-        if(keyboard.isKeyPressed(sf::Keyboard::S))
-        {
-            cl_float4 t=rot(0, 0, -distance, c_rot);
-            c_pos.x+=t.x;
-            c_pos.y+=t.y;
-            c_pos.z+=t.z;
-        }
-        if(keyboard.isKeyPressed(sf::Keyboard::A))
-        {
-            //c_pos.x-=0.04*frametime*mult;
-            cl_float4 t=rot(-distance, 0, 0, c_rot);
-            c_pos.x+=t.x;
-            c_pos.y+=t.y;
-            c_pos.z+=t.z;
-        }
-        if(keyboard.isKeyPressed(sf::Keyboard::D))
-        {
-            cl_float4 t=rot(distance, 0, 0, c_rot);
-            c_pos.x+=t.x;
-            c_pos.y+=t.y;
-            c_pos.z+=t.z;
-        }
-        if(keyboard.isKeyPressed(sf::Keyboard::E))
-        {
-            c_pos.y-=0.04*distance_multiplier*30;
-        }
-        if(keyboard.isKeyPressed(sf::Keyboard::Q))
-        {
-            c_pos.y+=0.04*distance_multiplier*30;
-        }
+    if(keyboard.isKeyPressed(sf::Keyboard::W))  ///get engine to do this itself. Engine.ProcessInput
+    {
+        cl_float4 t=rot(0, 0, distance, c_rot);
+        c_pos.x+=t.x;
+        c_pos.y+=t.y;
+        c_pos.z+=t.z;
+    }
 
-        if(keyboard.isKeyPressed(sf::Keyboard::Left))
-        {
-            c_rot.y-=0.001*30;
-        }
-        if(keyboard.isKeyPressed(sf::Keyboard::Right))
-        {
-            c_rot.y+=0.001*30;
-        }
-        if(keyboard.isKeyPressed(sf::Keyboard::Up))
-        {
-            c_rot.x-=0.001*30;
-        }
-        if(keyboard.isKeyPressed(sf::Keyboard::Down))
-        {
-            c_rot.x+=0.001*30;
-        }
+    if(keyboard.isKeyPressed(sf::Keyboard::S))
+    {
+        cl_float4 t=rot(0, 0, -distance, c_rot);
+        c_pos.x+=t.x;
+        c_pos.y+=t.y;
+        c_pos.z+=t.z;
+    }
 
-        if(keyboard.isKeyPressed(sf::Keyboard::Escape))
-        {
-            window.close();
-        }
+    if(keyboard.isKeyPressed(sf::Keyboard::A))
+    {
+        //c_pos.x-=0.04*frametime*mult;
+        cl_float4 t=rot(-distance, 0, 0, c_rot);
+        c_pos.x+=t.x;
+        c_pos.y+=t.y;
+        c_pos.z+=t.z;
+    }
 
-        if(keyboard.isKeyPressed(sf::Keyboard::B))
-        {
-            std::cout << "rerr: " << c_pos.x << " " << c_pos.y << " " << c_pos.z << std::endl;
-        }
+    if(keyboard.isKeyPressed(sf::Keyboard::D))
+    {
+        cl_float4 t=rot(distance, 0, 0, c_rot);
+        c_pos.x+=t.x;
+        c_pos.y+=t.y;
+        c_pos.z+=t.z;
+    }
 
-        if(keyboard.isKeyPressed(sf::Keyboard::V))
-        {
-            //std::cout << frametime << std::endl;
-        }
+    if(keyboard.isKeyPressed(sf::Keyboard::E))
+    {
+        c_pos.y-=0.04*distance_multiplier*30;
+    }
+
+    if(keyboard.isKeyPressed(sf::Keyboard::Q))
+    {
+        c_pos.y+=0.04*distance_multiplier*30;
+    }
+
+    if(keyboard.isKeyPressed(sf::Keyboard::Left))
+    {
+        c_rot.y-=0.001*30;
+    }
+
+    if(keyboard.isKeyPressed(sf::Keyboard::Right))
+    {
+        c_rot.y+=0.001*30;
+    }
+
+    if(keyboard.isKeyPressed(sf::Keyboard::Up))
+    {
+        c_rot.x-=0.001*30;
+    }
+
+    if(keyboard.isKeyPressed(sf::Keyboard::Down))
+    {
+        c_rot.x+=0.001*30;
+    }
+
+    if(keyboard.isKeyPressed(sf::Keyboard::Escape))
+    {
+        window.close();
+    }
+
+    if(keyboard.isKeyPressed(sf::Keyboard::B))
+    {
+        std::cout << "rerr: " << c_pos.x << " " << c_pos.y << " " << c_pos.z << std::endl;
+    }
+
+    if(keyboard.isKeyPressed(sf::Keyboard::V))
+    {
+        //std::cout << frametime << std::endl;
+    }
 
 
-        clEnqueueWriteBuffer(cl::cqueue, g_c_pos, true, 0, sizeof(cl_float4), &c_pos, 0, NULL, NULL);
-        clEnqueueWriteBuffer(cl::cqueue, g_c_rot, true, 0, sizeof(cl_float4), &c_rot, 0, NULL, NULL);
+    clEnqueueWriteBuffer(cl::cqueue, g_c_pos, true, 0, sizeof(cl_float4), &c_pos, 0, NULL, NULL);
+    clEnqueueWriteBuffer(cl::cqueue, g_c_rot, true, 0, sizeof(cl_float4), &c_rot, 0, NULL, NULL);
 
 
 
@@ -272,6 +304,7 @@ void run_kernel_with_args(cl_kernel &kernel, cl_uint *global_ws, cl_uint *local_
     for(int i=0; i<argc; i++)
     {
         cl::error |= clSetKernelArg(kernel, i, sizeof(cl_mem), argv[i]);
+
         if(cl::error!=0)
         {
             std::cout << "Error in kernel setargs " << i << " " << cl::error << std::endl;
@@ -295,7 +328,8 @@ void run_kernel_with_args(cl_kernel &kernel, cl_uint *global_ws, cl_uint *local_
 
     //std::cout << "c1 " << c.getElapsedTime().asMilliseconds() << std::endl;
 
-    if(cl::error!=0){
+    if(cl::error!=0)
+    {
         std::cout << "Error In kernel 1" << std::endl;
         exit(cl::error);
     }
@@ -325,7 +359,7 @@ void engine::draw_bulk_objs_n()
 
     //sf::Clock c;
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_tri_anum, CL_TRUE, 0, sizeof(cl_uint), &p0, 0, NULL, NULL);
-    cl_mem *p1arglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer};
+    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer};
     run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7);
     //std::cout << "T: " << c.getElapsedTime().asMilliseconds() << std::endl;
 
@@ -337,6 +371,7 @@ void engine::draw_bulk_objs_n()
 
     cl_uint p2global_ws=atom_count;
     cl_uint local2=128;
+
     if(p2global_ws % local2!=0)
     {
         int rem=p2global_ws % local2;
@@ -346,17 +381,19 @@ void engine::draw_bulk_objs_n()
 
     //std::cout << p1global_ws << " " << atom_count << std::endl;
 
-    cl_mem *p2arglist[]={&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer, &g_id_screen};
+    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer, &g_id_screen};
     run_kernel_with_args(cl::kernel2, &p2global_ws, &local2, 1, p2arglist, 4);
 
 
 
-    cl_uint p3global_ws[]={g_size, g_size};
-    cl_uint p3local_ws[]={32, 32};
+    cl_uint p3global_ws[]= {g_size, g_size};
+    cl_uint p3local_ws[]= {32, 32};
 
 
-    cl_mem *p3arglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &depth_buffer, &g_id_screen, &obj_mem_manager::g_texture_array, &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num};
-    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 14);
+    cl_mem *p3arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &depth_buffer, &g_id_screen, &obj_mem_manager::g_texture_array,
+                          &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num, &obj_mem_manager::g_light_num, &obj_mem_manager::g_light_mem};
+
+    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 16);
 
 
 
@@ -434,7 +471,8 @@ void engine::draw_bulk_objs()
 
     //std::cout << "c1 " << c.getElapsedTime().asMilliseconds() << std::endl;
 
-    if(cl::error!=0){
+    if(cl::error!=0)
+    {
         std::cout << "Error In kernel 1" << std::endl;
         exit(cl::error);
     }
@@ -442,9 +480,9 @@ void engine::draw_bulk_objs()
 
 
 
-    size_t work_dim[2]={g_size, g_size};
+    size_t work_dim[2]= {g_size, g_size};
 
-    size_t local_r[2]={32, 32};
+    size_t local_r[2]= {32, 32};
 
     //cl::error |= clSetKernelArg(cl::kernel2, 0, sizeof(cl_mem), &obj_mem_manager::g_tri_mem);
     cl::error |= clSetKernelArg(cl::kernel2, 0, sizeof(cl_mem), &obj_mem_manager::g_tri_mem);
@@ -470,8 +508,10 @@ void engine::draw_bulk_objs()
 
     cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::kernel2, 2, NULL, work_dim, local_r, 0, NULL, NULL);
     clFinish(cl::cqueue);
+
     //std::cout << "c2 " << c.getElapsedTime().asMilliseconds() << std::endl;
-    if(cl::error!=0){
+    if(cl::error!=0)
+    {
         std::cout << "Error In kernel 2" << std::endl;
         exit(cl::error);
     }

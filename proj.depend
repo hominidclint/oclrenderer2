@@ -2,10 +2,10 @@
 1360867265 source:c:\users\james\desktop\projects\proj\clstate.cpp
 	"clstate.h"
 
-1360867257 c:\users\james\desktop\projects\proj\clstate.h
+1361165049 c:\users\james\desktop\projects\proj\clstate.h
 	<cl/opencl.h>
 
-1360900970 source:c:\users\james\desktop\projects\proj\engine.cpp
+1361583122 source:c:\users\james\desktop\projects\proj\engine.cpp
 	"engine.hpp"
 	<math.h>
 	<gl/gl3.h>
@@ -17,11 +17,12 @@
 	<stdio.h>
 	<limits.h>
 
-1360718337 c:\users\james\desktop\projects\proj\engine.hpp
+1361580738 c:\users\james\desktop\projects\proj\engine.hpp
 	<SFML/graphics.hpp>
 	"object.hpp"
 	<vector>
 	"objects_container.hpp"
+	"light.hpp"
 
 1358290877 c:\users\james\desktop\projects\proj\object.hpp
 	<vector>
@@ -38,11 +39,11 @@
 1356819964 c:\users\james\desktop\projects\proj\objects_container.hpp
 	"object.hpp"
 
-1360718814 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
+1361570731 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
 	"object.hpp"
 	<vector>
 
-1360718329 source:c:\users\james\desktop\projects\proj\main.cpp
+1361584288 source:c:\users\james\desktop\projects\proj\main.cpp
 	<cstdio>
 	<string>
 	<iostream>
@@ -68,7 +69,7 @@
 	<vector>
 	"obj_g_descriptor.hpp"
 
-1360867203 c:\users\james\desktop\projects\proj\ocl.h
+1361165220 c:\users\james\desktop\projects\proj\ocl.h
 	<cstdio>
 	<CL/cl.h>
 	<iostream>
@@ -86,7 +87,7 @@
 	<cl/cl.h>
 	<vector>
 
-1359513157 source:c:\users\james\desktop\projects\proj\obj_load.cpp
+1361165211 source:c:\users\james\desktop\projects\proj\obj_load.cpp
 	"obj_load.hpp"
 	<cstdio>
 	<cstdlib>
@@ -97,7 +98,7 @@
 	"triangle.hpp"
 	"texture.hpp"
 
-1360807714 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
+1361571034 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
 	"obj_mem_manager.hpp"
 	<CL/CL.h>
 	"clstate.h"
@@ -108,14 +109,14 @@
 	"obj_g_descriptor.hpp"
 	"texture.hpp"
 
-1358895863 source:c:\users\james\desktop\projects\proj\object.cpp
+1361165049 source:c:\users\james\desktop\projects\proj\object.cpp
 	"object.hpp"
 	"clstate.h"
 
 1346891224 source:c:\users\james\desktop\projects\proj\objects_container.cpp
 	"objects_container.hpp"
 
-1359262234 source:c:\users\james\desktop\projects\proj\texture.cpp
+1361165222 source:c:\users\james\desktop\projects\proj\texture.cpp
 	"texture.hpp"
 	"clstate.h"
 	<iostream>
@@ -127,8 +128,10 @@
 1345203717 source:c:\users\james\desktop\projects\proj\vertex.cpp
 	"vertex.hpp"
 
-1360867101 source:c:\users\james\desktop\projects\proj\light.cpp
+1361584221 source:c:\users\james\desktop\projects\proj\light.cpp
 	"light.hpp"
 
-1360867096 c:\users\james\desktop\projects\proj\light.hpp
+1361584477 c:\users\james\desktop\projects\proj\light.hpp
+	<cl/cl.h>
+	<vector>
 

@@ -22,7 +22,8 @@ int main(int argc, char *argv[])
 {
 
     sf::Clock clo;
-    objects_container *sponza=obj_load("Sponza/testspz.obj");
+    //objects_container *sponza=obj_load("Sponza/testspz.obj");
+    objects_container *sponza=obj_load("Sp2/sp2.obj");
     //std::cout << clo.getElapsedTime().asMilliseconds() << std::endl;
 
 
@@ -50,14 +51,30 @@ int main(int argc, char *argv[])
 
     sf::Event Event;
 
+    light l;
+    l.set_pos((cl_float4){0, 300, -300, 0});
+    l.set_col((cl_float4){1.0, 1.0, 1.0, 0});
+    l.set_shadow_bright(1, 1);
+    int lid=window.add_light(l);
+
+    l.set_pos((cl_float4){0, 300, 800, 0});
+    window.add_light(l);
+
+    l.set_pos((cl_float4){-750, 0, -700, 0});
+    l.brightness=0.5;
+
+    window.add_light(l);
+
+
+
     while(window.window.isOpen())
     {
 
         sf::Clock c;
 
-        if (window.window.pollEvent(Event))
+        if(window.window.pollEvent(Event))
         {
-            if (Event.type == sf::Event::Closed)
+            if(Event.type == sf::Event::Closed)
                 window.window.close();
 
         }

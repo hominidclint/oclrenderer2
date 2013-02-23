@@ -50,6 +50,14 @@ float form(int x1, int y1, int x2, int y2, int x3, int y3, int x, int y, int whi
     return fabs((float)((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1)))/2.0;
 }
 
+struct light
+{
+    float4 pos;
+    float4 col;
+    uint shadow;
+    float brightness;
+    float2 pad;
+};
 
 
 struct obj_g_descriptor
@@ -609,10 +617,12 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
     float odepth[3];
 
-    struct triangle tri=full_rotate(&triangles[id], c_pos, c_rot, &icontainer, odepth);
+    __global struct triangle *T=&triangles[id];
+
+    struct triangle tri=full_rotate(T, c_pos, c_rot, &icontainer, odepth);
 
 
-    float4 pos=rot(&triangles[id].vertices[0].pos, *c_pos, *c_rot);
+    float4 pos=rot(triangles[id].vertices[0].pos, *c_pos, *c_rot);
     float4 npos=normalize(pos);
     float cdepth=length(pos);
 
@@ -706,8 +716,12 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
     }
 }
 
+
+///test keeping interpolation structure in local memory
+
 __kernel void part1(__global struct triangle* triangles, __global struct triangle *screen_triangles, __global uint* tri_num, __global uint* atomic_triangles, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer)
 {
+
     ///rotate triangles into screenspace, clip, and probably perform rough hierarchical depth buffering
     ///lighting normals give you backface culling
 
@@ -890,7 +904,9 @@ __kernel void part2(__global struct triangle* screen_triangles, __global uint* a
 
 }
 
-__kernel void part3(__global struct triangle *triangles, __global struct triangle *screen_triangles, __global uint *tri_num, __global uint *anum, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global uint* id_buffer, __read_only image3d_t array, __write_only image2d_t screen, __global int *nums, __global int *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum)
+__kernel void part3(__global struct triangle *triangles, __global struct triangle *screen_triangles, __global uint *tri_num, __global uint *anum, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global uint* id_buffer,
+                    __read_only image3d_t array, __write_only image2d_t screen, __global int *nums, __global int *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights)
+                    ///__global uint sacrifice_children_to_argument_god
 {
     ///widthxheight kernel
     sampler_t sam = CLK_NORMALIZED_COORDS_FALSE |
@@ -967,7 +983,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         float nmydepth=interpolate(depths, &icontainer, x, y);
 
 
-        float4 lpos={0, 300, -300, 0};
+
         //lpos=rot(lpos, *c_pos, *c_rot);
 
         /*float4 rpos[3];
@@ -978,34 +994,39 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
             rpos[i].z=c_tri->vertices[i].pos.z;
         }*/
 
+
+
         float4 local_position={x*nmydepth/FOV_CONST, y*nmydepth/FOV_CONST, nmydepth, 0};
 
+        float4 lightaccum={0,0,0,0};
+
+        //*(lnum)
+
+        for(int i=0; i<*(lnum); i++)
+        {
+            //float4 lpos={0, 300, -300, 0};
+            float4 lpos=lights[i].pos;
+
+            float4 l2c=lpos-local_position;
+
+            float light=dot(fast_normalize(l2c), fast_normalize(normal));
+
+            //light/=2.0f;
+            //light+=0.5;
+
+            if(light>0)
+                lightaccum+=light*lights[i].col*lights[i].brightness;
+        }
 
 
-        float4 l2c=lpos-local_position;
-
-        float light=dot(fast_normalize(l2c), fast_normalize(normal));
-
-        light/=2.0f;
-        light+=0.5;
+        //float ml=max3(lightaccum.x, lightaccum.y, lightaccum.z);
 
 
-
-
-
-        /*float4 col1;
-        col1.x=col.x/255.0f;
-        col1.y=col.y/255.0f;
-        col1.z=col.z/255.0f;
-        col1.x = col1.x*0.001;
-        col1.y = col1.y*0.001;
-        col1.z = col1.z*0.001;
-
-        col1.x=col1.x*0.001 + (float)depth/mulint;
-        col1.y=(float)depth/mulint;
-        col1.z=(float)depth/mulint;
-        //col1.z=(id % 255)/255.0f;
-        */
+        //lightaccum/=*(lnum);
+        /*lightaccum/=2.0f;
+        lightaccum.x+=0.5;
+        lightaccum.y+=0.5;
+        lightaccum.z+=0.5;*/
 
         int2 scoord={x, y};
 
@@ -1014,11 +1035,13 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         ///ftmz=o_id;
         float4 col=texture_filter(c_tri, scoord, vt, depth, *c_pos, *c_rot, gobj[o_id].tid, gobj[o_id].mip_level_ids, nums, sizes, array);
 
+        lightaccum.x=clamp(lightaccum.x, 0.0, 1.0/col.x);
+        lightaccum.y=clamp(lightaccum.y, 0.0, 1.0/col.y);
+        lightaccum.z=clamp(lightaccum.z, 0.0, 1.0/col.z);
 
 
 
-
-        write_imagef(screen, scoord, col*light);
+        write_imagef(screen, scoord, col*lightaccum);
         *ft=mulint;
         //*fi=0;
     }

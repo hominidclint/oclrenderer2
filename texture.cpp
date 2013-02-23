@@ -16,18 +16,18 @@ texture::texture()
 
 cl_uint texture::idquerystring(std::string name)
 {
-   cl_uint id=-1;
+    cl_uint id=-1;
 
-   for(std::vector<texture>::iterator it=texturelist.begin(); it!=texturelist.end(); it++)
-   {
-       id++;
+    for(std::vector<texture>::iterator it=texturelist.begin(); it!=texturelist.end(); it++)
+    {
+        id++;
 
         if((*it).location==name)
         {
             return id;
         }
 
-   }
+    }
 
     return -1;
 }
@@ -52,6 +52,7 @@ cl_uint texture::loadtomaster(std::string loc)
     //std::cout << loc << std::endl;
 
     cl_uint idq=-1;
+
     if((idq=idquerystring(loc))==-1)
     {
         //std::cout << "hi";
@@ -64,6 +65,7 @@ cl_uint texture::loadtomaster(std::string loc)
             std::cout << "you loaded a non square texture, god damned you " << loc << std::endl;
             //exit(12);
         }
+
         if(c_image.getSize().x>2048)
         {
             std::cout << "maxsize limit " << loc << std::endl;
@@ -125,8 +127,8 @@ void texture::g_push()
 
     //void *pointer = c_image.GetPixelsPtr();
 
-    size_t origin[3]={0,0,0};
-    size_t region[3]={c_image.getSize().x,c_image.getSize().x,0};
+    size_t origin[3]= {0,0,0};
+    size_t region[3]= {c_image.getSize().x,c_image.getSize().x,0};
 
     image=clCreateImage2D(cl::context, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR, &fermat, c_image.getSize().x, c_image.getSize().x, 0, NULL, NULL);
     clEnqueueWriteImage(cl::cqueue, image, true, origin, region, 0, 0, c_image.getPixelsPtr(), 0, NULL, NULL);
@@ -156,7 +158,8 @@ cl_uchar4 **generate_mip_level(int level, texture *T)
         for(unsigned int j=0; j<mipsize; j++)
         {
 
-            cl_float4 aggregate={0,0,0,0};
+            cl_float4 aggregate= {0,0,0,0};
+
             for(int n=0; n<level+1; n++)
             {
                 for(int k=0; k<level+1; k++)
@@ -167,6 +170,7 @@ cl_uchar4 **generate_mip_level(int level, texture *T)
                     aggregate.z+=pix.b;
                 }
             }
+
             //aggregate=
             aggregate.x/=(float)(level+1)*(level+1);
             aggregate.y/=(float)(level+1)*(level+1);
@@ -189,29 +193,29 @@ cl_uchar4 **generate_mip_level(int level, texture *T)
 void ssfmlimage(sf::Image &img, cl_uchar4 **cimg, int size)
 {
 
-        img.create(size, size);
+    img.create(size, size);
 
-        for(int i=0; i<size; i++)
+    for(int i=0; i<size; i++)
+    {
+        for(int j=0; j<size; j++)
         {
-            for(int j=0; j<size; j++)
-            {
 
-                sf::Color col;
-                col.r=cimg[i][j].x;
-                col.g=cimg[i][j].y;
-                col.b=cimg[i][j].z;
+            sf::Color col;
+            col.r=cimg[i][j].x;
+            col.g=cimg[i][j].y;
+            col.b=cimg[i][j].z;
 
-                img.setPixel(i, j, col);
+            img.setPixel(i, j, col);
 
-            }
         }
+    }
 
 }
 
 void tile_4_1(sf::Image *img, sf::Image *c1, sf::Image *c2, sf::Image *c3, sf::Image *c4)
 {
 
-    sf::Image *p[4]={c1, c2, c3, c4};
+    sf::Image *p[4]= {c1, c2, c3, c4};
     ///sizes must all be the same
 
     int size=c1->getSize().x;
@@ -282,28 +286,28 @@ void texture::generate_mipmaps() ///move this to graphics card?
 
     int tlistcount=0;
     //for(int i=0; i<numberofchanges; i++)
-   // {
+    // {
 
 
 
-   /*for(unsigned int i=0; i<length; i++)
-   {
+    /*for(unsigned int i=0; i<length; i++)
+    {
 
-       sf::Image img;
-       int miplevel=3;
-       //img.loadFromPixels(l[i].c_image.getSize().x >> miplevel, l[i].c_image.getSize().x >> 1, (uint8_t*)generate_mip_level(miplevel, &l[i]));
-       ssfmlimage(img, generate_mip_level(miplevel, &l[i]),  l[i].c_image.getSize().x >> miplevel);
-       miptextures.push_back(img);
-       //miptextures.push_back(img);
-       //std::cout << l[i].c_image.getSize().x << std::endl;
-       //texture::texturelist[i].c_image=img;
+        sf::Image img;
+        int miplevel=3;
+        //img.loadFromPixels(l[i].c_image.getSize().x >> miplevel, l[i].c_image.getSize().x >> 1, (uint8_t*)generate_mip_level(miplevel, &l[i]));
+        ssfmlimage(img, generate_mip_level(miplevel, &l[i]),  l[i].c_image.getSize().x >> miplevel);
+        miptextures.push_back(img);
+        //miptextures.push_back(img);
+        //std::cout << l[i].c_image.getSize().x << std::endl;
+        //texture::texturelist[i].c_image=img;
 
-   }*/
-
-
+    }*/
 
 
 
-   // }
+
+
+    // }
 
 }

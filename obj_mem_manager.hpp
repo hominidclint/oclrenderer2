@@ -20,15 +20,17 @@ struct obj_mem_manager
 
     static cl_mem g_tri_mem;
     static cl_mem g_tri_smem;
-
     static cl_mem g_tri_fstorage;
 
     static cl_mem g_tri_num;
     static cl_mem g_tri_anum;
 
     static cl_mem g_obj_desc;
-
     static cl_mem g_obj_num;
+
+    static cl_mem g_light_mem;
+    static cl_mem g_light_num;
+
 
     static cl_uchar4* c_texture_array;
 

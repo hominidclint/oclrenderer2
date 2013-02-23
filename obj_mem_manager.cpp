@@ -19,6 +19,8 @@ cl_mem obj_mem_manager::g_tri_anum;
 cl_mem obj_mem_manager::g_tri_fstorage;
 cl_mem obj_mem_manager::g_obj_desc;
 cl_mem obj_mem_manager::g_obj_num;
+cl_mem obj_mem_manager::g_light_mem;
+cl_mem obj_mem_manager::g_light_num;
 
 cl_mem obj_mem_manager::i256;
 cl_mem obj_mem_manager::i512;
@@ -36,8 +38,6 @@ struct texture_array_descriptor
 
     std::vector<int> texture_nums;
     std::vector<int> texture_sizes;
-
-
 
 } tad;
 
@@ -71,7 +71,7 @@ cl_uchar4 * return_first_free(int size, int &num) ///texture ids need to be embe
             ///so, T->texture_nums[i] is the position of the new element to return
             num=i;
             //return &obj_mem_manager::c_texture_array[0*1 + 0*max_tex_size + T->texture_nums[i]*size*size + i*max_tex_size*max_tex_size]; ///so, i is the layer, T->texture_nums[i]*size*size is the texture number
-                                                                            ///this is wrong
+            ///this is wrong
             /*int slicesize=i*max_tex_size*max_tex_size; ///slice bits
 
             int ialong=T->texture_nums[i] % (max_tex_size/size);
@@ -87,6 +87,7 @@ cl_uchar4 * return_first_free(int size, int &num) ///texture ids need to be embe
 
 
     }
+
     ///we didn't find a suitable texture array, which means create a new one! Realloc array and return pointer, as well as update both new buffers. That means all we have to do now is actually write the textures
 
     int length=T->texture_nums.size();
@@ -176,6 +177,7 @@ void add_texture(texture &tex, int &newid)
             setpixel(firstfree, c, i, j, max_tex_size, max_tex_size);
             tj++;
         }
+
         ti++;
         tj=0;
 
@@ -201,6 +203,7 @@ void add_texture_and_mipmaps(texture &tex, cl_uint4 &newmips, int &newid)
     add_texture(tex, newid);
 
     texture mip[MIP_LEVELS];
+
     for(int n=0; n<MIP_LEVELS; n++)
     {
         if(n==0)
@@ -236,6 +239,7 @@ int num_to_divide(int target, int tsize)
         tsize/=target;
         f++;
     }
+
     return f;
 
 }
@@ -250,6 +254,7 @@ cl_uchar4 * gen_3d(int tstart, int tnum, int size)
     for(int n=0; n<tnum; n++)
     {
         std::cout << c_tex[n].location << std::endl;
+
         for(int i=0; i<size; i++)
         {
             for(int j=0; j<size; j++)
@@ -262,6 +267,7 @@ cl_uchar4 * gen_3d(int tstart, int tnum, int size)
         }
 
     }
+
     return r;
 
 }
@@ -270,6 +276,7 @@ cl_uchar4 * gen_3d(int tstart, int tnum, int size)
 void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture ids
 {
 
+    ///http://kayru.org/articles/dssdo/
 
     //texture::generate_mipmaps();
 
@@ -410,9 +417,9 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         //add_texture(texture::texturelist[i], t);
         cl_uint4 mipmaps;
         add_texture_and_mipmaps(texture::texturelist[i], mipmaps, t); ///is trying to push new mipmaps to texturelist, while also iterating through texture list
-                                                                      ///in essence, uh oh
-                                                                      ///textures are only added to the end, existing textures already.. well, exist. So, we only iterate through the ones
-                                                                      ///that previously existed
+        ///in essence, uh oh
+        ///textures are only added to the end, existing textures already.. well, exist. So, we only iterate through the ones
+        ///that previously existed
         newtexid.push_back(t);
         mtexids.push_back(mipmaps.x);
         mtexids.push_back(mipmaps.y);
@@ -438,7 +445,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     int mipbegin=newtexid.size();
     //for(int i=mipbegin; i<texture::texturelist.size(); i++)
     //{
-        //std::cout << "o " << texture::texturelist[i].id << std::endl;
+    //std::cout << "o " << texture::texturelist[i].id << std::endl;
     //}
 
     for(int i=0; i<mtexids.size(); i++)
@@ -446,6 +453,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         //std::cout << mtexids[i]>> << std::endl;
         newtexid.push_back(mtexids[i]);
     }
+
     //int dcount=0;
 
 
@@ -454,6 +462,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         desc[n].tri_num=(*it)->tri_num;
         desc[n].start=trianglecount;
         desc[n].tid=(*it)->tid;
+
         for(int i=0; i<MIP_LEVELS; i++)
         {
 
@@ -493,9 +502,9 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     //obj_mem_manager::c_texture_array[0].z=255;
     //for(int k=0; k<10; k++)
     {
-     //   for(int i=0; i<2048; i++)
+        //   for(int i=0; i<2048; i++)
         {
-       //     for(int j=0; j<2048; j++)
+            //     for(int j=0; j<2048; j++)
             {
                 //obj_mem_manager::c_texture_array[k*2048*2048 + j*2048 + i].x=255;
                 //obj_mem_manager::c_texture_array[k*2048*2048 + j*2048 + i].y=0;
@@ -557,6 +566,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         std::cout << "g_tri_num create" << std::endl;
         exit(cl::error);
     }
+
     //std::cout << trianglecount << std::endl;
     std::cout << trianglecount << std::endl;
 
@@ -570,6 +580,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         {
             (*it)->tri_list[i].vertices[0].pad[1]=obj_id;
         }
+
         clEnqueueWriteBuffer(cl::cqueue, g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it)->tri_num, (*it)->tri_list, 0, NULL, NULL);
         running+=(*it)->tri_num;
         obj_id++;

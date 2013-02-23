@@ -132,8 +132,15 @@ void realloc_light_gmem() ///for the moment, just reallocate everything
 {
     cl_uint lnum=light::lightlist.size();
     clReleaseMemObject(obj_mem_manager::g_light_mem);
+    clReleaseMemObject(obj_mem_manager::g_light_buf);
     obj_mem_manager::g_light_mem=clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(light)*lnum, light::lightlist.data(), &cl::error);
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_light_num, CL_TRUE, 0, sizeof(cl_uint), &lnum, 0, NULL, NULL);
+
+    ///sacrifice soul to chaos gods, allocate light buffers here
+    ///g_light_buf
+
+    obj_mem_manager::g_light_buf=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(light)*lnum, light::lightlist.data(), &cl::error);
+
 }
 
 int engine::add_light(light l)
@@ -495,7 +502,7 @@ void engine::draw_bulk_objs()
     cl::error |= clSetKernelArg(cl::kernel2, 7, sizeof(cl_mem), &g_texture_screen);
     cl::error |= clSetKernelArg(cl::kernel2, 8, sizeof(cl_mem), &obj_mem_manager::g_obj_desc);
     cl::error |= clSetKernelArg(cl::kernel2, 9, sizeof(cl_mem), &obj_mem_manager::g_obj_num);
-    cl::error |= clSetKernelArg(cl::kernel2, 10, sizeof(cl_mem), &g_screen);
+    cl::error |= clSetKernelArg(cl::kernel2, 10, sizeof(cl_mem),&g_screen);
     cl::error |= clSetKernelArg(cl::kernel2, 11, sizeof(cl_mem),&obj_mem_manager::g_texture_nums);
     cl::error |= clSetKernelArg(cl::kernel2, 12, sizeof(cl_mem),&obj_mem_manager::g_texture_sizes);
     cl::error |= clSetKernelArg(cl::kernel2, 13, sizeof(cl_mem),&obj_mem_manager::g_texture_array);

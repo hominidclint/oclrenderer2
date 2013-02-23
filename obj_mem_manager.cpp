@@ -21,6 +21,7 @@ cl_mem obj_mem_manager::g_obj_desc;
 cl_mem obj_mem_manager::g_obj_num;
 cl_mem obj_mem_manager::g_light_mem;
 cl_mem obj_mem_manager::g_light_num;
+cl_mem obj_mem_manager::g_light_buf;
 
 cl_mem obj_mem_manager::i256;
 cl_mem obj_mem_manager::i512;
@@ -558,7 +559,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     int p0=0;
 
     g_tri_num = clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR , sizeof(cl_uint), &trianglecount, &cl::error);
-    g_tri_anum = clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR , sizeof(cl_uint), &p0, &cl::error);
+    g_tri_anum = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR , sizeof(cl_uint), &p0, &cl::error);
 
 
     if(cl::error!=0)

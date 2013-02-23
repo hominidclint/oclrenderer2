@@ -610,6 +610,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
     int valid_tri=0;
 
+
     if(id >= *tri_num)
     {
         return;
@@ -707,13 +708,10 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
                 }
 
                 uint sdepth=atomic_min(ft, mydepth);
-                if(!valid_tri && mydepth<sdepth)
-                {
-                    valid_tri=1;
-                }
             }
         }
     }
+
 }
 
 

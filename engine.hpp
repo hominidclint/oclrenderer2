@@ -12,6 +12,7 @@ struct engine
 
     cl_uint width, height, depth;
     cl_uint g_size; /// height > width rounded up to nearest power of 2
+    cl_uint l_size;
     cl_float4 c_pos;
     cl_float4 c_rot;
 
@@ -33,16 +34,28 @@ struct engine
 
     cl_mem g_texture_screen;
 
+    cl_mem g_shadow_light_buffer;
+
+
+    //std::vector<light> c_shadow_light_list;
+
+
+
     //cl_mem g_obj_descriptors;
 
     static unsigned int gl_screen_id;
     static unsigned int gl_framebuffer_id;
+
+    cl_uint *blank_light_buf;
+    cl_uint shadow_light_num;
 
 
 
     sf::RenderWindow window;
 
     std::vector<object*> objects;
+
+    int add_shadow_light(light *l);
 
     void load(cl_uint, cl_uint, cl_uint, std::string);
 
@@ -64,7 +77,11 @@ struct engine
 
     void input();
 
+    void realloc_light_gmem();
+
     int add_light(light l);
+
+
 
     void update_lights();
 

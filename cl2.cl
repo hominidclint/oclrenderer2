@@ -1,11 +1,14 @@
 #define MIP_LEVELS 4
 
 #define FOV_CONST 700.0f
+#define LFOV_CONST 1024.0f
 
 #define IDENTIFICATION_BITS 10
 
 #define SCREENWIDTH 800
 #define SCREENHEIGHT 600
+
+#define LIGHTBUFFERDIM 1024
 
 #define MTRI_SIZE 50
 
@@ -24,7 +27,7 @@ float min3(float x, float y, float z)
     return min(min(x,y),z);
 }
 
-float max3( float x,  float y,  float z)
+float max3(float x,  float y,  float z)
 {
     return max(max(x,y),z);
 }
@@ -113,7 +116,7 @@ float calc_third_areas(struct interp_container *C, int x, int y)
 float4 rot(float4 point, float4 c_pos, float4 c_rot)
 {
     float4 ret;
-    ret.x=      native_cos(c_rot.y)*(native_sin(c_rot.z)+native_cos(c_rot.z)*(point.x-c_pos.x)) - native_sin(c_rot.y)*(point.z-c_pos.z);
+    ret.x=      native_cos(c_rot.y)*(native_sin(c_rot.z)+native_cos(c_rot.z)*(point.x-c_pos.x))-native_sin(c_rot.y)*(point.z-c_pos.z);
     ret.y=      native_sin(c_rot.x)*(native_cos(c_rot.y)*(point.z-c_pos.z)+native_sin(c_rot.y)*(native_sin(c_rot.z)*(point.y-c_pos.y)+native_cos(c_rot.z)*(point.x-c_pos.x)))+native_cos(c_rot.x)*(native_cos(c_rot.z)*(point.y-c_pos.y)-native_sin(c_rot.z)*(point.x-c_pos.x));
     ret.z=      native_cos(c_rot.x)*(native_cos(c_rot.y)*(point.z-c_pos.z)+native_sin(c_rot.y)*(native_sin(c_rot.z)*(point.y-c_pos.y)+native_cos(c_rot.z)*(point.x-c_pos.x)))-native_sin(c_rot.x)*(native_cos(c_rot.z)*(point.y-c_pos.y)-native_sin(c_rot.z)*(point.x-c_pos.x));
     return ret;
@@ -154,7 +157,7 @@ int out_of_bounds(float val, float min, float max)
 }
 
 
-struct triangle full_rotate(__global struct triangle *triangle, __global float4 *c_pos, __global float4 *c_rot, struct interp_container *container, float odepth[3])
+struct triangle full_rotate(__global struct triangle *triangle, __global float4 *c_pos, __global float4 *c_rot, struct interp_container *container, float odepth[3], float fovc, int width, int height)
 {
 
     __global struct triangle *T=triangle;
@@ -173,12 +176,12 @@ struct triangle full_rotate(__global struct triangle *triangle, __global float4 
     for(int j=0; j<3; j++)
     {
         float rx;
-        rx=rotpoints[j].x * (FOV_CONST/rotpoints[j].z);
+        rx=rotpoints[j].x * (fovc/rotpoints[j].z);
         float ry;
-        ry=rotpoints[j].y * (FOV_CONST/rotpoints[j].z);
+        ry=rotpoints[j].y * (fovc/rotpoints[j].z);
 
-        rx+=SCREENWIDTH/2.0f;
-        ry+=SCREENHEIGHT/2.0f;
+        rx+=width/2.0f;
+        ry+=height/2.0f;
 
 
         rotpoints[j].x=rx;
@@ -215,25 +218,25 @@ struct triangle full_rotate(__global struct triangle *triangle, __global float4 
     int minx=min3(x1, x2, x3)-1;
     int maxx=max3(x1, x2, x3);
 
-    if(out_of_bounds(miny, 0, SCREENHEIGHT))
+    if(out_of_bounds(miny, 0, height))
     {
         miny=max(miny, 0);
-        miny=min(miny, SCREENHEIGHT);
+        miny=min(miny, height);
     }
-    if(out_of_bounds(maxy, 0, SCREENHEIGHT))
+    if(out_of_bounds(maxy, 0, height))
     {
         maxy=max(maxy, 0);
-        maxy=min(maxy, SCREENHEIGHT);
+        maxy=min(maxy, height);
     }
-    if(out_of_bounds(minx, 0, SCREENWIDTH))
+    if(out_of_bounds(minx, 0, width))
     {
         minx=max(minx, 0);
-        minx=min(minx, SCREENWIDTH);
+        minx=min(minx, width);
     }
-    if(out_of_bounds(maxx, 0, SCREENWIDTH))
+    if(out_of_bounds(maxx, 0, width))
     {
         maxx=max(maxx, 0);
-        maxx=min(maxx, SCREENWIDTH);
+        maxx=min(maxx, width);
     }
 
     int rconstant=(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
@@ -594,22 +597,45 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
 ///normalise coordinates to get the location on sphere
 ///use old magnitude as depth from sphere
 
-__kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* light_depth_buffer, __global uint* slice)
+
+///If one point loops round the 0 to 2PI, works out this by checking if any points are more thatn 180 away from each other and returns the closest, possible negative or >2pi value. Then we can simply reverse pixel direction
+/*float return_180sideclamp(float a, float b, float c)
 {
+    float p[3]={a, b, c};
+    float sorted[3];
+    sorted[0]=min3(a, b, c);
+    sorted[1]=max3(a, b, c);
+    for(int i=0; i<3; i++)
+    {
+        if(p[i]!=sorted[0] && p[i]!=sorted[1])
+        {
+            sorted[2]=p[i];
+            break;
+        }
+    }
+
+}*/
+///redundant, using cube mapping instead
+
+__kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global float4* l_rot, __global uint* light_depth_buffer, __global uint* slice, __global uint* lnum, __global struct light *lights)
+{
+
+    ///there are 6 pieces on my cubemap
+    ///6 slices form a light's buffer, each slice is defined in the order up down left foward right back
+
+
+
+    ///rotate triangles into screenspace, clip, and probably perform rough hierarchical depth buffering
+    ///lighting normals give you backface culling
 
     uint id = get_global_id(0);
 
     struct interp_container icontainer;
 
-
-    ///rotate around camera
-    ///xyz coordinates
-    ///magnitude is depth
-    ///use xyz and map to square
+    __global float4 *l_pos = &lights[*lnum].pos;
 
 
     int valid_tri=0;
-
 
     if(id >= *tri_num)
     {
@@ -618,23 +644,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
     float odepth[3];
 
-    __global struct triangle *T=&triangles[id];
-
-    struct triangle tri=full_rotate(T, c_pos, c_rot, &icontainer, odepth);
-
-
-    float4 pos=rot(triangles[id].vertices[0].pos, *c_pos, *c_rot);
-    float4 npos=normalize(pos);
-    float cdepth=length(pos);
-
-    /*tri=full_rotate(&triangles[id], c_pos, c_rot, &icontainer, odepth);
-
-    for(int i=0; i<1000; i++)
-    {
-        struct triangle temp;
-        temp=full_rotate(&triangles[id], c_pos, c_rot, &icontainer, odepth);
-        tri.vertices[i].pos.x+=temp.vertices[i].pos.x*-;
-    }*/
+    struct triangle tri=full_rotate(&triangles[id], l_pos, l_rot, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
 
 
     if(icontainer.ybounds[1]-icontainer.ybounds[0] > MTRI_SIZE || icontainer.xbounds[1] - icontainer.xbounds[0] > MTRI_SIZE)
@@ -643,6 +653,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
     }
 
 
+    ///near plane intersection
     int cont=0;
 
     if((tri.vertices[0].pos.z) < dcalc(depth_icutoff) && (tri.vertices[1].pos.z) < dcalc(depth_icutoff) && (tri.vertices[2].pos.z) < dcalc(depth_icutoff))
@@ -650,6 +661,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
         return;
     }
 
+    ///begin backface culling!
 
     float4 p0={tri.vertices[0].pos.x, tri.vertices[0].pos.y, tri.vertices[0].pos.z, 0};
     float4 p1={tri.vertices[1].pos.x, tri.vertices[1].pos.y, tri.vertices[1].pos.z, 0};
@@ -672,6 +684,176 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
         float4 p2c=local_vertex_position;
         float dotp=dot(fast_normalize(fnormal), fast_normalize(p2c));
 
+
+        ///backface
+
+        if(dotp < 0)
+        {
+            cont=1;
+        }
+    }
+
+    if(cont!=1)
+    {
+        return;
+    }
+
+    ///end backface
+
+    ///OOB check can go here
+
+    ///begin drawing to depth buffer
+
+    float depths[3]={tri.vertices[0].pos.z, tri.vertices[1].pos.z, tri.vertices[2].pos.z};
+
+    for(int y=icontainer.ybounds[0]; y<icontainer.ybounds[1]; y++)
+    {
+        for(int x=icontainer.xbounds[0]; x<icontainer.xbounds[1]; x++)
+        {
+            float s1=calc_third_areas(&icontainer, x, y);
+
+            if(s1 > icontainer.area - 1 && s1 < icontainer.area + 1)
+            {
+                __global uint *ft=&light_depth_buffer[((*slice) + (*lnum)*6)*LIGHTBUFFERDIM*LIGHTBUFFERDIM + y*LIGHTBUFFERDIM + x];
+
+                ///slice*ldbm^2 + lnum*6*lbdm^2 + y*ldbm + x
+
+
+                float fmydepth=interpolate(depths, &icontainer, x, y);
+
+                uint mydepth=fmydepth*mulint;
+
+
+
+                if(mydepth==0)
+                {
+                    continue;
+                }
+
+                uint sdepth=atomic_min(ft, mydepth);
+            }
+        }
+    }
+    ///end drawing to depth buffer
+
+}
+
+__kernel void construct_smap_o(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* light_depth_buffer, __global uint* slice, __global struct light *lights)
+{
+
+    uint id = get_global_id(0);
+
+    struct interp_container icontainer;
+
+
+    ///rotate around camera
+    ///xyz coordinates
+    ///magnitude is depth
+    ///use xyz and map to square
+
+
+    int valid_tri=0;
+
+    const int size=1024;
+
+
+    struct light tl=lights[*slice];
+
+
+    if(id >= *tri_num)
+    {
+        return;
+    }
+
+    float odepth[3];
+
+    //__global struct triangle *T=&triangles[id];
+
+    //struct triangle tri=full_rotate(T, c_pos, c_rot, &icontainer, odepth);
+
+
+    //float4 pos=rot(triangles[id].vertices[0].pos, *c_pos, *c_rot);
+
+    float4 pos[3];
+    pos[0]=triangles[id].vertices[0].pos;
+    pos[1]=triangles[id].vertices[1].pos;
+    pos[2]=triangles[id].vertices[2].pos;
+
+    float4 relativepos[3];
+    relativepos[0]=pos[0]-tl.pos;
+    relativepos[1]=pos[1]-tl.pos;
+    relativepos[2]=pos[2]-tl.pos;
+
+
+    float4 npos[3];
+    npos[0]=normalize(relativepos[0]);
+    npos[1]=normalize(relativepos[1]);
+    npos[2]=normalize(relativepos[2]);
+
+    float cdepth[3];
+    cdepth[0]=length(relativepos[0]);
+    cdepth[1]=length(relativepos[1]);
+    cdepth[2]=length(relativepos[2]);
+
+    float xyangles[3];
+    xyangles[0]=atan2(npos[0].y, npos[0].x);
+    xyangles[1]=atan2(npos[1].y, npos[1].x);
+    xyangles[2]=atan2(npos[2].y, npos[2].x);
+
+    float zyangles[3];
+    zyangles[0]=atan2(npos[0].y, npos[0].z);
+    zyangles[1]=atan2(npos[1].y, npos[1].z);
+    zyangles[2]=atan2(npos[2].y, npos[2].z);
+
+
+    ///maximum distance between points cannot be PI, so use this to correct Atan results
+
+    ///x=1, y=0 is flip point
+
+    ///Perform pass to check if it would be shorter to cluster things 2_pi degrees around
+
+
+
+    ///between 0 and 2PI is the answer
+
+    ///buffers are screenwidth*screenheight in width. Should be light_res*light_res;
+
+
+
+    if(icontainer.ybounds[1]-icontainer.ybounds[0] > MTRI_SIZE || icontainer.xbounds[1] - icontainer.xbounds[0] > MTRI_SIZE)
+    {
+        return;
+    }
+
+    int cont=0;
+
+    /*if((tri.vertices[0].pos.z) < dcalc(depth_icutoff) && (tri.vertices[1].pos.z) < dcalc(depth_icutoff) && (tri.vertices[2].pos.z) < dcalc(depth_icutoff))
+    {
+        return;
+    }*/
+
+
+    /*float4 p0={tri.vertices[0].pos.x, tri.vertices[0].pos.y, tri.vertices[0].pos.z, 0};
+    float4 p1={tri.vertices[1].pos.x, tri.vertices[1].pos.y, tri.vertices[1].pos.z, 0};
+    float4 p2={tri.vertices[2].pos.x, tri.vertices[2].pos.y, tri.vertices[2].pos.z, 0};
+
+    float4 p1p0=p1-p0;
+    float4 p2p0=p2-p0;
+
+    float4 cr=cross(p1p0, p2p0);*/
+
+
+
+    /*for(int i=0; i<3; i++)
+    {
+        float4 blank={0,0,0,0};
+        float4 fnormal=cr;
+
+        float4 local_vertex_position={tri.vertices[i].pos.x*tri.vertices[i].pos.z/FOV_CONST, tri.vertices[i].pos.y*tri.vertices[i].pos.z/FOV_CONST, tri.vertices[i].pos.z, 0};
+
+        float4 p2c=local_vertex_position;
+        float dotp=dot(fast_normalize(fnormal), fast_normalize(p2c));
+
         if(dotp < 0)
         {
             cont=1;
@@ -682,10 +864,10 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
     if(cont!=1)
     {
         return;
-    }
+    }*/
 
 
-    float depths[3]={tri.vertices[0].pos.z, tri.vertices[1].pos.z, tri.vertices[2].pos.z};
+    /*float depths[3]={tri.vertices[0].pos.z, tri.vertices[1].pos.z, tri.vertices[2].pos.z};
 
     for(int y=icontainer.ybounds[0]; y<icontainer.ybounds[1]; y++)
     {
@@ -707,11 +889,10 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
                     continue;
                 }
 
-                uint sdepth=atomic_min(ft, mydepth);
+                atomic_min(ft, mydepth);
             }
         }
-    }
-
+    }*/
 }
 
 
@@ -737,7 +918,7 @@ __kernel void part1(__global struct triangle* triangles, __global struct triangl
 
     float odepth[3];
 
-    struct triangle tri=full_rotate(&triangles[id], c_pos, c_rot, &icontainer, odepth);
+    struct triangle tri=full_rotate(&triangles[id], c_pos, c_rot, &icontainer, odepth, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
 
     if(icontainer.ybounds[1]-icontainer.ybounds[0] > MTRI_SIZE || icontainer.xbounds[1] - icontainer.xbounds[0] > MTRI_SIZE)
@@ -903,7 +1084,7 @@ __kernel void part2(__global struct triangle* screen_triangles, __global uint* a
 }
 
 __kernel void part3(__global struct triangle *triangles, __global struct triangle *screen_triangles, __global uint *tri_num, __global uint *anum, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global uint* id_buffer,
-                    __read_only image3d_t array, __write_only image2d_t screen, __global int *nums, __global int *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights)
+                    __read_only image3d_t array, __write_only image2d_t screen, __global int *nums, __global int *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights, __global uint* light_depth_buffer)
                     ///__global uint sacrifice_children_to_argument_god
 {
     ///widthxheight kernel
@@ -1037,9 +1218,19 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         lightaccum.y=clamp(lightaccum.y, 0.0, 1.0/col.y);
         lightaccum.z=clamp(lightaccum.z, 0.0, 1.0/col.z);
 
-
+        //lightaccum.x=0;
+        //lightaccum.y=0;
+        //lightaccum.z=lightaccum.z*0.001;
 
         write_imagef(screen, scoord, col*lightaccum);
+
+
+        uint cl = light_depth_buffer[y*LIGHTBUFFERDIM + x];
+        float cl2 = (float)cl/mulint;
+        float4 c = {cl2, cl2, cl2, cl2};
+
+        write_imagef(screen, scoord, c);
+
         *ft=mulint;
         //*fi=0;
     }

@@ -1,11 +1,11 @@
 # depslib dependency file v1.0
-1360867265 source:c:\users\james\desktop\projects\proj\clstate.cpp
+1360870865 source:c:\users\james\desktop\projects\proj\clstate.cpp
 	"clstate.h"
 
-1361165049 c:\users\james\desktop\projects\proj\clstate.h
+1361168649 c:\users\james\desktop\projects\proj\clstate.h
 	<cl/opencl.h>
 
-1361590448 source:c:\users\james\desktop\projects\proj\engine.cpp
+1365802354 source:c:\users\james\desktop\projects\proj\engine.cpp
 	"engine.hpp"
 	<math.h>
 	<gl/gl3.h>
@@ -17,33 +17,33 @@
 	<stdio.h>
 	<limits.h>
 
-1361580738 c:\users\james\desktop\projects\proj\engine.hpp
+1365737198 c:\users\james\desktop\projects\proj\engine.hpp
 	<SFML/graphics.hpp>
 	"object.hpp"
 	<vector>
 	"objects_container.hpp"
 	"light.hpp"
 
-1358290877 c:\users\james\desktop\projects\proj\object.hpp
+1358294477 c:\users\james\desktop\projects\proj\object.hpp
 	<vector>
 	"triangle.hpp"
 	<string>
 	<cl/cl.h>
 
-1345210857 c:\users\james\desktop\projects\proj\triangle.hpp
+1345214457 c:\users\james\desktop\projects\proj\triangle.hpp
 	"vertex.hpp"
 
-1360807589 c:\users\james\desktop\projects\proj\vertex.hpp
+1360811189 c:\users\james\desktop\projects\proj\vertex.hpp
 	<cl/cl.h>
 
-1356819964 c:\users\james\desktop\projects\proj\objects_container.hpp
+1356823564 c:\users\james\desktop\projects\proj\objects_container.hpp
 	"object.hpp"
 
-1361587018 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
+1361590618 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
 	"object.hpp"
 	<vector>
 
-1361590593 source:c:\users\james\desktop\projects\proj\main.cpp
+1361594193 source:c:\users\james\desktop\projects\proj\main.cpp
 	<cstdio>
 	<string>
 	<iostream>
@@ -58,18 +58,18 @@
 	"obj_mem_manager.hpp"
 	"obj_g_descriptor.hpp"
 
-1345253236 c:\users\james\desktop\projects\proj\obj_load.hpp
+1345256836 c:\users\james\desktop\projects\proj\obj_load.hpp
 	<string>
 	"object.hpp"
 	"objects_container.hpp"
 
-1359250259 c:\users\james\desktop\projects\proj\texture.hpp
+1359253859 c:\users\james\desktop\projects\proj\texture.hpp
 	<sfml/graphics.hpp>
 	<cl/cl.h>
 	<vector>
 	"obj_g_descriptor.hpp"
 
-1361165220 c:\users\james\desktop\projects\proj\ocl.h
+1361168820 c:\users\james\desktop\projects\proj\ocl.h
 	<cstdio>
 	<CL/cl.h>
 	<iostream>
@@ -77,17 +77,17 @@
 	"clstate.h"
 	<windows.h>
 
-1359277780 c:\users\james\desktop\projects\proj\obj_g_descriptor.hpp
+1359281380 c:\users\james\desktop\projects\proj\obj_g_descriptor.hpp
 	<CL/CL.h>
 
-1347034593 source:c:\users\james\desktop\projects\proj\obj_info_struct.cpp
+1347038193 source:c:\users\james\desktop\projects\proj\obj_info_struct.cpp
 	"obj_info_struct.hpp"
 
-1356820069 c:\users\james\desktop\projects\proj\obj_info_struct.hpp
+1356823669 c:\users\james\desktop\projects\proj\obj_info_struct.hpp
 	<cl/cl.h>
 	<vector>
 
-1361165211 source:c:\users\james\desktop\projects\proj\obj_load.cpp
+1363956036 source:c:\users\james\desktop\projects\proj\obj_load.cpp
 	"obj_load.hpp"
 	<cstdio>
 	<cstdlib>
@@ -98,7 +98,7 @@
 	"triangle.hpp"
 	"texture.hpp"
 
-1361590562 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
+1361594162 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
 	"obj_mem_manager.hpp"
 	<CL/CL.h>
 	"clstate.h"
@@ -109,29 +109,29 @@
 	"obj_g_descriptor.hpp"
 	"texture.hpp"
 
-1361165049 source:c:\users\james\desktop\projects\proj\object.cpp
+1361168649 source:c:\users\james\desktop\projects\proj\object.cpp
 	"object.hpp"
 	"clstate.h"
 
-1346891224 source:c:\users\james\desktop\projects\proj\objects_container.cpp
+1346894824 source:c:\users\james\desktop\projects\proj\objects_container.cpp
 	"objects_container.hpp"
 
-1361165222 source:c:\users\james\desktop\projects\proj\texture.cpp
+1361168822 source:c:\users\james\desktop\projects\proj\texture.cpp
 	"texture.hpp"
 	"clstate.h"
 	<iostream>
 	<math.h>
 
-1345205509 source:c:\users\james\desktop\projects\proj\triangle.cpp
+1345209109 source:c:\users\james\desktop\projects\proj\triangle.cpp
 	"triangle.hpp"
 
-1345203717 source:c:\users\james\desktop\projects\proj\vertex.cpp
+1345207317 source:c:\users\james\desktop\projects\proj\vertex.cpp
 	"vertex.hpp"
 
-1361584221 source:c:\users\james\desktop\projects\proj\light.cpp
+1361587821 source:c:\users\james\desktop\projects\proj\light.cpp
 	"light.hpp"
 
-1361584477 c:\users\james\desktop\projects\proj\light.hpp
+1361588077 c:\users\james\desktop\projects\proj\light.hpp
 	<cl/cl.h>
 	<vector>
 

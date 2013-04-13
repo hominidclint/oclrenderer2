@@ -5,7 +5,7 @@
 1361168649 c:\users\james\desktop\projects\proj\clstate.h
 	<cl/opencl.h>
 
-1365802354 source:c:\users\james\desktop\projects\proj\engine.cpp
+1365883384 source:c:\users\james\desktop\projects\proj\engine.cpp
 	"engine.hpp"
 	<math.h>
 	<gl/gl3.h>
@@ -43,7 +43,7 @@
 	"object.hpp"
 	<vector>
 
-1361594193 source:c:\users\james\desktop\projects\proj\main.cpp
+1365891360 source:c:\users\james\desktop\projects\proj\main.cpp
 	<cstdio>
 	<string>
 	<iostream>
@@ -57,6 +57,7 @@
 	"engine.hpp"
 	"obj_mem_manager.hpp"
 	"obj_g_descriptor.hpp"
+	<math.h>
 
 1345256836 c:\users\james\desktop\projects\proj\obj_load.hpp
 	<string>
@@ -128,10 +129,10 @@
 1345207317 source:c:\users\james\desktop\projects\proj\vertex.cpp
 	"vertex.hpp"
 
-1361587821 source:c:\users\james\desktop\projects\proj\light.cpp
+1365820206 source:c:\users\james\desktop\projects\proj\light.cpp
 	"light.hpp"
 
-1361588077 c:\users\james\desktop\projects\proj\light.hpp
+1365820184 c:\users\james\desktop\projects\proj\light.hpp
 	<cl/cl.h>
 	<vector>
 

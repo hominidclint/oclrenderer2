@@ -15,3 +15,8 @@ void light::set_shadow_bright(cl_uint isshadowcasting, cl_float bright)
 {
     shadow=isshadowcasting, brightness=bright;
 }
+
+light::light()
+{
+    shadow=0;
+}

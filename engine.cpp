@@ -473,14 +473,13 @@ void engine::draw_bulk_objs_n()
     {
         if(light::lightlist[i].shadow==1)
         {
-            std::cout << "hi";
 
-            for(cl_uint j=0; j<6; j++)
+            //for(cl_uint j=0; j<6; j++)
             {
 
 
-                clEnqueueWriteBuffer(cl::cqueue, t1, CL_TRUE, 0, sizeof(cl_float4), &r_struct[j], 0, NULL, NULL);
-                clEnqueueWriteBuffer(cl::cqueue, t2, CL_TRUE, 0, sizeof(cl_uint), &j, 0, NULL, NULL);
+                clEnqueueWriteBuffer(cl::cqueue, t1, CL_TRUE, 0, sizeof(cl_float4), &r_struct[0], 0, NULL, NULL);
+                clEnqueueWriteBuffer(cl::cqueue, t2, CL_TRUE, 0, sizeof(cl_uint), &n, 0, NULL, NULL);
                 clEnqueueWriteBuffer(cl::cqueue, t3, CL_TRUE, 0, sizeof(cl_uint), &n, 0, NULL, NULL);
 
 

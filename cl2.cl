@@ -272,21 +272,21 @@ struct triangle full_rotate(__global struct triangle *triangle, __global float4 
 
 
 
-struct triangle full_rotate_n_global(__global struct triangle *triangle, float4 *c_pos, float4 *c_rot, struct interp_container *container, float odepth[3], float fovc, int width, int height)
+struct triangle full_rotate_n_global(__global struct triangle *triangle, float4 c_pos, float4 c_rot, struct interp_container *container, float odepth[3], float fovc, int width, int height)
 {
 
     __global struct triangle *T=triangle;
 
     float4 rotpoints[3];
-    rotpoints[0]=rot(T->vertices[0].pos, *c_pos, *c_rot);
-    rotpoints[1]=rot(T->vertices[1].pos, *c_pos, *c_rot);
-    rotpoints[2]=rot(T->vertices[2].pos, *c_pos, *c_rot);
+    rotpoints[0]=rot(T->vertices[0].pos, c_pos, c_rot);
+    rotpoints[1]=rot(T->vertices[1].pos, c_pos, c_rot);
+    rotpoints[2]=rot(T->vertices[2].pos, c_pos, c_rot);
 
     float4 nought={0,0,0,0};
     float4 normalrot[3];
-    normalrot[0]=rot(T->vertices[0].normal, nought, *c_rot);
-    normalrot[1]=rot(T->vertices[1].normal, nought, *c_rot);
-    normalrot[2]=rot(T->vertices[2].normal, nought, *c_rot);
+    normalrot[0]=rot(T->vertices[0].normal, nought, c_rot);
+    normalrot[1]=rot(T->vertices[1].normal, nought, c_rot);
+    normalrot[2]=rot(T->vertices[2].normal, nought, c_rot);
 
     for(int j=0; j<3; j++)
     {
@@ -975,12 +975,21 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
 
 
+    //l_rot =
+
+    //float4 *l_arot
+
+    float4 l_arot = r_struct[bslice];
+
+
+
 
 
     float odepth[3];
 
 
-    struct triangle tri=full_rotate(&triangles[id], l_pos, l_rot, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
+    struct triangle tri=full_rotate_n_global(&triangles[id], *l_pos, l_arot, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
+    //struct triangle tri=full_rotate(&triangles[id], l_pos, l_rot, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
 
 
     if(icontainer.ybounds[1]-icontainer.ybounds[0] > MTRI_SIZE || icontainer.xbounds[1] - icontainer.xbounds[0] > MTRI_SIZE)
@@ -1291,7 +1300,10 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         }
         __global struct triangle *c_tri=&screen_triangles[*fi];
 
+
         uint pid=c_tri->vertices[0].pad.x;
+
+        __global struct triangle *g_tri=&triangles[pid];
 
 
         int o_id=c_tri->vertices[0].pad.y;
@@ -1339,6 +1351,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         float naturaldepths[3]={(c_tri->vertices[0].pos.z), (c_tri->vertices[1].pos.z), (c_tri->vertices[2].pos.z)};
 
         float nmydepth=interpolate(depths, &icontainer, x, y);
+        float namydepth=interpolate(naturaldepths, &icontainer, x, y);
 
 
 
@@ -1354,7 +1367,62 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
 
 
-        float4 local_position={x*nmydepth/FOV_CONST, y*nmydepth/FOV_CONST, nmydepth, 0};
+        float4 local_position={((x - SCREENWIDTH/2.0f)*nmydepth/FOV_CONST) , ((y - SCREENHEIGHT/2.0f)*nmydepth/FOV_CONST), nmydepth+c_pos->z, 0};
+        float4 local_position_lighting={((x)*nmydepth/FOV_CONST), ((y)*nmydepth/FOV_CONST), nmydepth, 0};
+
+        float e_depths[3] = {g_tri->vertices[0].pos.z, g_tri->vertices[1].pos.z, g_tri->vertices[2].pos.z};
+        float e_depth = interpolate(e_depths, &icontainer, x, y);
+
+        ///rotate each piece individually?
+
+
+
+        /*float4 global_position = rot(local_position, *c_pos, (float4){0.0, 0.0, -c_rot->z, 0.0});
+        global_position        = rot(global_position, *c_pos, (float4){0.0, -c_rot->y, 0.0, 0.0});
+        global_position        = rot(global_position, *c_pos, (float4){-c_rot->x, 0.0, 0.0, 0.0});*/
+
+        float4
+        global_position        = rot(local_position , *c_pos, (float4){-c_rot->x, 0.0, 0.0, 0.0});
+        global_position        = rot(global_position, *c_pos, (float4){0.0, -c_rot->y, 0.0, 0.0});
+        global_position        = rot(global_position, *c_pos, (float4){0.0, 0.0, -c_rot->z, 0.0});
+
+
+        //float4 global_position = rot(local_position, *c_pos, -(*c_rot));
+
+
+
+        //global_position.z = triangles[pid].vertices[0].pos.z;
+        global_position = triangles[pid].vertices[0].pos;
+        //global_position.z = namydepth + c_pos->z;
+
+
+
+        //struct interp_container ot = construct_interpolation(&triangles[pid]);
+
+        float cxmin = min3(c_tri->vertices[0].pos.x, c_tri->vertices[1].pos.x, c_tri->vertices[2].pos.x);
+        float cymin = min3(c_tri->vertices[0].pos.y, c_tri->vertices[1].pos.y, c_tri->vertices[2].pos.y);
+        float cxmax = max3(c_tri->vertices[0].pos.x, c_tri->vertices[1].pos.x, c_tri->vertices[2].pos.x);
+        float cymax = max3(c_tri->vertices[0].pos.y, c_tri->vertices[1].pos.y, c_tri->vertices[2].pos.y);
+
+        float gxmin = min3(g_tri->vertices[0].pos.x, g_tri->vertices[1].pos.x, g_tri->vertices[2].pos.x);
+        float gymin = min3(g_tri->vertices[0].pos.y, g_tri->vertices[1].pos.y, g_tri->vertices[2].pos.y);
+        float gxmax = max3(g_tri->vertices[0].pos.x, g_tri->vertices[1].pos.x, g_tri->vertices[2].pos.x);
+        float gymax = max3(g_tri->vertices[0].pos.y, g_tri->vertices[1].pos.y, g_tri->vertices[2].pos.y);
+
+        float xfraction = (x - cxmin)/(cxmax-cxmin);
+        float yfraction = (y - cymin)/(cymax-cymin);
+
+
+        //global_position.x = xfraction * (ot.xbounds[1] - ot.xbounds[0]) + ot.xbounds[0];
+        //global_position.y = yfraction * (ot.ybounds[1] - ot.ybounds[0]) + ot.ybounds[0];
+        global_position.x = xfraction * (gxmax-gxmin) + gxmin;
+        global_position.y = yfraction * (gymax-gymin) + gymin;
+
+
+
+
+        //double zfraction = 1;
+
 
         float4 lightaccum={0,0,0,0};
 
@@ -1364,10 +1432,9 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         for(int i=0; i<*(lnum); i++)
         {
-            //float4 lpos={0, 300, -300, 0};
             float4 lpos=lights[i].pos;
 
-            float4 l2c=lpos-local_position;
+            float4 l2c=lpos-local_position_lighting;
 
             float light=dot(fast_normalize(l2c), fast_normalize(normal));
 
@@ -1377,26 +1444,14 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
             if(light>0)
                 lightaccum+=light*lights[i].col*lights[i].brightness;
 
-            ///need to rotate each triangle about each shadowcasting light (only), and then return which cube face it is in, then rotate into that face and check for shadow
-
-            ///the day has finally come!
-
-            ///ret_cubeface
-
             if(lights[i].shadow==1)
             {
 
-
                 __global struct triangle *s_tri = &triangles[pid];
 
-                uint ldepth_map_id = ret_cubeface(s_tri->vertices[0].pos, lpos);
+                float4 usepos = s_tri->vertices[0].pos;
 
-                //ldepth_map_id=0;
-
-                if(ldepth_map_id==0)
-                {
-                    //return;
-                }
+                uint ldepth_map_id = ret_cubeface(usepos, lpos);
 
                 float4 r_struct[6];
                 r_struct[0]=(float4){0.0,            0.0,            0.0,0.0};
@@ -1406,36 +1461,55 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                 r_struct[4]=(float4){0.0,            3.0*M_PI/2.0,   0.0,0.0};
                 r_struct[5]=(float4){0.0,            M_PI/2.0,       0.0,0.0};
 
-                /*r_struct[0]=(float4){0.0,0.0,0.0,0.0};
-                r_struct[1]=(float4){0.0,0.0,0.0,0.0};
-                r_struct[2]=(float4){0.0,0.0,0.0,0.0};
-                r_struct[3]=(float4){0.0,0.0,0.0,0.0};
-                r_struct[4]=(float4){0.0,0.0,0.0,0.0};
-                r_struct[5]=(float4){0.0,0.0,0.0,0.0};*/
-
-                shnum=0;
-                //ldepth_map_id=2;
-
                 __global uint *ldepth_map = &light_depth_buffer[(ldepth_map_id + shnum*6)*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
                 float4 *rotation = &r_struct[ldepth_map_id];
                 float odepth[3];
 
                 struct interp_container icontainer;
 
-                ///rotation structure needs to be fixed
-                //
-                struct triangle lspace = full_rotate_n_global(s_tri, &lpos, rotation, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
+                struct triangle lspace = full_rotate_n_global(s_tri, lpos, *rotation, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
 
-                if(lspace.vertices[0].pos.y < 0 || lspace.vertices[0].pos.y >= LIGHTBUFFERDIM || lspace.vertices[0].pos.x < 0 || lspace.vertices[0].pos.x >= LIGHTBUFFERDIM)
+
+
+
+
+                ldepth_map_id = ret_cubeface(global_position, lpos);
+
+                if(ldepth_map_id==0)
                 {
                     //return;
+                }
 
+                rotation = &r_struct[ldepth_map_id];
+                float4 local_light_pos = rot(global_position, lpos, *rotation);
+
+
+                float4 postrotate_pos = lspace.vertices[0].pos;
+
+                postrotate_pos.x = local_light_pos.x * LFOV_CONST/local_light_pos.z;
+                postrotate_pos.y = local_light_pos.y * LFOV_CONST/local_light_pos.z;
+                postrotate_pos.z = local_light_pos.z;
+                postrotate_pos.z = dcalc(postrotate_pos.z);
+
+                postrotate_pos.x += LIGHTBUFFERDIM/2.0f;
+                postrotate_pos.y += LIGHTBUFFERDIM/2.0f;
+
+
+                ldepth_map = &light_depth_buffer[(ldepth_map_id + shnum*6)*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
+
+
+
+
+
+
+
+                if(postrotate_pos.y < 0 || postrotate_pos.y >= LIGHTBUFFERDIM || postrotate_pos.x < 0 || postrotate_pos.x >= LIGHTBUFFERDIM)
+                {
                     shnum++;
                     continue;
                 }
 
-                if(lspace.vertices[0].pos.z*mulint > ldepth_map[(int)lspace.vertices[0].pos.y*LIGHTBUFFERDIM + (int)lspace.vertices[0].pos.x] + 10000000)
-                //if(1)
+                if(postrotate_pos.z*mulint > ldepth_map[(int)postrotate_pos.y*LIGHTBUFFERDIM + (int)postrotate_pos.x] + 100000000)
                 {
                     //return;
                     //lightaccum.x=0;

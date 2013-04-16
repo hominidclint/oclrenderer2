@@ -13,7 +13,9 @@
 
 #define MTRI_SIZE 50
 
-__constant float depth_far=140000;
+//#define MAXDEPTH 100000
+
+__constant float depth_far=3500;
 __constant uint mulint=UINT_MAX;
 //__constant float depth_cutoff=0.12f;
 __constant int depth_icutoff=50;
@@ -128,8 +130,8 @@ float4 rot(float4 point, float4 c_pos, float4 c_rot)
 
 float dcalc(float value)
 {
-    value=(log(value + 1)/(log(depth_far + 1)));
-
+    //value=(log(value + 1)/(log(depth_far + 1)));
+    value = value / depth_far;
     return value;
 }
 
@@ -157,118 +159,6 @@ int out_of_bounds(float val, float min, float max)
     return true;
 }
 
-
-struct triangle full_rotate(__global struct triangle *triangle, __global float4 *c_pos, __global float4 *c_rot, struct interp_container *container, float odepth[3], float fovc, int width, int height)
-{
-
-    __global struct triangle *T=triangle;
-
-    float4 rotpoints[3];
-    rotpoints[0]=rot(T->vertices[0].pos, *c_pos, *c_rot);
-    rotpoints[1]=rot(T->vertices[1].pos, *c_pos, *c_rot);
-    rotpoints[2]=rot(T->vertices[2].pos, *c_pos, *c_rot);
-
-    float4 nought={0,0,0,0};
-    float4 normalrot[3];
-    normalrot[0]=rot(T->vertices[0].normal, nought, *c_rot);
-    normalrot[1]=rot(T->vertices[1].normal, nought, *c_rot);
-    normalrot[2]=rot(T->vertices[2].normal, nought, *c_rot);
-
-    for(int j=0; j<3; j++)
-    {
-        float rx;
-        rx=rotpoints[j].x * (fovc/rotpoints[j].z);
-        float ry;
-        ry=rotpoints[j].y * (fovc/rotpoints[j].z);
-
-        rx+=width/2.0f;
-        ry+=height/2.0f;
-
-
-        rotpoints[j].x=rx;
-        rotpoints[j].y=ry;
-        odepth[j]=rotpoints[j].z;
-        rotpoints[j].z=dcalc(rotpoints[j].z);
-    }
-
-
-    struct triangle ret;
-
-
-    for(int i=0; i<3; i++)
-    {
-        ret.vertices[i]=T->vertices[i];
-
-        ret.vertices[i].pos   =rotpoints[i];
-
-        //ret.vertices[i].normal=normalrot[i];
-    }
-
-
-    int y1 = round(rotpoints[0].y);
-    int y2 = round(rotpoints[1].y);
-    int y3 = round(rotpoints[2].y);
-
-
-    int x1 = round(rotpoints[0].x);
-    int x2 = round(rotpoints[1].x);
-    int x3 = round(rotpoints[2].x);
-
-    int miny=min3(y1, y2, y3)-1; ///oh, wow
-    int maxy=max3(y1, y2, y3);
-    int minx=min3(x1, x2, x3)-1;
-    int maxx=max3(x1, x2, x3);
-
-    if(out_of_bounds(miny, 0, height))
-    {
-        miny=max(miny, 0);
-        miny=min(miny, height);
-    }
-    if(out_of_bounds(maxy, 0, height))
-    {
-        maxy=max(maxy, 0);
-        maxy=min(maxy, height);
-    }
-    if(out_of_bounds(minx, 0, width))
-    {
-        minx=max(minx, 0);
-        minx=min(minx, width);
-    }
-    if(out_of_bounds(maxx, 0, width))
-    {
-        maxx=max(maxx, 0);
-        maxx=min(maxx, width);
-    }
-
-    int rconstant=(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
-
-    int area=form(x1, y1, x2, y2, x3, y3, 0, 0, 0);
-
-    struct interp_container *C=container;
-
-    C->x[0]=x1;
-    C->x[1]=x2;
-    C->x[2]=x3;
-
-    C->y[0]=y1;
-    C->y[1]=y2;
-    C->y[2]=y3;
-
-    C->xbounds[0]=minx;
-    C->xbounds[1]=maxx;
-
-    C->ybounds[0]=miny;
-    C->ybounds[1]=maxy;
-
-    C->rconstant=rconstant;
-
-    C->area=area;
-
-
-
-
-    return ret;
-}
 
 
 
@@ -383,6 +273,13 @@ struct triangle full_rotate_n_global(__global struct triangle *triangle, float4 
 
     return ret;
 }
+
+struct triangle full_rotate(__global struct triangle *triangle, __global float4 *c_pos, __global float4 *c_rot, struct interp_container *container, float odepth[3], float fovc, int width, int height)
+{
+    return full_rotate_n_global(triangle, *c_pos, *c_rot, container, odepth, fovc, width, height);
+}
+
+
 
 
 struct interp_container construct_interpolation(__global struct triangle *tri)
@@ -829,102 +726,40 @@ int ret_cubeface(float4 point, float4 light)
         //return 0;
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
 }
 
-int ret_cubeface_O(float4 point, float4 light)
+int backface_cull(struct triangle *tri, int fov)
 {
-    float4 r_pl;
-    r_pl=point-light;
 
-    float angle = atan2(r_pl.z, r_pl.x);
+    float4 p0={tri->vertices[0].pos.x, tri->vertices[0].pos.y, tri->vertices[0].pos.z, 0};
+    float4 p1={tri->vertices[1].pos.x, tri->vertices[1].pos.y, tri->vertices[1].pos.z, 0};
+    float4 p2={tri->vertices[2].pos.x, tri->vertices[2].pos.y, tri->vertices[2].pos.z, 0};
 
-    if(angle < 0)
+    float4 p1p0=p1-p0;
+    float4 p2p0=p2-p0;
+
+    float4 cr=cross(p1p0, p2p0);
+
+    int cond=0;
+
+    for(int i=0; i<3; i++)
     {
-        angle = M_PI - fabs(angle) + M_PI;
+        float4 blank={0,0,0,0};
+        float4 fnormal=cr;
+
+        float4 local_vertex_position={tri->vertices[i].pos.x*tri->vertices[i].pos.z/fov, tri->vertices[i].pos.y*tri->vertices[i].pos.z/fov, tri->vertices[i].pos.z, 0};
+
+        float4 p2c=local_vertex_position;
+        float dotp=dot(fast_normalize(fnormal), fast_normalize(p2c));
+
+        if(dotp < 0)
+        {
+            cond=1;
+        }
     }
 
-    angle = angle - M_PI/4.0f;
+    return cond;
 
-    if(angle < 0)
-    {
-        angle = angle + 2.0f*M_PI;
-    }
-
-    angle = angle/(2.0f*M_PI);
-    angle = angle*4;
-    //angle +=0.5;
-
-    int wp1 = floor(angle);
-
-
-    ///straight up or straight down
-
-    if(wp1==0)
-    {
-        return 1;
-    }
-    if(wp1==2)
-    {
-        return 3;
-    }
-
-
-    float zangle = atan2(r_pl.y, r_pl.x);
-
-    if(zangle < 0)
-    {
-        zangle = M_PI - fabs(zangle) + M_PI;
-    }
-
-    zangle = zangle - M_PI/4.0f;
-
-    if(zangle < 0)
-    {
-        zangle = zangle + 2.0f*M_PI;
-    }
-
-    zangle = zangle/(2.0f*M_PI);
-    zangle = zangle*4;
-
-    int wp2 = floor(zangle);
-
-    if(wp2==0)
-    {
-        return 0;
-    }
-
-    else if(wp2==1)
-    {
-        return 5;
-    }
-
-    else if(wp2==2)
-    {
-        return 2;
-    }
-
-    else if(wp2==3)
-    {
-        return 4;
-    }
-    else
-    {
-        return 0;
-    }
-
-    return 0;
 }
 
 __kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global float4* l_rot, __global uint* light_depth_buffer, __global uint* slice, __global uint* lnum, __global struct light *lights)
@@ -1019,7 +854,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
 
 
-    for(int i=0; i<3; i++)
+    /*for(int i=0; i<3; i++)
     {
         float4 blank={0,0,0,0};
         float4 fnormal=cr;
@@ -1039,6 +874,11 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
     }
 
     if(cont!=1)
+    {
+        return;
+    }*/
+
+    if(backface_cull(&tri, LFOV_CONST)!=1)
     {
         return;
     }
@@ -1124,7 +964,7 @@ __kernel void part1(__global struct triangle* triangles, __global struct triangl
     }
 
 
-    float4 p0={tri.vertices[0].pos.x, tri.vertices[0].pos.y, tri.vertices[0].pos.z, 0};
+    /*float4 p0={tri.vertices[0].pos.x, tri.vertices[0].pos.y, tri.vertices[0].pos.z, 0};
     float4 p1={tri.vertices[1].pos.x, tri.vertices[1].pos.y, tri.vertices[1].pos.z, 0};
     float4 p2={tri.vertices[2].pos.x, tri.vertices[2].pos.y, tri.vertices[2].pos.z, 0};
 
@@ -1152,6 +992,11 @@ __kernel void part1(__global struct triangle* triangles, __global struct triangl
     }
 
     if(cont!=1)
+    {
+        return;
+    }*/
+
+    if(backface_cull(&tri, LFOV_CONST)!=1)
     {
         return;
     }
@@ -1366,8 +1211,16 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         }*/
 
 
+        //float actual_depth = ((float)(*ft)/mulint)*depth_far;
 
-        float4 local_position={((x - SCREENWIDTH/2.0f)*nmydepth/FOV_CONST) , ((y - SCREENHEIGHT/2.0f)*nmydepth/FOV_CONST), nmydepth+c_pos->z, 0};
+        float actual_depth = namydepth;
+
+
+
+        float4 local_position={((x - SCREENWIDTH/2.0f)*actual_depth/FOV_CONST), ((y - SCREENHEIGHT/2.0f)*actual_depth/FOV_CONST), actual_depth, 0};
+        //float4 local_position={0, 0, actual_depth, 0};
+
+
         float4 local_position_lighting={((x)*nmydepth/FOV_CONST), ((y)*nmydepth/FOV_CONST), nmydepth, 0};
 
         float e_depths[3] = {g_tri->vertices[0].pos.z, g_tri->vertices[1].pos.z, g_tri->vertices[2].pos.z};
@@ -1376,15 +1229,20 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         ///rotate each piece individually?
 
 
+        float4 zero = {0,0,0,0};
 
-        /*float4 global_position = rot(local_position, *c_pos, (float4){0.0, 0.0, -c_rot->z, 0.0});
-        global_position        = rot(global_position, *c_pos, (float4){0.0, -c_rot->y, 0.0, 0.0});
-        global_position        = rot(global_position, *c_pos, (float4){-c_rot->x, 0.0, 0.0, 0.0});*/
 
-        float4
-        global_position        = rot(local_position , *c_pos, (float4){-c_rot->x, 0.0, 0.0, 0.0});
-        global_position        = rot(global_position, *c_pos, (float4){0.0, -c_rot->y, 0.0, 0.0});
-        global_position        = rot(global_position, *c_pos, (float4){0.0, 0.0, -c_rot->z, 0.0});
+        //local_position.z -= 2.0f;
+
+
+        float4 global_position = rot(local_position,  zero, (float4){0.0, 0.0, 0.0, 0.0});
+        global_position        = rot(global_position, zero, (float4){-c_rot->x, 0.0, 0.0, 0.0});
+        global_position        = rot(global_position, zero, (float4){0.0, -c_rot->y, 0.0, 0.0});
+        //float4 global_position = local_position;
+
+        global_position.x += c_pos->x;
+        global_position.y += c_pos->y;
+        global_position.z += c_pos->z;
 
 
         //float4 global_position = rot(local_position, *c_pos, -(*c_rot));
@@ -1392,12 +1250,15 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
 
         //global_position.z = triangles[pid].vertices[0].pos.z;
-        global_position = triangles[pid].vertices[0].pos;
+
+        //global_position = triangles[pid].vertices[0].pos;
+
         //global_position.z = namydepth + c_pos->z;
 
 
 
-        //struct interp_container ot = construct_interpolation(&triangles[pid]);
+
+        /*struct interp_container ot = construct_interpolation(&triangles[pid]);
 
         float cxmin = min3(c_tri->vertices[0].pos.x, c_tri->vertices[1].pos.x, c_tri->vertices[2].pos.x);
         float cymin = min3(c_tri->vertices[0].pos.y, c_tri->vertices[1].pos.y, c_tri->vertices[2].pos.y);
@@ -1412,12 +1273,16 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         float xfraction = (x - cxmin)/(cxmax-cxmin);
         float yfraction = (y - cymin)/(cymax-cymin);
 
-
-        //global_position.x = xfraction * (ot.xbounds[1] - ot.xbounds[0]) + ot.xbounds[0];
-        //global_position.y = yfraction * (ot.ybounds[1] - ot.ybounds[0]) + ot.ybounds[0];
         global_position.x = xfraction * (gxmax-gxmin) + gxmin;
         global_position.y = yfraction * (gymax-gymin) + gymin;
 
+        global_position.z = interpolate(e_depths, &ot, global_position.x, global_position.y);
+        global_position.z = e_depth;*/
+
+        //global_position.z = (float)(*ft)/mulint;
+        //global_position.z = global_position.z * depth_far + c_pos.z;
+
+        ///does not deal well with triangles being rotated at all
 
 
 
@@ -1429,6 +1294,10 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         //*(lnum)
 
         int shnum=0;
+
+        int occnum=0;
+
+        float ddepth=0;
 
         for(int i=0; i<*(lnum); i++)
         {
@@ -1475,12 +1344,13 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
                 ldepth_map_id = ret_cubeface(global_position, lpos);
 
-                if(ldepth_map_id==0)
+                if(ldepth_map_id==5)
                 {
                     //return;
                 }
 
                 rotation = &r_struct[ldepth_map_id];
+                //global_position.z -= 2.0f;
                 float4 local_light_pos = rot(global_position, lpos, *rotation);
 
 
@@ -1489,7 +1359,12 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                 postrotate_pos.x = local_light_pos.x * LFOV_CONST/local_light_pos.z;
                 postrotate_pos.y = local_light_pos.y * LFOV_CONST/local_light_pos.z;
                 postrotate_pos.z = local_light_pos.z;
+
+
                 postrotate_pos.z = dcalc(postrotate_pos.z);
+
+                float dpth=postrotate_pos.z;
+                uint idepth = dpth*mulint;
 
                 postrotate_pos.x += LIGHTBUFFERDIM/2.0f;
                 postrotate_pos.y += LIGHTBUFFERDIM/2.0f;
@@ -1506,18 +1381,30 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                 if(postrotate_pos.y < 0 || postrotate_pos.y >= LIGHTBUFFERDIM || postrotate_pos.x < 0 || postrotate_pos.x >= LIGHTBUFFERDIM)
                 {
                     shnum++;
+                    //return;
                     continue;
                 }
 
-                if(postrotate_pos.z*mulint > ldepth_map[(int)postrotate_pos.y*LIGHTBUFFERDIM + (int)postrotate_pos.x] + 100000000)
+                float ldp = ((float)ldepth_map[(int)round(postrotate_pos.y)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x)]/mulint);
+
+                //float len = 0;
+                float len = dcalc(10);
+
+                ///backfaces cannot cast shadows
+                ///use this to fix some issues?
+
+                ddepth = dpth;
+                //if(dpth > ldp - len && dpth < ldp + len)
+                if(dpth > ldp + len)
                 {
                     //return;
                     //lightaccum.x=0;
                     //lightaccum.y=0;
                     //lightaccum.z=0;
-                    lightaccum=lightaccum/10.0;
+                    //lightaccum=lightaccum/10.0;
                     //ldepth_map[(int)lspace.vertices[0].pos.y*LIGHTBUFFERDIM + (int)lspace.vertices[0].pos.x] = mulint;
                     //break;
+                    occnum++;
                 }
 
 
@@ -1556,7 +1443,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
 
 
-        write_imagef(screen, scoord, col*lightaccum);
+        write_imagef(screen, scoord, col*lightaccum*(1.0/(occnum+1)));
 
 
 
@@ -1565,6 +1452,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         uint cl = light_depth_buffer[LIGHTBUFFERDIM*LIGHTBUFFERDIM*5 + (y)*LIGHTBUFFERDIM + (x)];
         //uint cl = depth_buffer[y*SCREENWIDTH + x];
         float cl2 = (float)cl/mulint;
+        cl2=ddepth;
         float4 c = {cl2, cl2, cl2, cl2};
 
         //write_imagef(screen, scoord, c);

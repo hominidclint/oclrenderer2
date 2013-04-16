@@ -54,6 +54,7 @@ float ret_cubeface(cl_float4 point, cl_float4 light)
 
 int main(int argc, char *argv[])
 {
+    ///the next thing to do is to shrink too-large triangles
 
     sf::Clock clo;
     //objects_container *sponza=obj_load("Sponza/testspz.obj");
@@ -87,7 +88,7 @@ int main(int argc, char *argv[])
 
     light l;
     l.set_pos((cl_float4){175, 135, 815, 0});
-    l.set_pos((cl_float4){-800, 150, -600, 0});
+    l.set_pos((cl_float4){-800, 150, -800, 0});
     l.set_col((cl_float4){1.0, 1.0, 1.0, 0});
     l.set_shadow_bright(1, 1);
     int lid=window.add_light(l);

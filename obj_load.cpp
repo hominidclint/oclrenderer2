@@ -195,7 +195,7 @@ objects_container* obj_load(std::string filename)
 
         }
 
-        if(current=='v' && next=='n' && supernext == ' ')
+        else if(current=='v' && next=='n' && supernext == ' ')
         {
 
             for(int i=0; i<3; i++)
@@ -207,7 +207,7 @@ objects_container* obj_load(std::string filename)
 
         }
 
-        if(current=='v' && next=='t' && supernext == ' ')
+        else if(current=='v' && next=='t' && supernext == ' ')
         {
             std::string str;
 
@@ -235,7 +235,7 @@ objects_container* obj_load(std::string filename)
 
         }
 
-        if(strncmp("usemtl", &(*it), 6)==0)
+        else if(strncmp("usemtl", &(*it), 6)==0)
         {
             ///OH MY GOD A NEW MATERIAL HAS EMERGED
 
@@ -253,7 +253,7 @@ objects_container* obj_load(std::string filename)
 
         }
 
-        if(current == 'f' && next==' ' && prev == '\n')
+        else if(current == 'f' && next==' ' && prev == '\n')
         {
             int vnum[4], vtnum[4], nnum[4];
             //bool four=false;

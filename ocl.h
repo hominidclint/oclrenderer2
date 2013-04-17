@@ -124,6 +124,8 @@ cl_int oclGetPlatformID(cl_platform_id* clSelectedPlatformID)
             ciErrNum = clGetPlatformIDs(num_platforms, clPlatformIDs, NULL);
             printf("Available platforms:\n");
 
+            //printf("%d", num_platforms);
+
             for(i = 0; i < num_platforms; ++i)
             {
                 ciErrNum = clGetPlatformInfo(clPlatformIDs[i], CL_PLATFORM_NAME, 1024, &chBuffer, NULL);

@@ -173,13 +173,14 @@ void engine::realloc_light_gmem() ///for the moment, just reallocate everything
         }
     }
 
+
     shadow_light_num=ln;
 
     delete [] blank_light_buf;
     blank_light_buf = new cl_uint[l_size*l_size*6*ln];
-    memset(blank_light_buf, UINT_MAX, l_size*l_size*sizeof(cl_uint)*6);
+    memset(blank_light_buf, UINT_MAX, l_size*l_size*sizeof(cl_uint)*6*ln);
 
-    g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*ln*l_size*l_size*6, blank_light_buf, &cl::error);
+    g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*l_size*l_size*6*ln, blank_light_buf, &cl::error);
 
     //delete [] arr;
 
@@ -331,6 +332,7 @@ void engine::input()
 
     clEnqueueWriteBuffer(cl::cqueue, g_c_pos, true, 0, sizeof(cl_float4), &c_pos, 0, NULL, NULL);
     clEnqueueWriteBuffer(cl::cqueue, g_c_rot, true, 0, sizeof(cl_float4), &c_rot, 0, NULL, NULL);
+    //clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_light_mem, true, 0, sizeof(cl_float4), &c_pos, 0, NULL, NULL);
 
 
 
@@ -476,6 +478,8 @@ void engine::draw_bulk_objs_n()
 
             //for(cl_uint j=0; j<6; j++)
             {
+
+                //std::cout << "hi " << n << std::endl;
 
 
                 clEnqueueWriteBuffer(cl::cqueue, t1, CL_TRUE, 0, sizeof(cl_float4), &r_struct[0], 0, NULL, NULL);

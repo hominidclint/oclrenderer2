@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
     l.set_pos((cl_float4){-750, 0, -700, 0});
     l.brightness=0.4;
 
-    window.add_light(l);
+    //window.add_light(l);
 
 
     sf::Mouse mouse;

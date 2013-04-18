@@ -765,6 +765,186 @@ int backface_cull(struct triangle *tri, int fov)
 
 }
 
+///ONLY HARD SHADOWS ONLY ONLY___
+
+float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __global struct light* lights, int lnum, __global uint* light_depth_buffer, __global float4* c_pos, __global float4* c_rot, int i)
+{
+
+        float4 local_position={((spos.x - SCREENWIDTH/2.0f)*actual_depth/FOV_CONST), ((spos.y - SCREENHEIGHT/2.0f)*actual_depth/FOV_CONST), actual_depth, 0};
+
+
+
+        float4 zero = {0,0,0,0};
+
+
+        float4 global_position = rot(local_position,  zero, (float4){-c_rot->x, 0.0, 0.0, 0.0});
+        global_position        = rot(global_position, zero, (float4){0.0, -c_rot->y, 0.0, 0.0});
+
+        global_position.x += c_pos->x;
+        global_position.y += c_pos->y;
+        global_position.z += c_pos->z;
+
+
+
+        float4 lightaccum={0,0,0,0};
+
+
+        int shnum=0;
+
+        int occnum=0;
+
+        float ddepth=0;
+
+        float occamount=0;
+
+
+        //for(int i=0; i<(lnum); i++)
+        {
+            float4 lpos=lights[i].pos;
+
+
+            float thisocc=0;
+
+
+            int skip=0;
+
+            float specialocc=0;
+
+            int smoothskip=0;
+
+
+
+            if(lights[i].shadow==1)
+            {
+
+
+                float4 r_struct[6];
+                r_struct[0]=(float4){0.0,            0.0,            0.0,0.0};
+                r_struct[1]=(float4){M_PI/2.0,       0.0,            0.0,0.0};
+                r_struct[2]=(float4){0.0,            M_PI,           0.0,0.0};
+                r_struct[3]=(float4){3.0*M_PI/2.0,   0.0,            0.0,0.0};
+                r_struct[4]=(float4){0.0,            3.0*M_PI/2.0,   0.0,0.0};
+                r_struct[5]=(float4){0.0,            M_PI/2.0,       0.0,0.0};
+
+
+                float odepth[3];
+
+                struct interp_container icontainer;
+
+
+                uint ldepth_map_id = ret_cubeface(global_position, lpos);
+                float4 *rotation = &r_struct[ldepth_map_id];
+
+                float4 local_light_pos = rot(global_position, lpos, *rotation);
+
+
+                float4 postrotate_pos;
+                postrotate_pos.x = local_light_pos.x * LFOV_CONST/local_light_pos.z;
+                postrotate_pos.y = local_light_pos.y * LFOV_CONST/local_light_pos.z;
+                postrotate_pos.z = local_light_pos.z;
+
+
+                ///find the absolute distance as an angle between 0 and 1 that would be required to make it backface, that approximates occlusion
+                float err;
+                if((err=dot(fast_normalize(rot(normal, zero, *rotation)), fast_normalize(postrotate_pos))) >= 0)
+                {
+                    smoothskip=1; ///we only want hard shadows
+                }
+
+                err = fabs(err);
+
+
+                postrotate_pos.z = dcalc(postrotate_pos.z);
+
+                float dpth=postrotate_pos.z;
+                uint idepth = dpth*mulint;
+
+                postrotate_pos.x += LIGHTBUFFERDIM/2.0f;
+                postrotate_pos.y += LIGHTBUFFERDIM/2.0f;
+
+
+                __global uint* ldepth_map = &light_depth_buffer[(ldepth_map_id + shnum*6)*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
+
+
+                if(postrotate_pos.y < 1 || postrotate_pos.y >= LIGHTBUFFERDIM-1 || postrotate_pos.x < 1 || postrotate_pos.x >= LIGHTBUFFERDIM-1)
+                {
+                    shnum++;
+                    //continue;
+                    return 0;
+                }
+
+                float ldp = ((float)ldepth_map[(int)round(postrotate_pos.y)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x)]/mulint);
+
+                float near[5];
+
+                near[0] = (float)ldepth_map[(int)round(postrotate_pos.y + 1)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x)]/mulint;
+                near[1] = (float)ldepth_map[(int)round(postrotate_pos.y - 1)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x)]/mulint;
+                near[2] = (float)ldepth_map[(int)round(postrotate_pos.y)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x + 1)]/mulint;
+                near[3] = (float)ldepth_map[(int)round(postrotate_pos.y)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x - 1)]/mulint;
+
+
+
+
+                //near[4] = ldp;
+
+
+
+                float2 sw_struct[4] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+
+
+
+                int depthpass=0;
+                float len = dcalc(4);
+
+                int dfail = 0;
+
+                for(int i=0; i<4; i++)
+                {
+                    if(dpth > near[i] + len)
+                    {
+                        depthpass++;
+                    }
+                    else
+                    {
+                        dfail = i;
+                    }
+                }
+
+
+                if(depthpass>0 && dpth > ldp + len && !smoothskip)
+                {
+                    if(depthpass>3)
+                    {
+                        skip=1;
+                    }
+                    //else
+                    //{
+                    //    thisocc+=1;
+                    //}
+                }
+
+                thisocc = (thisocc + (1.0-err))/2.0f;
+
+                shnum++;
+
+            }
+
+            float ambient = 0.2;
+
+            /*if(light>0)
+                lightaccum+=(1.0-ambient)*light*lights[i].col*lights[i].brightness*(1.0-thisocc)*(1.0-skip) + ambient*1.0f;
+            else
+                lightaccum+=ambient*1.0f;*/
+
+            occamount+=skip;
+
+
+        }
+
+        return occamount;
+}
+
+
 __kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global float4* l_rot, __global uint* light_depth_buffer, __global uint* slice, __global uint* lnum, __global struct light *lights)
 {
 
@@ -789,6 +969,11 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
     {
         return;
     }
+
+    /*if(*lnum != 1)
+    {
+        return;
+    }*/
 
 
     __global struct triangle *c_tri = &triangles[id];
@@ -1154,6 +1339,14 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
 
 
+
+
+        /////////////////
+        ///generate smooth_occlusion
+        ///generate_lighting
+
+
+
         float4 local_position={((x - SCREENWIDTH/2.0f)*actual_depth/FOV_CONST), ((y - SCREENHEIGHT/2.0f)*actual_depth/FOV_CONST), actual_depth, 0};
         float4 local_position2={((x)*actual_depth/FOV_CONST), ((y)*actual_depth/FOV_CONST), actual_depth, 0};
         //float4 local_position={0, 0, actual_depth, 0};
@@ -1170,66 +1363,17 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         float4 zero = {0,0,0,0};
 
 
-        //local_position.z -= 2.0f;
-
-
-        float4 global_position = rot(local_position,  zero, (float4){0.0, 0.0, 0.0, 0.0});
-        global_position        = rot(global_position, zero, (float4){-c_rot->x, 0.0, 0.0, 0.0});
+        float4 global_position = rot(local_position,  zero, (float4){-c_rot->x, 0.0, 0.0, 0.0});
         global_position        = rot(global_position, zero, (float4){0.0, -c_rot->y, 0.0, 0.0});
-        //float4 global_position = local_position;
 
         global_position.x += c_pos->x;
         global_position.y += c_pos->y;
         global_position.z += c_pos->z;
 
 
-        //float4 global_position = rot(local_position, *c_pos, -(*c_rot));
-
-
-
-        //global_position.z = triangles[pid].vertices[0].pos.z;
-
-        //global_position = triangles[pid].vertices[0].pos;
-
-        //global_position.z = namydepth + c_pos->z;
-
-
-
-
-        /*struct interp_container ot = construct_interpolation(&triangles[pid]);
-
-        float cxmin = min3(c_tri->vertices[0].pos.x, c_tri->vertices[1].pos.x, c_tri->vertices[2].pos.x);
-        float cymin = min3(c_tri->vertices[0].pos.y, c_tri->vertices[1].pos.y, c_tri->vertices[2].pos.y);
-        float cxmax = max3(c_tri->vertices[0].pos.x, c_tri->vertices[1].pos.x, c_tri->vertices[2].pos.x);
-        float cymax = max3(c_tri->vertices[0].pos.y, c_tri->vertices[1].pos.y, c_tri->vertices[2].pos.y);
-
-        float gxmin = min3(g_tri->vertices[0].pos.x, g_tri->vertices[1].pos.x, g_tri->vertices[2].pos.x);
-        float gymin = min3(g_tri->vertices[0].pos.y, g_tri->vertices[1].pos.y, g_tri->vertices[2].pos.y);
-        float gxmax = max3(g_tri->vertices[0].pos.x, g_tri->vertices[1].pos.x, g_tri->vertices[2].pos.x);
-        float gymax = max3(g_tri->vertices[0].pos.y, g_tri->vertices[1].pos.y, g_tri->vertices[2].pos.y);
-
-        float xfraction = (x - cxmin)/(cxmax-cxmin);
-        float yfraction = (y - cymin)/(cymax-cymin);
-
-        global_position.x = xfraction * (gxmax-gxmin) + gxmin;
-        global_position.y = yfraction * (gymax-gymin) + gymin;
-
-        global_position.z = interpolate(e_depths, &ot, global_position.x, global_position.y);
-        global_position.z = e_depth;*/
-
-        //global_position.z = (float)(*ft)/mulint;
-        //global_position.z = global_position.z * depth_far + c_pos.z;
-
-        ///does not deal well with triangles being rotated at all
-
-
-
-        //double zfraction = 1;
-
 
         float4 lightaccum={0,0,0,0};
 
-        //*(lnum)
 
         int shnum=0;
 
@@ -1254,10 +1398,14 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
             int skip=0;
 
+            float specialocc=0;
+
 
 
             if(lights[i].shadow==1)
             {
+
+                float occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, namydepth, lights, *lnum, light_depth_buffer, c_pos, c_rot, 0);
 
                 __global struct triangle *s_tri = &triangles[pid];
 
@@ -1304,10 +1452,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                 float err;
                 if((err=dot(fast_normalize(rot(normal, zero, *rotation)), fast_normalize(postrotate_pos))) >= 0) ///still does not quite bloody work
                 {
-                    //occamount+=1;
-                    shnum++;
                     skip=1;
-                    //continue;
                 }
 
                 err = fabs(err);
@@ -1328,7 +1473,6 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                 if(postrotate_pos.y < 1 || postrotate_pos.y >= LIGHTBUFFERDIM-1 || postrotate_pos.x < 1 || postrotate_pos.x >= LIGHTBUFFERDIM-1)
                 {
                     shnum++;
-                    //return;
                     continue;
                 }
 
@@ -1340,54 +1484,140 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                 near[1] = (float)ldepth_map[(int)round(postrotate_pos.y - 1)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x)]/mulint;
                 near[2] = (float)ldepth_map[(int)round(postrotate_pos.y)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x + 1)]/mulint;
                 near[3] = (float)ldepth_map[(int)round(postrotate_pos.y)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x - 1)]/mulint;
-                near[4] = ldp;
 
-                float fth[4];
 
-                fth[0] = (float)ldepth_map[(int)round(postrotate_pos.y + 2)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x + 0)]/mulint;
-                fth[1] = (float)ldepth_map[(int)round(postrotate_pos.y - 2)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x - 0)]/mulint;
-                fth[2] = (float)ldepth_map[(int)round(postrotate_pos.y - 0)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x + 2)]/mulint;
-                fth[3] = (float)ldepth_map[(int)round(postrotate_pos.y + 0)*LIGHTBUFFERDIM + (int)round(postrotate_pos.x - 2)]/mulint;
+
+
+                //near[4] = ldp;
+
+
+
+                float2 sw_struct[4] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+
 
 
                 int depthpass=0;
                 float len = dcalc(4);
 
-                for(int i=0; i<5; i++)
+                int dfail = 0;
+
+                for(int i=0; i<4; i++)
                 {
                     if(dpth > near[i] + len)
                     {
                         depthpass++;
                     }
-                }
-
-                int dpass2=0;
-
-                for(int i=0; i<4; i++)
-                {
-                    if(dpth > fth[i] + len)
+                    else
                     {
-                        dpass2++;
+                        dfail = i;
                     }
-
                 }
 
 
-                ///backfaces cannot cast shadows
-                ///use this to fix some issues?
-
-                ddepth = dpth;
-
-                if(depthpass>3 && dpth > ldp + len && !skip)
+                if(depthpass>0 && dpth > ldp + len && !skip)
                 {
-                    if(depthpass>4)
+                    if(depthpass>3)
                     {
-                        //occamount+=1 - (1.0-err); ///this is not a good solution
                         skip=1;
-                        //continue;
                     }
                     else
+                    {
+                        ///dfail gives the direction in which it fails.
+                        ///Could rotate light corners back into screenspace and find shadow sizes from there
+
+                        /*float2 dir_fail = sw_struct[dfail];
+
+                        float4 p_fail = {postrotate_pos.x + 0.5 + dir_fail.x/2.0f, postrotate_pos.y + 0.5 + dir_fail.y/2.0f, postrotate_pos.z, 0};
+
+                        float len=5;
+
+                        float4 toberot[4];
+
+                        float prx = postrotate_pos.x;
+                        float pry = postrotate_pos.y;
+
+
+                        float ox = prx - floor(p_fail.x);
+                        float oy = pry - floor(p_fail.y);
+
+                        ox*=2;
+                        oy*=2;
+
+                        if(fabs(ox) > 1 || fabs(oy) > 1)
+                        {
+                            ox=0;
+                            oy=0;
+                        }
+
+                        ox*=fabs(dir_fail.x);
+                        oy*=fabs(dir_fail.y);
+
+                        float oc = sqrt(ox*ox + oy*oy);
+                        if(oc < 0)
+                        {
+                            oc=0;
+                        }
+                        if(oc > 1)
+                        {
+                            oc=1;
+                        }
+
+                        thisocc += oc;*/
+                        //skip=1;
+
+
+
+
+                        /*float mnmx=10000, mnmy=10000, maxx=-10000, maxy=-10000;
+
+                        for(int p=0; p<4; p++)
+                        {
+                            toberot[p] = (float4){(prx+sw_struct[p].x - LIGHTBUFFERDIM/2.0f), (pry+sw_struct[p].y - LIGHTBUFFERDIM/2.0f), postrotate_pos.z, 0};
+                            toberot[p].x = toberot[p].x * toberot[p].z/LFOV_CONST;
+                            toberot[p].y = toberot[p].y * toberot[p].z/LFOV_CONST;
+                            toberot[p] = rot(toberot[p], zero, (float4){-rotation->x, 0, 0, 0});
+                            toberot[p] = rot(toberot[p], zero, (float4){0, -rotation->y, 0, 0});
+
+                            toberot[p] = rot(toberot[p], zero, *c_rot);
+
+                            toberot[p].x = toberot[p].x * FOV_CONST/toberot[p].z;
+                            toberot[p].y = toberot[p].y * FOV_CONST/toberot[p].z;
+
+                            if(toberot[p].x < mnmx)
+                            {
+                                mnmx = toberot[p].x;
+                            }
+                            if(toberot[p].x > maxx)
+                            {
+                                maxx = toberot[p].x;
+                            }
+                            if(toberot[p].y < mnmy)
+                            {
+                                mnmy = toberot[p].y;
+                            }
+                            if(toberot[p].y > maxy)
+                            {
+                                maxy = toberot[p].y;
+                            }
+                        }
+
+
+                        float tx = maxx - mnmx;
+                        float ty = maxy - mnmy;
+
+                        float ox = (x - mnmx) / tx;
+                        float oy = (y - mnmy) / ty;
+
+                        float oc = sqrt(ox*ox + oy*oy);
+
+                        //if(oc < 1)
+                        thisocc+=oc;*/
+
+
+
+
                         thisocc+=1;
+                    }
                 }
 
                 //thisocc+=1.0-err;
@@ -1399,17 +1629,16 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                     thisocc+=1.0-err;
 
 
-                float ambient = 0.2;
-
-                if(light>0)
-                    lightaccum+=(1.0-ambient)*light*lights[i].col*lights[i].brightness*(1.0-thisocc)*(1.0-skip) + ambient*1.0f;
-                else
-                    lightaccum+=ambient*1.0f;
-
-
                 shnum++;
 
             }
+
+            float ambient = 0.2;
+
+            if(light>0)
+                lightaccum+=(1.0-ambient)*light*lights[i].col*lights[i].brightness*(1.0-thisocc)*(1.0-skip) + ambient*1.0f;
+            else
+                lightaccum+=ambient*1.0f;
 
 
         }
@@ -1430,13 +1659,13 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
 
 
-        write_imagef(screen, scoord, col*lightaccum);
+        write_imagef(screen, scoord, col*(1.0-occ));
 
 
 
 
 
-        uint cl = light_depth_buffer[LIGHTBUFFERDIM*LIGHTBUFFERDIM*5 + (y)*LIGHTBUFFERDIM + (x)];
+        uint cl = light_depth_buffer[LIGHTBUFFERDIM*LIGHTBUFFERDIM*(4 + 6) + (y)*LIGHTBUFFERDIM + (x)];
         //uint cl = depth_buffer[y*SCREENWIDTH + x];
         float cl2 = (float)cl/mulint;
         cl2=ddepth;

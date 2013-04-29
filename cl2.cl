@@ -803,24 +803,12 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
         global_position        = rot(global_position, zero, (float4){0.0, -c_rot->y, 0.0, 0.0});
 
 
-        float4 global_position_off = rot(local_position_off,  zero, (float4){-c_rot->x, 0.0, 0.0, 0.0});
-        global_position_off        = rot(global_position_off, zero, (float4){0.0, -c_rot->y, 0.0, 0.0});
-
         global_position.x += c_pos->x;
         global_position.y += c_pos->y;
         global_position.z += c_pos->z;
 
 
-        global_position_off.x += c_pos->x;
-        global_position_off.y += c_pos->y;
-        global_position_off.z += c_pos->z;
-
-
-
         float4 lightaccum={0,0,0,0};
-
-
-        //int shnum=0;
 
         int occnum=0;
 
@@ -865,18 +853,11 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
             float4 *rotation = &r_struct[ldepth_map_id];
 
             float4 local_pos = rot(global_position, lpos, *rotation);
-            float4 local_pos_off = rot(global_position_off, lpos, *rotation);
-
 
             float4 postrotate_pos;
             postrotate_pos.x = local_pos.x * LFOV_CONST/local_pos.z;
             postrotate_pos.y = local_pos.y * LFOV_CONST/local_pos.z;
             postrotate_pos.z = local_pos.z;
-
-            float4 postrotate_pos_off;
-            postrotate_pos_off.x = (local_pos_off.x+1) * LFOV_CONST/local_pos_off.z;
-            postrotate_pos_off.y = (local_pos_off.y+1) * LFOV_CONST/local_pos_off.z;
-            postrotate_pos_off.z = local_pos_off.z;
 
 
             ///find the absolute distance as an angle between 0 and 1 that would be required to make it backface, that approximates occlusion
@@ -896,9 +877,6 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
             postrotate_pos.x += LIGHTBUFFERDIM/2.0f;
             postrotate_pos.y += LIGHTBUFFERDIM/2.0f;
-
-            postrotate_pos_off.x += LIGHTBUFFERDIM/2.0f;
-            postrotate_pos_off.y += LIGHTBUFFERDIM/2.0f;
 
 
             __global uint* ldepth_map = &light_depth_buffer[(ldepth_map_id + shnum*6)*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
@@ -936,36 +914,7 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
 
 
-
-
-            float2 dim = (float2){postrotate_pos_off.x - postrotate_pos.x, postrotate_pos_off.y - postrotate_pos.y};
-
-            float2 step = dim / 2.0f;
-
-            float accum=0;
-
-            int b=0;
-
-            /*for(float u=postrotate_pos.x - dim.x*2; u<=postrotate_pos.x + dim.x*2; u+=step.x)
-            {
-                for(float v=postrotate_pos.y - dim.y*2; v<=postrotate_pos.y + dim.y*2; v+=step.y)
-                {
-                    float td=(float)ldepth_map[(int)round(v)*LIGHTBUFFERDIM + (int)round(u)]/mulint;
-                    if(dpth > td + dcalc(4))
-                    {
-                        accum+=1;
-                    }
-                    b++;
-                }
-            }*/
-
-
-            //if(!smoothskip)
-            //    skip = accum / (b/1.5);
             ///change of plan, shadows want to be static and fast at runtime, therefore going to sink the generate time into memory not runtime filtering
-
-
-
 
 
             int depthpass=0;
@@ -993,48 +942,14 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
             }
 
 
-
-
-            //
-
-            /*if(cdepthpass == 3 && depthpass == 3 && dpth > ldp + len)
-            //if(dpth > ldp + len)
-            {
-
-                float fx = postrotate_pos.x - floor(postrotate_pos.x);
-                float fy = postrotate_pos.y - floor(postrotate_pos.y);
-
-
-                //float dx = fx*pass_arr[2] + (1.0-fx)*pass_arr[3];
-                //float dy = fy*pass_arr[0] + (1.0-fy)*pass_arr[1];
-
-                float dx1 = fx * cpass_arr[3] + (1.0-fx) * cpass_arr[2];
-                float dx2 = fx * cpass_arr[0] + (1.0-fx) * cpass_arr[1];
-                float fin = fy * dx2 + (1.0-fy) * dx1;
-
-
-                //occamount+=(dx*dy)*2;
-                //occamount+=fin;
-
-
-                //occamount-=0.5;
-            }*/
-            //else if(depthpass>3 && dpth > ldp + len)
-            //{
-            //    skip=1;
-            //}
-
             if((depthpass > 3) && dpth > ldp + len)
             {
-                //float d = return_bilinear_shadf((float2){postrotate_pos.x, postrotate_pos.y}, pass_arr);
 
                 float fx = postrotate_pos.x - floor(postrotate_pos.x);
                 float fy = postrotate_pos.y - floor(postrotate_pos.y);
 
                 float dx = fx*pass_arr[2] + (1.0-fx)*pass_arr[3];
                 float dy = fy*pass_arr[0] + (1.0-fy)*pass_arr[1];
-
-
 
 
                 float fxe = postrotate_pos.x - floor(postrotate_pos.x);
@@ -1051,14 +966,6 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
                 occamount+=fin;
 
-                //occamount+=(dx*dy);
-
-                //float fx = postrotate_pos.x - 0.5 - floor(postrotate_pos.x - 0.5);
-
-                //occamount += fx;
-
-
-                //occamount+=0.5f;
 
             }
             else if (depthpass > 0 && dpth > ldp + len)
@@ -1072,20 +979,9 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
                 occamount += dx*dy;
 
             }
-
-            //else if(cdepthpass == 2 && dpth > ldp + len && depthpass==1 || dpth > ldp + len && cdepthpass >=1 && depthpass <= 3)
-
-
-
-
-            //thisocc = (thisocc + (1.0-err))/2.0f;
-
         }
 
         occamount+=skip;
-
-
-
 
         return occamount;
 }

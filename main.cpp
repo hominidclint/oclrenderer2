@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     int lid=window.add_light(l);
 
     l.set_pos((cl_float4){0, 300, 800, 0});
-    l.shadow=0;
+    //l.shadow=0;
     window.add_light(l);
 
     l.set_pos((cl_float4){-750, 0, -700, 0});

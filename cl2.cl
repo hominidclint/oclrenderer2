@@ -506,7 +506,9 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
     rotpoints[1]=c_tri->vertices[1].pos;
     rotpoints[2]=c_tri->vertices[2].pos;
 
-    float adepth=(rotpoints[0].z + rotpoints[1].z + rotpoints[2].z)/3.0f;
+    //float adepth=(rotpoints[0].z + rotpoints[1].z + rotpoints[2].z)/3.0f;
+
+    float adepth = idcalc(depth);
 
     ///maths works out to be z = 700*n where n is 1/2, 1/4 of the size etc
     ///so, if z of pixel is between 0-700, use least, then first, then second, etc
@@ -585,19 +587,21 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
         wc=i;
         if(i==4)
         {
-            mdist=(pow(2.0f, (float)i)-1)*mipdistance;
-            fdist=(pow(2.0f, (float)i)-1)*mipdistance;
+            mdist=(pow(2.0f, (float)i) - 1)*mipdistance;
+            fdist=(pow(2.0f, (float)i) - 1)*mipdistance;
             break;
         }
 
-        mdist=(pow(2.0f, (float)i)-1)*mipdistance;
-        fdist=(pow(2.0f, (float)i+1.0f)-1)*mipdistance;
+        mdist=(pow(2.0f, (float)i) - 1)*mipdistance;
+        fdist=(pow(2.0f, (float)i+1.0f) - 1)*mipdistance;
 
         if(corrected_depth > mdist && corrected_depth < fdist)
         {
             break;
         }
     }
+
+    //every FOV_CONST, the texture size halves
 
     wc1=wc+1;
     part=(fdist-corrected_depth)/(fdist-mdist);
@@ -613,6 +617,7 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
     //x, y, tid, num, size, array;
 
     float4 coord={(float)vt.x, (float)vt.y, 0, 0};
+
 
     float4 col1=return_bilinear_col(coord, tids[wc], nums, sizes, array);
 
@@ -803,31 +808,6 @@ float get_horizon_direction_depth(int2 start, float2 dir, uint nsamples, __globa
 
     float2 ndir = (normalize(dir)*radius/nsamples);
 
-
-    /*for(float y=start.y; p < nsamples; y+=ndir.y, p++)
-    {
-        e=0;
-        for(float x=start.x; e < nsamples; x+=ndir.x, e++)
-        {
-            if (x < 0 || x >= SCREENWIDTH || y < 0 || y >= SCREENHEIGHT)
-            {
-                return h;
-            }
-            float dval = ((float)depth_buffer[(int)round(y)*SCREENWIDTH + (int)round(x)]/mulint);
-            dval = idcalc(dval);
-            //dval = 0;
-
-            ///if the pixel is closer to the camera than the current closest, get that shit. So, not really HBAO but nevermind, close enough
-            if(dval < h)
-            {
-                //h = (dval + h)/2.0; ////IIVIVIIVIV
-                h = dval;
-            }
-
-        }
-
-    }*/
-
     float y = start.y, x = start.x;
     p=0;
 
@@ -848,31 +828,6 @@ float get_horizon_direction_depth(int2 start, float2 dir, uint nsamples, __globa
     }
 
 
-
-    /*for(float i=start.x-1; i<=start.x+1; i+=1)
-    {
-        for(float j=start.y-1; j<=start.y+1; j+=1)
-        {
-            if (i < 0 || i >= SCREENWIDTH || j < 0 || j >= SCREENHEIGHT)
-            {
-                return h;
-            }
-
-            float dval = (float)depth_buffer[(int)round(j)*SCREENWIDTH + (int)round(i)]/mulint;
-            if(dval < h)
-            {
-                //h = (dval + h)/2.0;
-                h = dval;
-            }
-
-
-        }
-
-    }*/
-
-
-    //h = (float)depth_buffer[start.y*SCREENWIDTH + start.x + 2]/mulint;
-
     return h;
 
 }
@@ -886,8 +841,9 @@ float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *dep
     ///depth is linear between 0 and 1
     //now, instead of taking the horizon because i'm not entirely sure how to calc that, going to use highest point in filtering
 
-    float radius = 1.0; //AO radius
-    radius = radius / dcalc(depth); ///err?
+    float radius = 8.0; //AO radius
+    //radius = radius / dcalc(depth); ///err?
+
     //radius = radius / (idcalc(depth));
 
     if(radius < 1)
@@ -897,21 +853,14 @@ float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *dep
 
     ///using 4 uniform sample directions like a heretic, with 4 samples from each direction
 
-    uint ndirsamples = 6;
+    uint ndirsamples = 8;
 
     int ndirs = 4;
 
     float2 directions[8] = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {0, 1}, {0, -1}, {-1, 0}, {1, 0}};
 
-    //float distances[4] = {0,0,0,0};
-
     float distance = radius;
 
-    /*for(int i=0; i<4; i++)
-    {
-        distances[i] = 1.0f * radius;
-        //distances[i] = radius;
-    }*/
 
     ///get face normal
 
@@ -945,23 +894,14 @@ float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *dep
 
         float angle = atan2(fabs(h - cdepth), distance);
 
-        //float angle = atan2(dcalc(h - cdepth), 0.1f);
-
         if(angle > 0.05)
         {
             accum += max(sin(angle), 0.0);// - fabs(sin(tangle));
-            //accum+= dcalc(h - cdepth) * 400;
         }
 
-
-        //accum+=min(-((fabs(cdepth)/depth_far) - (fabs(h)/depth_far)), 0.0f);
-        //accum += max(fabs(cdepth) - fabs(h), 0.0);
-        //accum+=fabs(sin(angle));
     }
 
     accum/=ndirs;
-
-    //accum*=2;
 
     if(accum > 1)
     {
@@ -972,10 +912,6 @@ float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *dep
     {
         accum = 0;
     }
-
-    //accum = accum;
-
-    //accum = sin(tangle);
 
     return accum;
 
@@ -1686,7 +1622,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         int2 scoord={x, y};
 
-        float4 col=texture_filter(g_tri, scoord, vt, depth, *c_pos, *c_rot, gobj[o_id].tid, gobj[o_id].mip_level_ids, nums, sizes, array);
+        float4 col=texture_filter(c_tri, scoord, vt, (float)depth/mulint, *c_pos, *c_rot, gobj[o_id].tid, gobj[o_id].mip_level_ids, nums, sizes, array);
 
         lightaccum.x=clamp(lightaccum.x, 0.0f, 1.0f/col.x);
         lightaccum.y=clamp(lightaccum.y, 0.0f, 1.0f/col.y);

@@ -138,6 +138,11 @@ float dcalc(float value)
     return value;
 }
 
+float idcalc(float value)
+{
+    return value * depth_far;
+}
+
 float interpolate_i(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3, int rconstant)
 {
     float A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
@@ -786,6 +791,196 @@ int backface_cull(struct triangle *tri, int fov)
 
 }
 
+float get_horizon_direction_depth(int2 start, float2 dir, uint nsamples, __global uint * depth_buffer, float cdepth, float radius)
+{
+    float h=cdepth;
+
+    uint p = 0;
+    uint e = 0;
+
+
+    //float2 rdir = {1, 1};
+
+    float2 ndir = (normalize(dir)*radius/nsamples);
+
+
+    /*for(float y=start.y; p < nsamples; y+=ndir.y, p++)
+    {
+        e=0;
+        for(float x=start.x; e < nsamples; x+=ndir.x, e++)
+        {
+            if (x < 0 || x >= SCREENWIDTH || y < 0 || y >= SCREENHEIGHT)
+            {
+                return h;
+            }
+            float dval = ((float)depth_buffer[(int)round(y)*SCREENWIDTH + (int)round(x)]/mulint);
+            dval = idcalc(dval);
+            //dval = 0;
+
+            ///if the pixel is closer to the camera than the current closest, get that shit. So, not really HBAO but nevermind, close enough
+            if(dval < h)
+            {
+                //h = (dval + h)/2.0; ////IIVIVIIVIV
+                h = dval;
+            }
+
+        }
+
+    }*/
+
+    float y = start.y, x = start.x;
+    p=0;
+
+    for(; p < nsamples; y+=ndir.y, x += ndir.x, p++)
+    {
+        if ((int)round(x) < 0 || (int)round(x) >= SCREENWIDTH || (int)round(y) < 0 || (int)round(y) >= SCREENHEIGHT)
+        {
+            return h;
+        }
+
+        float dval = (float)depth_buffer[((int)round(y))*SCREENWIDTH + (int)round(x)]/mulint;
+        dval = idcalc(dval);
+
+        if(dval < h  && fabs(dval - cdepth) < radius)
+        {
+            h = dval;
+        }
+    }
+
+
+
+    /*for(float i=start.x-1; i<=start.x+1; i+=1)
+    {
+        for(float j=start.y-1; j<=start.y+1; j+=1)
+        {
+            if (i < 0 || i >= SCREENWIDTH || j < 0 || j >= SCREENHEIGHT)
+            {
+                return h;
+            }
+
+            float dval = (float)depth_buffer[(int)round(j)*SCREENWIDTH + (int)round(i)]/mulint;
+            if(dval < h)
+            {
+                //h = (dval + h)/2.0;
+                h = dval;
+            }
+
+
+        }
+
+    }*/
+
+
+    //h = (float)depth_buffer[start.y*SCREENWIDTH + start.x + 2]/mulint;
+
+    return h;
+
+}
+
+float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *depth_buffer)
+{
+
+    float depth = (float)depth_buffer[spos.y * SCREENWIDTH + spos.x]/mulint;
+
+    depth = idcalc(depth);
+    ///depth is linear between 0 and 1
+    //now, instead of taking the horizon because i'm not entirely sure how to calc that, going to use highest point in filtering
+
+    float radius = 1.0; //AO radius
+    radius = radius / dcalc(depth); ///err?
+    //radius = radius / (idcalc(depth));
+
+    if(radius < 1)
+    {
+        radius = 1;
+    }
+
+    ///using 4 uniform sample directions like a heretic, with 4 samples from each direction
+
+    uint ndirsamples = 6;
+
+    int ndirs = 4;
+
+    float2 directions[8] = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {0, 1}, {0, -1}, {-1, 0}, {1, 0}};
+
+    //float distances[4] = {0,0,0,0};
+
+    float distance = radius;
+
+    /*for(int i=0; i<4; i++)
+    {
+        distances[i] = 1.0f * radius;
+        //distances[i] = radius;
+    }*/
+
+    ///get face normal
+
+    float4 p0={tri->vertices[0].pos.x, tri->vertices[0].pos.y, tri->vertices[0].pos.z, 0};
+    float4 p1={tri->vertices[1].pos.x, tri->vertices[1].pos.y, tri->vertices[1].pos.z, 0};
+    float4 p2={tri->vertices[2].pos.x, tri->vertices[2].pos.y, tri->vertices[2].pos.z, 0};
+
+    float4 p1p0=p1-p0;
+    float4 p2p0=p2-p0;
+
+    float4 cr=cross(p1p0, p2p0);
+
+    ///my sources tell me this is the right thing. Ie stolen from backface culling. Right. the tangent to that is -1.0/it
+
+    float4 tang = -1.0/cr;
+
+    float tangle = atan2(tang.z, length((float2){tang.x, tang.y}));
+
+
+
+
+    float accum=0;
+    int t=0;
+    for(int i=0; i<ndirs; i++)
+    {
+        float cdepth = (float)depth_buffer[spos.y*SCREENWIDTH + spos.x]/mulint;
+        cdepth = idcalc(cdepth);
+
+        float h = get_horizon_direction_depth(spos, directions[i], ndirsamples, depth_buffer, cdepth, radius);
+
+
+        float angle = atan2(fabs(h - cdepth), distance);
+
+        //float angle = atan2(dcalc(h - cdepth), 0.1f);
+
+        if(angle > 0.05)
+        {
+            accum += max(sin(angle), 0.0);// - fabs(sin(tangle));
+            //accum+= dcalc(h - cdepth) * 400;
+        }
+
+
+        //accum+=min(-((fabs(cdepth)/depth_far) - (fabs(h)/depth_far)), 0.0f);
+        //accum += max(fabs(cdepth) - fabs(h), 0.0);
+        //accum+=fabs(sin(angle));
+    }
+
+    accum/=ndirs;
+
+    //accum*=2;
+
+    if(accum > 1)
+    {
+        accum = 1;
+    }
+
+    if(accum < 0)
+    {
+        accum = 0;
+    }
+
+    //accum = accum;
+
+    //accum = sin(tangle);
+
+    return accum;
+
+}
+
 ///ONLY HARD SHADOWS ONLY ONLY___
 
 float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __global struct light* lights, __global uint* light_depth_buffer, __global float4* c_pos, __global float4* c_rot, int i, int shnum)
@@ -799,13 +994,7 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
         float4 zero = {0,0,0,0};
 
 
-        float4 global_position = rot(local_position,  zero, (float4){-c_rot->x, 0.0, 0.0, 0.0});
-        global_position        = rot(global_position, zero, (float4){0.0, -c_rot->y, 0.0, 0.0});
 
-
-        global_position.x += c_pos->x;
-        global_position.y += c_pos->y;
-        global_position.z += c_pos->z;
 
 
         float4 lightaccum={0,0,0,0};
@@ -822,11 +1011,6 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
         float thisocc=0;
 
-
-        int skip=0;
-
-        float specialocc=0;
-
         int smoothskip=0;
 
 
@@ -842,6 +1026,14 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
             r_struct[3]=(float4){3.0*M_PI/2.0,   0.0,            0.0,0.0};
             r_struct[4]=(float4){0.0,            3.0*M_PI/2.0,   0.0,0.0};
             r_struct[5]=(float4){0.0,            M_PI/2.0,       0.0,0.0};
+
+            float4 global_position = rot(local_position,  zero, (float4){-c_rot->x, 0.0, 0.0, 0.0});
+            global_position        = rot(global_position, zero, (float4){0.0, -c_rot->y, 0.0, 0.0});
+
+
+            global_position.x += c_pos->x;
+            global_position.y += c_pos->y;
+            global_position.z += c_pos->z;
 
 
             float odepth[3];
@@ -900,7 +1092,6 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
             near[3] = (float)ldepth_map[(int)floor(postrotate_pos.y + sws[3].y)*LIGHTBUFFERDIM + (int)floor(postrotate_pos.x + sws[3].x)]/mulint;
 
             int2 corners[4] = {{1, 1}, {-1, 1}, {-1, -1}, {1, -1}};
-            //int2 corners[4] = {{0, 2}, {0, -2}, {2, 0}, {-2, 0}};
 
             float cnear[4];
 
@@ -948,25 +1139,12 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
                 float fx = postrotate_pos.x - floor(postrotate_pos.x);
                 float fy = postrotate_pos.y - floor(postrotate_pos.y);
 
-                float dx = fx*pass_arr[2] + (1.0-fx)*pass_arr[3];
-                float dy = fy*pass_arr[0] + (1.0-fy)*pass_arr[1];
-
-
-                float fxe = postrotate_pos.x - floor(postrotate_pos.x);
-                float fye = postrotate_pos.y - floor(postrotate_pos.y);
-
-
-                //float dx = fx*pass_arr[2] + (1.0-fx)*pass_arr[3];
-                //float dy = fy*pass_arr[0] + (1.0-fy)*pass_arr[1];
-
-                float dx1 = fxe * cpass_arr[3] + (1.0-fxe) * cpass_arr[2];
-                float dx2 = fxe * cpass_arr[0] + (1.0-fxe) * cpass_arr[1];
-                float fin = fye * dx2 + (1.0-fye) * dx1;
+                float dx1 = fx * cpass_arr[3] + (1.0-fx) * cpass_arr[2];
+                float dx2 = fx * cpass_arr[0] + (1.0-fx) * cpass_arr[1];
+                float fin = fy * dx2 + (1.0-fy) * dx1;
 
 
                 occamount+=fin;
-
-
             }
             else if (depthpass > 0 && dpth > ldp + len)
             {
@@ -977,17 +1155,14 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
                 float dy = fy*pass_arr[0] + (1.0-fy)*pass_arr[1];
 
                 occamount += dx*dy;
-
             }
         }
-
-        occamount+=skip;
 
         return occamount;
 }
 
 
-__kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global float4* l_rot, __global uint* light_depth_buffer, __global uint* slice, __global uint* lnum, __global struct light *lights)
+__kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global uint* light_depth_buffer, __global uint* lnum, __global struct light *lights)
 {
 
     ///there are 6 pieces on my cubemap
@@ -1295,7 +1470,7 @@ __kernel void part2(__global struct triangle* screen_triangles, __global uint* a
 }
 
 __kernel void part3(__global struct triangle *triangles, __global struct triangle *screen_triangles, __global uint *tri_num, __global uint *anum, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global uint* id_buffer,
-                    __read_only image3d_t array, __write_only image2d_t screen, __global uint *nums, __global uint *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights, __global uint* light_depth_buffer)
+                    __read_only image3d_t array, __write_only image2d_t screen, __global uint *nums, __global uint *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights, __global uint* light_depth_buffer, __global uint * to_clear)
                     ///__global uint sacrifice_children_to_argument_god
 {
     ///widthxheight kernel
@@ -1313,10 +1488,12 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
     if(x < SCREENWIDTH && y < SCREENHEIGHT)
     {
-
+        __global uint *ftc=&to_clear[y*SCREENWIDTH + x];
+        *ftc = mulint;
 
         __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
         __global uint *fi=&id_buffer   [y*SCREENWIDTH + x];
+
         if(*ft==mulint)
         {
             return;
@@ -1342,7 +1519,6 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
 
         int o_id=c_tri->vertices[0].pad.y;
-
 
 
 
@@ -1374,31 +1550,14 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         normal.y=interpolate(normalsy, &icontainer, x, y);
         normal.z=interpolate(normalsz, &icontainer, x, y);
 
-        //normal.x=1.0;
-        //normal.y=1.0;
-        //normal.z=0.0;
-
-        //float depths[3]={dcalc(c_tri->vertices[0].pos.z), dcalc(c_tri->vertices[1].pos.z), dcalc(c_tri->vertices[2].pos.z)};
-
-        //float fmydepth=interpolate(depths, &icontainer, x, y);
 
 
         float naturaldepths[3]={(c_tri->vertices[0].pos.z), (c_tri->vertices[1].pos.z), (c_tri->vertices[2].pos.z)};
 
-        //float nmydepth=interpolate(depths, &icontainer, x, y);
         float namydepth=interpolate(naturaldepths, &icontainer, x, y);
 
 
         float actual_depth = namydepth;
-
-
-
-
-
-        /////////////////
-        ///generate smooth_occlusion
-        ///generate_lighting
-
 
 
         float4 local_position={((x - SCREENWIDTH/2.0f)*actual_depth/FOV_CONST), ((y - SCREENHEIGHT/2.0f)*actual_depth/FOV_CONST), actual_depth, 0};
@@ -1463,24 +1622,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
             {
 
 
-                //occ[0] = generate_hard_occlusion((float4){x+1, y, 0, 0}, normal, namydepth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
-                //occ[1] = generate_hard_occlusion((float4){x-1, y, 0, 0}, normal, namydepth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
-                //occ[2] = generate_hard_occlusion((float4){x, y+1, 0, 0}, normal, namydepth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
-                //occ[3] = generate_hard_occlusion((float4){x, y-1, 0, 0}, normal, namydepth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
-                //occ[4] = generate_hard_occlusion((float4){x, y, 0, 0}, normal, namydepth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
-
                 average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, namydepth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
-
-                //for(int j=0; j<5; j++)
-                //{
-                //    average_occ+=occ[j];
-                //}
-                //average_occ/=5.0f;
-
-                //thisocc=average_occ;
-
-                //average_occ = occ[4];
-
 
 
 
@@ -1510,7 +1652,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
                 ///find the absolute distance as an angle between 0 and 1 that would be required to make it backface, that approximates occlusion
                 float err;
-                if((err=dot(fast_normalize(rot(normal, zero, *rotation)), fast_normalize(postrotate_pos))) >= 0) ///still does not quite bloody work
+                if((err=dot(fast_normalize(rot(normal, zero, *rotation)), fast_normalize(postrotate_pos))) >= 0) ///still does not quite bloody work ///actually works pretty well
                 {
                     skip=1;
                 }
@@ -1526,18 +1668,12 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                 else
                     thisocc+=1.0-err;
 
-                //thisocc+=1.0-err;
-
 
                 shnum++;
 
             }
 
             float ambient = 0.2;
-
-            //float average_occ = 0;
-
-            //*(1.0-average_occ)
 
             if(light>0)
                 lightaccum+=(1.0-ambient)*light*lights[i].col*lights[i].brightness*(1.0-thisocc)*(1.0-skip)*(1.0-average_occ) + ambient*1.0f;
@@ -1550,34 +1686,58 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         int2 scoord={x, y};
 
-        float4 col=texture_filter(c_tri, scoord, vt, depth, *c_pos, *c_rot, gobj[o_id].tid, gobj[o_id].mip_level_ids, nums, sizes, array);
+        float4 col=texture_filter(g_tri, scoord, vt, depth, *c_pos, *c_rot, gobj[o_id].tid, gobj[o_id].mip_level_ids, nums, sizes, array);
 
         lightaccum.x=clamp(lightaccum.x, 0.0f, 1.0f/col.x);
         lightaccum.y=clamp(lightaccum.y, 0.0f, 1.0f/col.y);
         lightaccum.z=clamp(lightaccum.z, 0.0f, 1.0f/col.z);
 
+        int2 scoord2 = scoord;
+
+        float hbao = generate_hbao(g_tri, scoord2, depth_buffer);
+
+        //hbao*=100;
 
 
 
 
 
 
-
-        write_imagef(screen, scoord, col*(lightaccum));
-
-
+        //
+        write_imagef(screen, scoord, col*(lightaccum)*(1.0-hbao));
 
 
 
-        uint cl = light_depth_buffer[LIGHTBUFFERDIM*LIGHTBUFFERDIM*(4 + 6) + (y)*LIGHTBUFFERDIM + (x)];
-        //uint cl = depth_buffer[y*SCREENWIDTH + x];
-        float cl2 = (float)cl/mulint;
-        cl2=ddepth;
-        float4 c = {cl2, cl2, cl2, cl2};
+        //write_imagef(screen, scoord, (float4){1.0-hbao, 1.0-hbao, 1.0-hbao, 0});
 
-        //write_imagef(screen, scoord, c);
+        //write_imagef(screen, scoord,  (float4){((float)(*ft)/mulint), ((float)(*ft)/mulint), ((float)(*ft)/mulint), 0});
 
-        *ft=mulint;
+        int py = y;
+        int px = x;
+
+        /*if(py > 1  && x > 0)
+        {
+            //__global uint * d_b = depth_buffer[(py-1)*SCREENWIDTH + px];
+
+            ///debug section
+            //uint cl = light_depth_buffer[LIGHTBUFFERDIM*LIGHTBUFFERDIM*(4 + 6) + (y)*LIGHTBUFFERDIM + (x)];
+            float cl = 0;
+
+            cl = (float)depth_buffer[(py)*SCREENWIDTH + px]/mulint;
+
+            //float cl2 = (float)cl;
+            //cl2=ddepth;
+            float4 c = {cl, cl, cl, cl};
+
+            write_imagef(screen, scoord, c);
+        }*/
+
+        //*ft=mulint;
+
+
+
+
+
         //*fi=0;
     }
 

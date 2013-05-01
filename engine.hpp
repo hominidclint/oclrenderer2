@@ -24,7 +24,7 @@ struct engine
     cl_mem g_triangle_id_framebuffer;
     cl_mem g_triangle_depth_framebuffer;
 
-    cl_mem depth_buffer;
+    cl_mem depth_buffer[2]; ///switches between the two every frame
 
     cl_mem g_depth_screen;
 
@@ -55,9 +55,11 @@ struct engine
 
     std::vector<object*> objects;
 
-    int add_shadow_light(light *l);
+    //int add_shadow_light(light *l);
 
     void load(cl_uint, cl_uint, cl_uint, std::string);
+
+    void construct_shadowmaps();
 
     void draw_poor_objs(objects_container&);
 

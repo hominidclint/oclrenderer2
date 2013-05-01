@@ -504,6 +504,11 @@ end_cleanup:
 
     }
 
+
+
+
+
+
     objs->pos[0]=0;
     objs->pos[1]=0;
     objs->pos[2]=0;

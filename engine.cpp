@@ -124,7 +124,8 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     g_c_pos=clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4), &c_pos, &cl::error);
     g_c_rot=clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(cl_float4), NULL, &cl::error);
 
-    depth_buffer=       clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
+    depth_buffer[0]=       clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
+    depth_buffer[1]=       clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
     g_id_screen=        clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
     g_normals_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4)*g_size*g_size, blank, &cl::error);
     g_texture_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint4)*g_size*g_size, blank, &cl::error);
@@ -177,10 +178,17 @@ void engine::realloc_light_gmem() ///for the moment, just reallocate everything
     shadow_light_num=ln;
 
     delete [] blank_light_buf;
-    blank_light_buf = new cl_uint[l_size*l_size*6*ln];
-    memset(blank_light_buf, UINT_MAX, l_size*l_size*sizeof(cl_uint)*6*ln);
+    blank_light_buf = new cl_uint[l_size*l_size*6];
+    memset(blank_light_buf, UINT_MAX, l_size*l_size*sizeof(cl_uint)*6);
 
-    g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*l_size*l_size*6*ln, blank_light_buf, &cl::error);
+    //g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*l_size*l_size*6*ln, blank_light_buf, &cl::error);
+    g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE , sizeof(cl_uint)*l_size*l_size*6*ln, NULL, &cl::error);
+    for(int i=0; i<ln; i++)
+    {
+        clEnqueueWriteBuffer(cl::cqueue, g_shadow_light_buffer, CL_TRUE, sizeof(cl_uint)*l_size*l_size*6*i, sizeof(cl_uint)*l_size*l_size*6, blank_light_buf, 0, NULL, NULL);
+    }
+
+
 
     //delete [] arr;
 
@@ -397,19 +405,8 @@ void run_kernel_with_args(cl_kernel &kernel, cl_uint *global_ws, cl_uint *local_
 
 }
 
-
-void engine::draw_bulk_objs_n()
+void engine::construct_shadowmaps()
 {
-    int p0=0;
-
-    static float fuck_it=0.1;
-
-    ///need a better way to clear light buffer
-
-    glFinish();
-    clEnqueueAcquireGLObjects(cl::cqueue, 1, &g_screen, 0, NULL, NULL);
-    clFinish(cl::cqueue);
-
     cl_float4 r_struct[6];
     r_struct[0]=(cl_float4){0.0,            0.0,            0.0,0.0};
     r_struct[1]=(cl_float4){M_PI/2.0,       0.0,            0.0,0.0};
@@ -418,23 +415,91 @@ void engine::draw_bulk_objs_n()
     r_struct[4]=(cl_float4){0.0,            3.0*M_PI/2.0,   0.0,0.0};
     r_struct[5]=(cl_float4){0.0,            M_PI/2.0,       0.0,0.0};
 
-    /*r_struct[0]=(cl_float4){0.0,0.0,0.0,0.0};
-    r_struct[1]=(cl_float4){0.0,0.0,0.0,0.0};
-    r_struct[2]=(cl_float4){0.0,0.0,0.0,0.0};
-    r_struct[3]=(cl_float4){0.0,0.0,0.0,0.0};
-    r_struct[4]=(cl_float4){0.0,0.0,0.0,0.0};
-    r_struct[5]=(cl_float4){0.0,0.0,0.0,0.0};*/
+    cl_uint p1global_ws = obj_mem_manager::tri_num;
+    cl_uint local=256;
+
+    if(p1global_ws % local!=0)
+    {
+        int rem=p1global_ws % local;
+        p1global_ws-=(rem);
+        p1global_ws+=local;
+    }
+
+    int n=0;
+    cl_mem t2;
+    t2=clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_uint), NULL, &cl::error);
+
+
+    for(cl_uint i=0; i<light::lightlist.size(); i++)
+    {
+        if(light::lightlist[i].shadow==1)
+        {
+
+            clEnqueueWriteBuffer(cl::cqueue, t2, CL_TRUE, 0, sizeof(cl_uint), &n, 0, NULL, NULL);
+
+
+            cl::error |= clSetKernelArg(cl::light_smap, 0, sizeof(cl_mem), &obj_mem_manager::g_tri_mem);
+            cl::error |= clSetKernelArg(cl::light_smap, 1, sizeof(cl_mem), &obj_mem_manager::g_tri_num);
+            cl::error |= clSetKernelArg(cl::light_smap, 2, sizeof(cl_mem), &g_shadow_light_buffer);
+            cl::error |= clSetKernelArg(cl::light_smap, 3, sizeof(cl_mem), &t2);
+            cl::error |= clSetKernelArg(cl::light_smap, 4, sizeof(cl_mem), &obj_mem_manager::g_light_mem);
+
+            if(cl::error!=0)
+            {
+                std::cout << "Error In kernel setargs light" << std::endl;
+                exit(cl::error);
+            }
+
+            cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::light_smap, 1, NULL, &p1global_ws, &local, 0, NULL, NULL);
+
+
+
+            if(cl::error!=0)
+            {
+                std::cout << "Error In kernel Light" << std::endl;
+                exit(cl::error);
+            }
+
+
+            n++;
+        }
+    }
+
+    clFinish(cl::cqueue);
+    clReleaseMemObject(t2);
+
+
+
+
+}
+
+
+void engine::draw_bulk_objs_n()
+{
+    int p0=0;
+
+    static float fuck_it=0.1;
+
+    static int nbuf=0;
+
+
+
+    //std::cout << nbuf << std::endl;
+
+    ///need a better way to clear light buffer
+
+    glFinish();
+    clEnqueueAcquireGLObjects(cl::cqueue, 1, &g_screen, 0, NULL, NULL);
+    clFinish(cl::cqueue);
+
 
 
     cl_float4 r = {0.0, 0.0, 0.0, 0.0}; ///shadow buffer works
-    fuck_it+=0.01;
     cl_uint zero=0;
     //cl_mem trot = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4), &r, NULL);
     //cl_mem z = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, NULL);
     //cl_uint z = 0;
     //cl_mem *lightarglist[] = {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &trot, &g_shadow_light_buffer, &z, &z, &obj_mem_manager::g_light_mem};
-
-
 
 
 
@@ -454,92 +519,7 @@ void engine::draw_bulk_objs_n()
 
 
 
-
-
-
-
-
-
-
-    ///this is going to be awful. Begin light shadowing
-
-
-    int n=0;
-    cl_mem t1, t2, t3;
-    t1=clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_float4), NULL, &cl::error);
-    t2=clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_uint), NULL, &cl::error);
-    t3=clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_uint), NULL, &cl::error);
-
-
-    for(cl_uint i=0; i<light::lightlist.size(); i++)
-    {
-        if(light::lightlist[i].shadow==1)
-        {
-
-            //for(cl_uint j=0; j<6; j++)
-            {
-
-                //std::cout << "hi " << n << std::endl;
-
-
-                clEnqueueWriteBuffer(cl::cqueue, t1, CL_TRUE, 0, sizeof(cl_float4), &r_struct[0], 0, NULL, NULL);
-                clEnqueueWriteBuffer(cl::cqueue, t2, CL_TRUE, 0, sizeof(cl_uint), &n, 0, NULL, NULL);
-                clEnqueueWriteBuffer(cl::cqueue, t3, CL_TRUE, 0, sizeof(cl_uint), &n, 0, NULL, NULL);
-
-
-
-                cl::error |= clSetKernelArg(cl::light_smap, 0, sizeof(cl_mem), &obj_mem_manager::g_tri_mem);
-                cl::error |= clSetKernelArg(cl::light_smap, 1, sizeof(cl_mem), &obj_mem_manager::g_tri_num);
-                cl::error |= clSetKernelArg(cl::light_smap, 2, sizeof(cl_mem), &t1);
-                cl::error |= clSetKernelArg(cl::light_smap, 3, sizeof(cl_mem), &g_shadow_light_buffer);
-                cl::error |= clSetKernelArg(cl::light_smap, 4, sizeof(cl_mem), &t2);
-                cl::error |= clSetKernelArg(cl::light_smap, 5, sizeof(cl_mem), &t3);
-                cl::error |= clSetKernelArg(cl::light_smap, 6, sizeof(cl_mem), &obj_mem_manager::g_light_mem);
-
-                if(cl::error!=0)
-                {
-                    std::cout << "Error In kernel setargs light" << std::endl;
-                    exit(cl::error);
-                }
-
-                cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::light_smap, 1, NULL, &p1global_ws, &local, 0, NULL, NULL);
-
-
-
-                if(cl::error!=0)
-                {
-                    std::cout << "Error In kernel Light" << std::endl;
-                    exit(cl::error);
-                }
-
-
-            }
-
-            n++;
-        }
-    }
-
-    clFinish(cl::cqueue);
-
-    clReleaseMemObject(t1);
-    clReleaseMemObject(t2);
-    clReleaseMemObject(t3);
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //run_kernel_with_args(cl::light_smap, &p1global_ws, &local, 1, lightarglist, 7, false);
-
-    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer};
+    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer[nbuf]};
     run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7, true);
 
 
@@ -564,7 +544,7 @@ void engine::draw_bulk_objs_n()
 
 
     cl_uint p2global_ws=atom_count;
-    cl_uint local2=128;
+    cl_uint local2=256;
 
     if(p2global_ws % local2!=0)
     {
@@ -575,7 +555,7 @@ void engine::draw_bulk_objs_n()
 
     //std::cout << p1global_ws << " " << atom_count << std::endl;
 
-    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer, &g_id_screen};
+    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer[nbuf], &g_id_screen};
     //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_shadow_light_buffer, &g_id_screen};
     run_kernel_with_args(cl::kernel2, &p2global_ws, &local2, 1, p2arglist, 4, true);
 
@@ -590,19 +570,24 @@ void engine::draw_bulk_objs_n()
     cl_uint p3global_ws[]= {g_size, g_size};
     cl_uint p3local_ws[]= {32, 32};
 
+    int nnbuf = (nbuf + 1) % 2;
 
-    cl_mem *p3arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &depth_buffer, &g_id_screen, &obj_mem_manager::g_texture_array,
-                          &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num, &obj_mem_manager::g_light_num, &obj_mem_manager::g_light_mem, &g_shadow_light_buffer};
+    //std::cout << nbuf << " " << nnbuf << std::endl;
+
+    cl_mem *p3arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_id_screen, &obj_mem_manager::g_texture_array,
+                          &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num, &obj_mem_manager::g_light_num, &obj_mem_manager::g_light_mem, &g_shadow_light_buffer, &depth_buffer[nnbuf]};
 
     //cl_mem *p3arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &g_shadow_light_buffer, &g_id_screen, &obj_mem_manager::g_texture_array,
     //                      &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num, &obj_mem_manager::g_light_num, &obj_mem_manager::g_light_mem};
 
-    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 17, true);
+    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 18, true);
 
 
 
 
+    nbuf++;
 
+    nbuf = nbuf % 2;
 
 
 

@@ -7,6 +7,7 @@
 #include <string.h>
 #include "triangle.hpp"
 #include "texture.hpp"
+#include <math.h>
 
 void face_decompose(std::string face_section, int *vertex, int *tc, int *normal)
 {
@@ -117,6 +118,200 @@ std::string retrieve_diffuse(std::string fname, std::string name)
     ///lines now contains newmtl
 
 }
+
+
+void copy_vertex(vertex &vt, vertex v2)
+{
+
+    for(int i=0; i<3; i++)
+        vt.pos[i] = v2.pos[i];
+    for(int i=0; i<3; i++)
+        vt.normal[i] = v2.normal[i];
+    for(int i=0; i<2; i++)
+        vt.vt[i] = v2.vt[i];
+    for(int i=0; i<2; i++)
+        vt.pad[i] = v2.pad[i];
+
+}
+
+vertex avg_two(vertex v1, vertex v2)
+{
+    cl_float apos[4];
+    apos[0] = (v1.pos[0] + v2.pos[0])/2.0;
+    apos[1] = (v1.pos[1] + v2.pos[1])/2.0;
+    apos[2] = (v1.pos[2] + v2.pos[2])/2.0;
+
+    cl_float anorm[4];
+    anorm[0] = (v1.normal[0] + v2.normal[0])/2.0;
+    anorm[1] = (v1.normal[1] + v2.normal[1])/2.0;
+    anorm[2] = (v1.normal[2] + v2.normal[2])/2.0;
+
+    cl_float avt[2];
+    avt[0] = (v1.vt[0] + v2.vt[0])/2.0;
+    avt[1] = (v1.vt[1] + v2.vt[1])/2.0;
+    //apos[2] = (t.vertices[0].pos[2] + t.vertices[1].pos[2] + t.vertices[2].pos[2])/3.0;
+
+    vertex cent; ///need to average positions, normals, and vt
+    cent.pos[3]=0;
+
+    for(int i=0; i<3; i++)
+        cent.pos[i] = apos[i];
+    for(int i=0; i<3; i++)
+        cent.normal[i] = anorm[i];
+    for(int i=0; i<2; i++)
+        cent.vt[i] = avt[i];
+
+    return cent;
+}
+
+
+std::vector<triangle> tesselate_triangles(triangle &t)
+{
+    float mindsep = 40;
+    float cutsep = 200;
+    bool exceededsep = false;
+    for(int i=0; i<3; i++)
+    {
+        for(int j=1; j<3; j++)
+        {
+            float xsep = fabs(t.vertices[i].pos[0] - t.vertices[(i+j) % 3].pos[0]);
+            float ysep = fabs(t.vertices[i].pos[1] - t.vertices[(i+j) % 3].pos[1]);
+            float zsep = fabs(t.vertices[i].pos[2] - t.vertices[(i+j) % 3].pos[2]);
+            if( xsep > cutsep || ysep > cutsep || zsep > cutsep )
+            {
+                std::vector<triangle> v;
+                v.push_back(t);
+                return v;
+            }
+            if( xsep > mindsep || ysep > mindsep || zsep > mindsep )
+            {
+                ///this triangle dun need be tesselated!
+                exceededsep = true;
+            }
+        }
+    }
+
+    ///clockwise winding order, i assume
+
+    if(exceededsep)
+    {
+        std::vector<triangle> v;
+        cl_float apos[4];
+        apos[0] = (t.vertices[0].pos[0] + t.vertices[1].pos[0] + t.vertices[2].pos[0])/3.0;
+        apos[1] = (t.vertices[0].pos[1] + t.vertices[1].pos[1] + t.vertices[2].pos[1])/3.0;
+        apos[2] = (t.vertices[0].pos[2] + t.vertices[1].pos[2] + t.vertices[2].pos[2])/3.0;
+
+        cl_float anorm[4];
+        anorm[0] = (t.vertices[0].normal[0] + t.vertices[1].normal[0] + t.vertices[2].normal[0])/3.0;
+        anorm[1] = (t.vertices[0].normal[1] + t.vertices[1].normal[1] + t.vertices[2].normal[1])/3.0;
+        anorm[2] = (t.vertices[0].normal[2] + t.vertices[1].normal[2] + t.vertices[2].normal[2])/3.0;
+
+        cl_float avt[2];
+        avt[0] = (t.vertices[0].vt[0] + t.vertices[1].vt[0] + t.vertices[2].vt[0])/3.0;
+        avt[1] = (t.vertices[0].vt[1] + t.vertices[1].vt[1] + t.vertices[2].vt[1])/3.0;
+        //apos[2] = (t.vertices[0].pos[2] + t.vertices[1].pos[2] + t.vertices[2].pos[2])/3.0;
+
+        vertex cent; ///need to average positions, normals, and vt
+        cent.pos[3]=0;
+
+        for(int i=0; i<3; i++)
+            cent.pos[i] = apos[i];
+        for(int i=0; i<3; i++)
+            cent.normal[i] = anorm[i];
+        for(int i=0; i<2; i++)
+            cent.vt[i] = avt[i];
+
+
+        vertex ev1, ev2, ev3;
+        ev1 = avg_two(t.vertices[0], t.vertices[1]); ///cracks because these will not be calculated exactly the same for bordering triangles
+        ev2 = avg_two(t.vertices[1], t.vertices[2]);
+        ev3 = avg_two(t.vertices[2], t.vertices[0]);
+
+
+
+
+        /*triangle t1;
+        copy_vertex(t1.vertices[0], t.vertices[0]);
+        copy_vertex(t1.vertices[1], t.vertices[1]);
+        copy_vertex(t1.vertices[2], cent);
+
+        triangle t2;
+        copy_vertex(t2.vertices[0], t.vertices[1]);
+        copy_vertex(t2.vertices[1], t.vertices[2]);
+        copy_vertex(t2.vertices[2], cent);
+
+        triangle t3;
+        copy_vertex(t3.vertices[0], t.vertices[2]);
+        copy_vertex(t3.vertices[1], t.vertices[0]);
+        copy_vertex(t3.vertices[2], cent);*/
+
+        triangle t1, t2, t3, t4;
+
+        copy_vertex(t1.vertices[0], t.vertices[0]);
+        copy_vertex(t1.vertices[1], ev1);
+        copy_vertex(t1.vertices[2], ev3);
+
+
+        copy_vertex(t2.vertices[0], t.vertices[1]);
+        copy_vertex(t2.vertices[1], ev2);
+        copy_vertex(t2.vertices[2], ev1);
+
+        copy_vertex(t3.vertices[0], t.vertices[2]);
+        copy_vertex(t3.vertices[1], ev3);
+        copy_vertex(t3.vertices[2], ev2);
+
+        copy_vertex(t4.vertices[0], ev1);
+        copy_vertex(t4.vertices[1], ev2);
+        copy_vertex(t4.vertices[2], ev3);
+
+
+
+
+        /*t2.vertices[0] = t.vertices[1];
+        t2.vertices[1] = t.vertices[2];
+        t2.vertices[2] = cent;
+
+
+        t3.vertices[0] = t.vertices[2];
+        t3.vertices[1] = t.vertices[0];
+        t3.vertices[2] = cent;*/
+
+
+        std::vector<triangle> v1, v2, v3, v4;
+        v1 = tesselate_triangles(t1);
+        v2 = tesselate_triangles(t2);
+        v3 = tesselate_triangles(t3);
+        v4 = tesselate_triangles(t4);
+
+        for(int i=0; i<v1.size(); i++)
+        {
+            v.push_back(v1[i]);
+        }
+        for(int i=0; i<v2.size(); i++)
+        {
+            v.push_back(v2[i]);
+        }
+        for(int i=0; i<v3.size(); i++)
+        {
+            v.push_back(v3[i]);
+        }
+        for(int i=0; i<v4.size(); i++)
+        {
+            v.push_back(v4[i]);
+        }
+
+        return v;
+    }
+    else
+    {
+        std::vector<triangle> v;
+        v.push_back(t);
+        return v;
+    }
+
+}
+
+
 
 objects_container* obj_load(std::string filename)
 {
@@ -391,7 +586,7 @@ objects_container* obj_load(std::string filename)
 
                 if(false)
                 {
-end_cleanup:
+                    end_cleanup:
                     tempb=true;
 
                     // std::cout << "hi";
@@ -412,8 +607,26 @@ end_cleanup:
 
 
 
-                memcpy(obj.tri_list, tris, sizeof(triangle)*(counter-excounter));
-                obj.tri_num=counter-excounter;
+                //memcpy(obj.tri_list, tris, sizeof(triangle)*(counter-excounter));
+                /*for(int i=0; i<counter-excounter; i++)
+                {
+                    std::vector<triangle> v = tesselate_triangles(tris[i]);
+
+                    for(int j=0; j<v.size(); j++)
+                    {
+                        obj.tri_list.push_back(v[j]);
+                    }
+                }*/
+
+                for(int i=0; i<counter-excounter; i++)
+                {
+                    obj.tri_list.push_back(tris[i]);
+                    //obj.tri_list[i] = tris[i];
+                }
+
+                //std::cout << objs->objs.size() << std::endl;
+                //obj.tri_num=counter-excounter;
+                obj.tri_num = obj.tri_list.size();
                 obj.tid=temp.id;
                 //obj.x=0, obj.y=0, obj.z=0;
                 objs->objs.push_back(obj);
@@ -503,6 +716,8 @@ end_cleanup:
 
 
     }
+
+
 
 
 

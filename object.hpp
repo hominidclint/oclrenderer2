@@ -18,7 +18,8 @@ struct object
     std::string mtlname;
     std::string tex_name;
     ///texture
-    triangle *tri_list;
+    std::vector<triangle> tri_list;
+
     int tri_num;
 
     cl_uint tid; ///texture id
@@ -26,7 +27,7 @@ struct object
     object();
     void alloc(int num);
 
-    void g_alloc();
+    //void g_alloc();
 
     //void gettexname();
 

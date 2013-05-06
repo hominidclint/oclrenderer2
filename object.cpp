@@ -12,12 +12,13 @@ object::object()
 
 void object::alloc(int num)
 {
-    tri_list=new triangle[num];
+    //tri_list=new triangle[num];
+    tri_list.reserve(num);
     tri_num=(unsigned int)num;
 }
 
-void object::g_alloc()
+/*void object::g_alloc()
 {
     g_mem     = clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(triangle)*tri_num, tri_list, &cl::error);
     g_tri_num = clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &tri_num, &cl::error);
-}
+}*/

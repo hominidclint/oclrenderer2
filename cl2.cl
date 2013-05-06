@@ -580,7 +580,6 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
 
 
 
-
     for(int i=0; i<5; i++) //fundementally broken, using width of polygon when it needs to be using
                             //texture width to calculate miplevel
     {
@@ -602,6 +601,7 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
     }
 
     //every FOV_CONST, the texture size halves
+
 
     wc1=wc+1;
     part=(fdist-corrected_depth)/(fdist-mdist);
@@ -625,10 +625,6 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
 
     float4 final=col1*(part) + col2*(1-part);
 
-    /*col->x=final.x;
-    col->y=final.y;
-    col->z=final.z;*/
-
     return final;
 }
 ///end of unrewritten code
@@ -641,6 +637,8 @@ float4 texture_filter(global struct triangle* c_tri, int2 spos, float4 vt, float
 ///use xz for x coordinates of plane from sphere, use xy for y coordinates of plane from sphere
 ///normalise coordinates to get the location on sphere
 ///use old magnitude as depth from sphere
+
+///Actually is cubemap
 
 
 ///If one point loops round the 0 to 2PI, works out this by checking if any points are more thatn 180 away from each other and returns the closest, possible negative or >2pi value. Then we can simply reverse pixel direction
@@ -808,7 +806,7 @@ float get_horizon_direction_depth(int2 start, float2 dir, uint nsamples, __globa
 
     float2 ndir = (normalize(dir)*radius/nsamples);
 
-    float y = start.y, x = start.x;
+    float y = start.y + ndir.y, x = start.x + ndir.x;
     p=0;
 
     for(; p < nsamples; y+=ndir.y, x += ndir.x, p++)
@@ -842,9 +840,10 @@ float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *dep
     //now, instead of taking the horizon because i'm not entirely sure how to calc that, going to use highest point in filtering
 
     float radius = 8.0; //AO radius
-    //radius = radius / dcalc(depth); ///err?
 
+    //radius = radius / (dcalc(depth); ///err?
     //radius = radius / (idcalc(depth));
+    //radius = radius * FOV_CONST / (depth);
 
     if(radius < 1)
     {
@@ -853,7 +852,7 @@ float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *dep
 
     ///using 4 uniform sample directions like a heretic, with 4 samples from each direction
 
-    uint ndirsamples = 8;
+    uint ndirsamples = 4;
 
     int ndirs = 4;
 
@@ -877,8 +876,12 @@ float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *dep
 
     float4 tang = -1.0/cr;
 
-    float tangle = atan2(tang.z, length((float2){tang.x, tang.y}));
+    //tang = normalize(tang);
 
+    //tang = -1.0/normal;
+
+
+    float tangle = atan2(tang.z, length((float2){tang.x, tang.y}));
 
 
 
@@ -891,12 +894,14 @@ float generate_hbao(__global struct triangle* tri, int2 spos, __global uint *dep
 
         float h = get_horizon_direction_depth(spos, directions[i], ndirsamples, depth_buffer, cdepth, radius);
 
+        //float tangle = atan2(tang.z, );
 
         float angle = atan2(fabs(h - cdepth), distance);
 
         if(angle > 0.05)
         {
-            accum += max(sin(angle), 0.0);// - fabs(sin(tangle));
+            accum += max(sin(angle), 0.0);// + max(sin(tangle), 0.0);
+            //accum += max(sin(tangle), 0.0);
         }
 
     }
@@ -1630,18 +1635,13 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         int2 scoord2 = scoord;
 
-        float hbao = generate_hbao(g_tri, scoord2, depth_buffer);
+        float hbao = generate_hbao(c_tri, scoord2, depth_buffer);
 
-        //hbao*=100;
-
-
+        //hbao = 0;
 
 
 
-
-        //
         write_imagef(screen, scoord, col*(lightaccum)*(1.0-hbao));
-
 
 
         //write_imagef(screen, scoord, (float4){1.0-hbao, 1.0-hbao, 1.0-hbao, 0});

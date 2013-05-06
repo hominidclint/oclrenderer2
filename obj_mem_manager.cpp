@@ -201,7 +201,9 @@ void add_texture(texture &tex, int &newid)
 
 void add_texture_and_mipmaps(texture &tex, cl_uint4 &newmips, int &newid)
 {
+    //std::cout << "hi" << std::endl;
     add_texture(tex, newid);
+    //std::cout << "hello" << std::endl;
 
     texture mip[MIP_LEVELS];
 
@@ -401,12 +403,16 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
     int osize=texture::texturelist.size();
 
+
+
     /*int *ar=new int[texture::texturelist.size()];
 
     for(int i=0; i<texture::texturelist.size(); i++)
     {
         ar=texture::texturelist[i].id;
     }*/
+
+
 
     std::vector<int> mtexids;
 
@@ -417,7 +423,9 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         int t=0;
         //add_texture(texture::texturelist[i], t);
         cl_uint4 mipmaps;
+        //std::cout << "hello" << std::endl;
         add_texture_and_mipmaps(texture::texturelist[i], mipmaps, t); ///is trying to push new mipmaps to texturelist, while also iterating through texture list
+        //std::cout << "hi" << std::endl;
         ///in essence, uh oh
         ///textures are only added to the end, existing textures already.. well, exist. So, we only iterate through the ones
         ///that previously existed
@@ -441,6 +449,8 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         }
 
     }
+    //exit(1);
+
 
     //std::cout << "o " << osize << std::endl << texture::texturelist.size() << std::endl;
     int mipbegin=newtexid.size();
@@ -478,6 +488,8 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         trianglecount+=(*it)->tri_num;
         n++;
     }
+
+    //std::cout << trianglecount << std::endl;
 
     //return;
 
@@ -582,7 +594,7 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
             (*it)->tri_list[i].vertices[0].pad[1]=obj_id;
         }
 
-        clEnqueueWriteBuffer(cl::cqueue, g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it)->tri_num, (*it)->tri_list, 0, NULL, NULL);
+        clEnqueueWriteBuffer(cl::cqueue, g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it)->tri_num, (*it)->tri_list.data(), 0, NULL, NULL);
         running+=(*it)->tri_num;
         obj_id++;
     }

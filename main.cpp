@@ -80,6 +80,9 @@ int main(int argc, char *argv[])
     g_manage.g_arrange_mem();
 
 
+
+
+
     GLint texSize=0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &texSize);
 

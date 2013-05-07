@@ -11,11 +11,12 @@ extern cl_command_queue cqueue;
 extern cl_device_id device;
 extern cl_program program;
 
-
+extern cl_kernel kernel_prearrange;
 extern cl_kernel kernel;
 extern cl_kernel kernel2;
 extern cl_kernel kernel3;
 extern cl_kernel light_smap;
+
 
 extern size_t optimum;
 

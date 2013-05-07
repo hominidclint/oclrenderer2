@@ -355,6 +355,15 @@ void oclstuff()
     }
 
 
+    cl::kernel_prearrange = clCreateKernel(cl::program, "prearrange", &cl::error);
+
+
+    if(cl::error!=0)
+    {
+        std::cout << "kernelcreation prearrange" << cl::error << std::endl;
+    }
+
+
 
 }
 

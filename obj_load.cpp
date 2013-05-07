@@ -8,6 +8,7 @@
 #include "triangle.hpp"
 #include "texture.hpp"
 #include <math.h>
+#include <list>
 
 void face_decompose(std::string face_section, int *vertex, int *tc, int *normal)
 {
@@ -593,7 +594,7 @@ objects_container* obj_load(std::string filename)
                 }
 
                 object obj;
-                obj.alloc(counter-excounter);
+                //obj.alloc(counter-excounter);
                 obj.mtlname=usemtl_name[faceposc-1];
                 //std::cout << obj.mtlname << std::endl;
                 obj.tex_name=retrieve_diffuse(tfname, usemtl_name[faceposc-1]);

@@ -65,6 +65,7 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
 
 
 
+
     PFNGLGENFRAMEBUFFERSEXTPROC glGenFramebuffersEXT = (PFNGLGENFRAMEBUFFERSEXTPROC)wglGetProcAddress("glGenFramebuffersEXT");
     PFNGLBINDFRAMEBUFFEREXTPROC glBindFramebufferEXT = (PFNGLBINDFRAMEBUFFEREXTPROC)wglGetProcAddress("glBindFramebufferEXT");
     PFNGLGENRENDERBUFFERSEXTPROC glGenRenderbuffersEXT = (PFNGLGENRENDERBUFFERSEXTPROC)wglGetProcAddress("glGenRenderbuffersEXT");
@@ -121,16 +122,34 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     c_pos.z=-570;
     ///700
 
+    cl_uint size_of_uid_buffer = 20*1024*1024;
+    cl_uint zero=0;
+
+
     g_c_pos=clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4), &c_pos, &cl::error);
     g_c_rot=clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(cl_float4), NULL, &cl::error);
 
-    depth_buffer[0]=       clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
-    depth_buffer[1]=       clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
+    depth_buffer[0]=    clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
+    depth_buffer[1]=    clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
     g_id_screen=        clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
     g_normals_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4)*g_size*g_size, blank, &cl::error);
     g_texture_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint4)*g_size*g_size, blank, &cl::error);
 
-    cl_uint zero=0;
+
+
+
+    g_tid_buf       =   clCreateBuffer(cl::context, CL_MEM_READ_WRITE, size_of_uid_buffer*sizeof(cl_uint), NULL, &cl::error);
+
+    g_tid_buf_max_len=  clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &size_of_uid_buffer, &cl::error);
+
+    g_tid_buf_atomic_count=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, &cl::error);
+
+    c_tid_buf_len = size_of_uid_buffer;
+
+
+
+
+
     obj_mem_manager::g_light_num=clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, &cl::error);
 
     g_shadow_light_buffer = clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, &cl::error);
@@ -478,7 +497,7 @@ void engine::draw_bulk_objs_n()
 {
     int p0=0;
 
-    static float fuck_it=0.1;
+    //static float fuck_it=0.1;
 
     static int nbuf=0;
 
@@ -514,6 +533,23 @@ void engine::draw_bulk_objs_n()
         p1global_ws+=local;
     }
 
+
+
+    cl_mem *prearglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &g_tid_buf, &g_tid_buf_max_len, &g_tid_buf_atomic_count};
+    run_kernel_with_args(cl::kernel_prearrange, &p1global_ws, &local, 1, prearglist, 7, true);
+
+    cl_uint id_c = 0;
+    //cl_uint zero = 0;
+
+    clEnqueueReadBuffer(cl::cqueue, g_tid_buf_atomic_count, CL_TRUE, 0, sizeof(cl_uint), &id_c, 0, NULL, NULL);
+
+    clEnqueueWriteBuffer(cl::cqueue, g_tid_buf_atomic_count, CL_TRUE, 0, sizeof(cl_uint), &zero, 0, NULL, NULL);
+
+
+
+
+
+
     sf::Clock c;
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_tri_anum, CL_TRUE, 0, sizeof(cl_uint), &p0, 0, NULL, NULL);
 
@@ -523,7 +559,7 @@ void engine::draw_bulk_objs_n()
     run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7, true);
 
 
-    std::cout << "T: " << c.getElapsedTime().asMilliseconds() << std::endl;
+    //std::cout << "T: " << c.getElapsedTime().asMilliseconds() << std::endl;
 
     int atom_count=0;
 
@@ -532,10 +568,7 @@ void engine::draw_bulk_objs_n()
     //clReleaseMemObject(trot);
     //clReleaseMemObject(z);
 
-
-
-
-
+    std::cout << "pseudo fragments: " << id_c << std::endl;
 
 
 
@@ -555,15 +588,11 @@ void engine::draw_bulk_objs_n()
 
     //std::cout << p1global_ws << " " << atom_count << std::endl;
 
-    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer[nbuf], &g_id_screen};
+    //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer[nbuf], &g_id_screen};
+    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &depth_buffer[nbuf], &g_id_screen, &g_c_pos, &g_c_rot};
+    ///__global struct triangle* triangles, __global uint* tri_num, __global uint* depth_buffer, __global uint* id_buffer, __global float4* c_pos, __global float4* c_rot)
     //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_shadow_light_buffer, &g_id_screen};
-    run_kernel_with_args(cl::kernel2, &p2global_ws, &local2, 1, p2arglist, 4, true);
-
-
-
-
-
-
+    run_kernel_with_args(cl::kernel2, &p1global_ws, &local, 1, p2arglist, 6, true);
 
 
 

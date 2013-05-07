@@ -36,6 +36,12 @@ struct engine
 
     cl_mem g_shadow_light_buffer;
 
+    cl_mem g_tid_buf;
+    cl_mem g_tid_buf_max_len;
+    cl_mem g_tid_buf_atomic_count;
+    int c_tid_buf_len;
+
+
 
     //std::vector<light> c_shadow_light_list;
 

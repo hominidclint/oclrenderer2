@@ -9,6 +9,7 @@
 struct engine
 {
 
+    sf::Mouse mouse;
 
     cl_uint width, height, depth;
     cl_uint g_size; /// height > width rounded up to nearest power of 2
@@ -40,6 +41,8 @@ struct engine
     cl_mem g_tid_buf_max_len;
     cl_mem g_tid_buf_atomic_count;
     int c_tid_buf_len;
+
+    cl_uint* d_depth_buf;
 
 
 
@@ -88,6 +91,9 @@ struct engine
     void realloc_light_gmem();
 
     int add_light(light l);
+
+    int get_mouse_x();
+    int get_mouse_y();
 
 
 

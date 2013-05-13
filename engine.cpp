@@ -60,6 +60,8 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     cl_uint *arr = new cl_uint[g_size*g_size];
     memset(arr, UINT_MAX, g_size*g_size*sizeof(cl_uint));
 
+    d_depth_buf = new cl_uint[g_size*g_size];
+
 
 
 
@@ -156,6 +158,8 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
 
 
     //g_depth_screen=clCreateImage2D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, g_size, g_size, 0, blank, &cl::error);
+
+    delete blank;
 
 }
 
@@ -416,7 +420,7 @@ void run_kernel_with_args(cl_kernel &kernel, cl_uint *global_ws, cl_uint *local_
 
     if(cl::error!=0)
     {
-        std::cout << "Error In kernel 1" << std::endl;
+        std::cout << "Error In kernel with " << argc << " args" << std::endl;
         exit(cl::error);
     }
 
@@ -515,11 +519,6 @@ void engine::draw_bulk_objs_n()
 
     cl_float4 r = {0.0, 0.0, 0.0, 0.0}; ///shadow buffer works
     cl_uint zero=0;
-    //cl_mem trot = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4), &r, NULL);
-    //cl_mem z = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, NULL);
-    //cl_uint z = 0;
-    //cl_mem *lightarglist[] = {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &trot, &g_shadow_light_buffer, &z, &z, &obj_mem_manager::g_light_mem};
-
 
 
 
@@ -535,6 +534,8 @@ void engine::draw_bulk_objs_n()
 
 
 
+
+
     cl_mem *prearglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &g_tid_buf, &g_tid_buf_max_len, &g_tid_buf_atomic_count};
     run_kernel_with_args(cl::kernel_prearrange, &p1global_ws, &local, 1, prearglist, 7, true);
 
@@ -543,7 +544,7 @@ void engine::draw_bulk_objs_n()
 
     clEnqueueReadBuffer(cl::cqueue, g_tid_buf_atomic_count, CL_TRUE, 0, sizeof(cl_uint), &id_c, 0, NULL, NULL);
 
-    clEnqueueWriteBuffer(cl::cqueue, g_tid_buf_atomic_count, CL_TRUE, 0, sizeof(cl_uint), &zero, 0, NULL, NULL);
+
 
 
 
@@ -554,9 +555,29 @@ void engine::draw_bulk_objs_n()
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_tri_anum, CL_TRUE, 0, sizeof(cl_uint), &p0, 0, NULL, NULL);
 
 
+    //__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer)
 
-    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer[nbuf]};
-    run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7, true);
+
+    cl_uint p1global_ws_new = id_c;
+    if(p1global_ws_new % local!=0)
+    {
+        int rem=p1global_ws_new % local;
+        p1global_ws_new-=(rem);
+        p1global_ws_new+=local;
+    }
+
+
+
+    //cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer[nbuf]};
+    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count};
+    //run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7, true);
+    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 7, true);
+
+
+
+    clEnqueueWriteBuffer(cl::cqueue, g_tid_buf_atomic_count, CL_TRUE, 0, sizeof(cl_uint), &zero, 0, NULL, NULL); ///!!!/?!?
+
+
 
 
     //std::cout << "T: " << c.getElapsedTime().asMilliseconds() << std::endl;
@@ -586,6 +607,10 @@ void engine::draw_bulk_objs_n()
         p2global_ws+=local2;
     }
 
+    //sf::Clock p1clk;
+    //std::cout << p1clk.getElapsedTime().asMilliseconds() << std::endl;
+
+
     //std::cout << p1global_ws << " " << atom_count << std::endl;
 
     //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer[nbuf], &g_id_screen};
@@ -593,6 +618,10 @@ void engine::draw_bulk_objs_n()
     ///__global struct triangle* triangles, __global uint* tri_num, __global uint* depth_buffer, __global uint* id_buffer, __global float4* c_pos, __global float4* c_rot)
     //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_shadow_light_buffer, &g_id_screen};
     run_kernel_with_args(cl::kernel2, &p1global_ws, &local, 1, p2arglist, 6, true);
+
+
+
+    //clEnqueueReadBuffer(cl::cqueue, g_id_screen, CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
 
 
 
@@ -611,6 +640,11 @@ void engine::draw_bulk_objs_n()
 
     run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 18, true);
 
+
+
+
+
+    //clEnqueueReadBuffer(cl::cqueue, depth_buffer[nbuf], CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
 
 
 
@@ -778,6 +812,16 @@ void engine::render_buffers()
 
 
 
+}
+
+int engine::get_mouse_x()
+{
+    return mouse.getPosition(window).x;
+}
+
+int engine::get_mouse_y()
+{
+    return mouse.getPosition(window).y;
 }
 
 

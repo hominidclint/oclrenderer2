@@ -15,6 +15,7 @@
 #include "obj_mem_manager.hpp"
 #include "obj_g_descriptor.hpp"
 #include <math.h>
+#include <limits.h>
 
 float ret_cubeface(cl_float4 point, cl_float4 light)
 {
@@ -155,6 +156,15 @@ int main(int argc, char *argv[])
         window.draw_bulk_objs_n();
 
         window.render_buffers();
+
+        {
+            int mx = window.get_mouse_x();
+            int my = window.get_mouse_y();
+            //std::cout << mx << std::endl << my << std::endl;
+
+            /*if(mx > 0 && mx < 800 && my > 0 && my < 600)
+                std::cout << (float)window.d_depth_buf[my*800 + mx] << std::endl;*/
+        }
 
         std::cout << c.getElapsedTime().asMilliseconds() << std::endl;
 

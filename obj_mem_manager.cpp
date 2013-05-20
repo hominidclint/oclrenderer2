@@ -23,10 +23,6 @@ cl_mem obj_mem_manager::g_light_mem;
 cl_mem obj_mem_manager::g_light_num;
 cl_mem obj_mem_manager::g_light_buf;
 
-cl_mem obj_mem_manager::i256;
-cl_mem obj_mem_manager::i512;
-cl_mem obj_mem_manager::i1024;
-cl_mem obj_mem_manager::i2048;
 
 cl_mem obj_mem_manager::g_texture_array;
 cl_mem obj_mem_manager::g_texture_sizes;
@@ -64,7 +60,7 @@ cl_uchar4 * return_first_free(int size, int &num) ///texture ids need to be embe
     //std::cout << "mnum " << maxnum << std::endl << "size: " << size << std::endl;
 
 
-    for(int i=0; i<obj_mem_manager::tdescrip.texture_nums.size(); i++)
+    for(unsigned int i=0; i<obj_mem_manager::tdescrip.texture_nums.size(); i++)
     {
 
         if(T->texture_nums[i] < maxnum && T->texture_sizes[i]==size)
@@ -247,7 +243,7 @@ int num_to_divide(int target, int tsize)
 
 }
 
-cl_uchar4 * gen_3d(int tstart, int tnum, int size)
+/*cl_uchar4 * gen_3d(int tstart, int tnum, int size)
 {
     texture *c_tex=&texture::texturelist[tstart];
 
@@ -273,7 +269,7 @@ cl_uchar4 * gen_3d(int tstart, int tnum, int size)
 
     return r;
 
-}
+}*/
 
 
 void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture ids
@@ -281,14 +277,8 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
     ///http://kayru.org/articles/dssdo/
 
-    //texture::generate_mipmaps();
+    ///texture::generate_mipmaps()
 
-    /*for(std::vector<texture>::iterator it=texture::texturelist.begin(); it!=texture::texturelist.end(); it++)
-    {
-        std::cout << (*it).id << " ";
-    }
-
-    std::cout << "hi" << std::endl;*/
 
 
     cl_uint trianglecount=0;
@@ -297,120 +287,10 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     unsigned int n=0;
 
 
-    //std::sort(texture::texturelist.begin(), texture::texturelist.end(), texture::t_compare);
-
-
-
-
-    //std::cout << std::endl;
-
-    /*bool *terrible = new bool[n];
-    memset(terrible, false, sizeof(bool)*n);
-
-    int icount=0;
-
-    for(std::vector<texture>::iterator it=texture::texturelist.begin(); it!=texture::texturelist.end(); it++)
-    {
-        for(unsigned int i=0; i<n; i++)
-        {
-            if(desc[i].tid==(*it).id && terrible[i]!=true)
-            {
-                desc[i].tid=icount;
-                terrible[i]=true;
-            }
-        }
-        icount++;
-    }
-
-    delete [] terrible;
-
-
-    int tcount2=0;
-    for(std::vector<texture>::iterator it=texture::texturelist.begin(); it!=texture::texturelist.end(); it++)
-    {
-        (*it).id=tcount2;
-        tcount2++;
-    }
-
-    int tcount=0;
-    for(std::vector<object*>::iterator it=obj_list.begin(); it!=obj_list.end(); it++)
-    {
-        (*it)->tid=desc[tcount].tid;
-        tcount++;
-    } ///going to assume desc is right for the moment ///pretty sure its correct
-
-    int i2=0, i5=0, i10=0, i20=0;
-    std::cout << "hi" << std::endl;
-    for(unsigned int i=0; i<n; i++)
-    {
-        desc[i].size=texture::texturelist[desc[i].tid].c_image.getSize().x;
-
-    }
-    for(unsigned int i=0; i<texture::texturelist.size(); i++)
-    {
-        //std::cout << texture::texturelist[i].c_image.GetWidth() << std::endl;
-
-        if(texture::texturelist[i].c_image.getSize().x==256)
-        {
-            i2++;
-        }if(texture::texturelist[i].c_image.getSize().x==512)
-        {
-            i5++;
-        }if(texture::texturelist[i].c_image.getSize().x==1024)
-        {
-            i10++;
-        }if(texture::texturelist[i].c_image.getSize().x==2048)
-        {
-            i20++;
-        }
-    }
-
-    ///if textures.arechanged or some shit, but anyway
-
-
-
-    //cl_uchar4 *d2048=gen_3d(1, 2, 256);
-    std::cout << texture::texturelist.size() << std::endl;
-    cl_uchar4* d256= gen_3d(0,           i2,     256);
-    cl_uchar4* d512= gen_3d(i2,          i5,     512);
-    cl_uchar4* d1024=gen_3d(i5+i2,       i10,    1024);
-    cl_uchar4* d2048=gen_3d(i5+i2+i10,   i20,    2048);
-
-
-
-    ///right, we are going to load
-    cl_image_format fermat;
-    fermat.image_channel_order=CL_RGBA;
-    fermat.image_channel_data_type=CL_UNSIGNED_INT8;
-
-    //i2048=clCreateImage2D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, texture::texturelist[1].c_image.GetWidth(), texture::texturelist[1].c_image.GetWidth(), 0, (void*)texture::texturelist[1].c_image.GetPixelsPtr(), &cl::error);
-    //
-
-    //i2048=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, texture::texturelist[1].c_image.GetWidth(), texture::texturelist[1].c_image.GetWidth(), i2048depth, 0,0, d2048, &cl::error);
-    i256=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 256, 256, i2, 256*4, (256*256*4), d256, &cl::error);
-    i512=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 512, 512, i5, 512*4, (512*512*4), d512, &cl::error);
-    i1024=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 1024, 1024, i10, 1024*4, (1024*1024*4), d1024, &cl::error);
-    i2048=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 2048, 2048, i20, 2048*4, (2048*2048*4), d2048, &cl::error);*/
-
-
-
-
-    //std::cout << texture::texturelist[1].location << std::endl;
-
-    ///lets start again
-
     std::vector<int> newtexid;
 
     int osize=texture::texturelist.size();
 
-
-
-    /*int *ar=new int[texture::texturelist.size()];
-
-    for(int i=0; i<texture::texturelist.size(); i++)
-    {
-        ar=texture::texturelist[i].id;
-    }*/
 
 
 
@@ -419,7 +299,6 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     //exit(0);
     for(int i=0; i<osize; i++)
     {
-        //for(int j=0; j<)
         int t=0;
         //add_texture(texture::texturelist[i], t);
         cl_uint4 mipmaps;
@@ -435,37 +314,16 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         mtexids.push_back(mipmaps.z);
         mtexids.push_back(mipmaps.w);
 
-        //return;
-
-
-        //if(texture::texturelist[i].c_image.getSize().x==2048)
-        {
-            //std::cout << "hi" << std::endl;
-            //int slice=newtexid[texture::texturelist[i].id-1] >> 16;
-            //std::cout << "slice " << slice << std::endl;
-            //int tsize=obj_mem_manager::tdescrip.texture_sizes[slice];
-            //std::cout << "a" << tsize << std::endl << texture::texturelist[i].c_image.getSize().x << std::endl;
-            //std::cout << texture::texturelist[i].id << std::endl;
-        }
-
     }
-    //exit(1);
 
 
-    //std::cout << "o " << osize << std::endl << texture::texturelist.size() << std::endl;
     int mipbegin=newtexid.size();
-    //for(int i=mipbegin; i<texture::texturelist.size(); i++)
-    //{
-    //std::cout << "o " << texture::texturelist[i].id << std::endl;
-    //}
 
-    for(int i=0; i<mtexids.size(); i++)
+    for(unsigned int i=0; i<mtexids.size(); i++)
     {
-        //std::cout << mtexids[i]>> << std::endl;
         newtexid.push_back(mtexids[i]);
     }
 
-    //int dcount=0;
 
 
     for(std::vector<object*>::iterator it=obj_list.begin(); it!=obj_list.end(); it++) ///if you call this more than once, it will break. Need to store how much it has already done, and start it again from there to prevent issues with mipmaps
@@ -476,25 +334,15 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
         for(int i=0; i<MIP_LEVELS; i++)
         {
-
             desc[n].mip_level_ids[i]=texture::texturelist[mipbegin + desc[n].tid*MIP_LEVELS + i].id;
-            //std::cout << desc[n].mip_level_ids[i] << std::endl;
         }
 
-        //std::cout << (*it)->tid << " ";
         desc[n].world_pos=(*it)->pos;
         desc[n].world_rot=(*it)->rot;
 
         trianglecount+=(*it)->tri_num;
         n++;
     }
-
-    //std::cout << trianglecount << std::endl;
-
-    //return;
-
-    //delete [] ar;
-    //return;
 
 
     clReleaseMemObject(g_texture_sizes);
@@ -510,27 +358,6 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     fermat.image_channel_order=CL_RGBA;
     fermat.image_channel_data_type=CL_UNSIGNED_INT8;
 
-    //obj_mem_manager::c_texture_array[0].x=255;
-    //obj_mem_manager::c_texture_array[0].y=255;
-    //obj_mem_manager::c_texture_array[0].z=255;
-    //for(int k=0; k<10; k++)
-    {
-        //   for(int i=0; i<2048; i++)
-        {
-            //     for(int j=0; j<2048; j++)
-            {
-                //obj_mem_manager::c_texture_array[k*2048*2048 + j*2048 + i].x=255;
-                //obj_mem_manager::c_texture_array[k*2048*2048 + j*2048 + i].y=0;
-                //obj_mem_manager::c_texture_array[k*2048*2048 + j*2048 + i].z=0;
-            }
-        }
-        //obj_mem_manager::c_texture_array[9*2048*2048 + 0*2048 + 0].x=255; ///many things are turning up red which shouldnt, slice calculation is wrong
-        //obj_mem_manager::c_texture_array[9*2048*2048 + 0*2048 + 0].y=0;
-        //obj_mem_manager::c_texture_array[9*2048*2048 + 0*2048 + 0].z=0;
-    }
-
-    //std::cout << "sadf" << obj_mem_manager::tdescrip.texture_sizes.size() << std::endl;
-
     g_texture_array=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 2048, 2048, obj_mem_manager::tdescrip.texture_sizes.size(), 2048*4, (2048*2048*4), obj_mem_manager::c_texture_array, &cl::error);
 
 
@@ -538,8 +365,6 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     ///now, we need to lump texture sizes into catagories
 
 
-
-    //std::cout << sizeof (obj_g_descriptor) << std::endl;
 
     clReleaseMemObject(g_obj_desc);
     clReleaseMemObject(g_obj_num);
@@ -553,8 +378,6 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
     delete [] desc;
 
-
-    //std::cout << trianglecount << std::endl;
 
     clReleaseMemObject(g_tri_mem); ///allocate triangle buffers and number buffer
     clReleaseMemObject(g_tri_num);
@@ -580,7 +403,6 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         exit(cl::error);
     }
 
-    //std::cout << trianglecount << std::endl;
     std::cout << trianglecount << std::endl;
 
     cl_uint running=0;
@@ -599,14 +421,8 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         obj_id++;
     }
 
-    //std::cout << running << std::endl;
 
     tri_num=trianglecount;
 
     clFinish(cl::cqueue);
-
-
-
-
-
 }

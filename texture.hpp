@@ -35,7 +35,7 @@ struct texture
 
     static cl_uint idquerystring(std::string);
 
-    static void generate_mipmaps();
+    //static void generate_mipmaps();
 
     cl_uint loadtomaster(std::string);
 
@@ -44,8 +44,8 @@ struct texture
 
     void unload();
 
-    void g_push();
-    void g_pull();
+    /*void g_push();
+    void g_pull();*/
 
 
 

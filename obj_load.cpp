@@ -284,19 +284,19 @@ std::vector<triangle> tesselate_triangles(triangle &t)
         v3 = tesselate_triangles(t3);
         v4 = tesselate_triangles(t4);
 
-        for(int i=0; i<v1.size(); i++)
+        for(unsigned int i=0; i<v1.size(); i++)
         {
             v.push_back(v1[i]);
         }
-        for(int i=0; i<v2.size(); i++)
+        for(unsigned int i=0; i<v2.size(); i++)
         {
             v.push_back(v2[i]);
         }
-        for(int i=0; i<v3.size(); i++)
+        for(unsigned int i=0; i<v3.size(); i++)
         {
             v.push_back(v3[i]);
         }
-        for(int i=0; i<v4.size(); i++)
+        for(unsigned int i=0; i<v4.size(); i++)
         {
             v.push_back(v4[i]);
         }

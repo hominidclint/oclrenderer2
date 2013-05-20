@@ -96,6 +96,8 @@ cl_int oclGetPlatformID(cl_platform_id* clSelectedPlatformID)
     // Get OpenCL platform count
     ciErrNum = clGetPlatformIDs(0, NULL, &num_platforms);
 
+    //std::cout << num_platforms << std::endl;
+
     if(ciErrNum != CL_SUCCESS)
     {
         //shrLog(" Error %i in clGetPlatformIDs Call !!!\n\n", ciErrNum);
@@ -121,6 +123,7 @@ cl_int oclGetPlatformID(cl_platform_id* clSelectedPlatformID)
             }
 
             // get platform info for each platform and trap the NVIDIA platform if found
+
             ciErrNum = clGetPlatformIDs(num_platforms, clPlatformIDs, NULL);
             printf("Available platforms:\n");
 
@@ -136,8 +139,8 @@ cl_int oclGetPlatformID(cl_platform_id* clSelectedPlatformID)
 
                     if(strstr(chBuffer, "NVIDIA") != NULL)
                     {
-                        printf("selected platform %d\n", 0);
-                        *clSelectedPlatformID = clPlatformIDs[0];
+                        printf("selected platform %d\n", i);
+                        *clSelectedPlatformID = clPlatformIDs[i];
                         break;
                     }
                 }
@@ -248,8 +251,11 @@ void oclstuff()
         exit(cl::error);
     }
 
+
+
     // Context
     cl::context = clCreateContext(props, 1, &cl::device, NULL, NULL, &cl::error);
+
 
     //cl::context = cl::Context(CL_DEVICE_TYPE_GPU, props);
     if(cl::error != CL_SUCCESS)
@@ -261,11 +267,13 @@ void oclstuff()
     // Command-queue
     cl::cqueue = clCreateCommandQueue(cl::context, cl::device, 0, &cl::error);
 
+
     if(cl::error != CL_SUCCESS)
     {
         std::cout << "Error creating command queue: ";
         exit(cl::error);
     }
+
 
 
     size_t src_size=0;
@@ -279,18 +287,17 @@ void oclstuff()
 
 
 
-
     char *returnstring=new char[2000];
 
     clGetDeviceInfo(cl::device, CL_DEVICE_EXTENSIONS, 2000, returnstring, NULL);
 
     //printf("test: %s", returnstring);
 
-    char *optimum=new char[200];
+    size_t *optimum=new size_t[200];
 
-    clGetDeviceInfo(cl::device, CL_DEVICE_VERSION, 200, optimum, NULL);
+    //clGetDeviceInfo(cl::device, CL_KERNEL_WORK_GROUP_SIZE, 200, optimum, NULL);
 
-    printf("herp: %s", optimum);
+    //printf("herp: %i", optimum[0]);
 
     //std::cout << "herp" << optimum;
 
@@ -298,11 +305,17 @@ void oclstuff()
 
     //delete optimum;
 
+    //exit(2);
 
 
-    std::string buildoptions = "";
+    std::string buildoptions = " ";
 
     cl::error = clBuildProgram(cl::program, 1, &cl::device, buildoptions.c_str(), NULL, NULL);
+
+    if(cl::error!=0)
+    {
+        std::cout << "BuildProgram " << cl::error << std::endl;
+    }
 
 
 

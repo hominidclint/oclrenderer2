@@ -37,11 +37,6 @@ struct obj_mem_manager
 
     static cl_mem g_texture_array;
 
-    static cl_mem i256;
-    static cl_mem i512;
-    static cl_mem i1024;
-    static cl_mem i2048;
-
     static cl_mem g_texture_sizes;
 
     static cl_mem g_texture_nums;

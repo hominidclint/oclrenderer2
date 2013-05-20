@@ -17,45 +17,22 @@
 #include <math.h>
 #include <limits.h>
 
-float ret_cubeface(cl_float4 point, cl_float4 light)
+float interpolate_i(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3)
 {
-    cl_float4 r_pl;
-    r_pl.x=point.x-light.x;
-    r_pl.y=point.y-light.y;
-    r_pl.z=point.z-light.z;
+    float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
+    float A=((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1) * rconstant);
+    float B=(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1) * rconstant);
+    float C=f1-A*x1 - B*y1;
 
-    float angle = atan2(r_pl.y, r_pl.x);
-
-    if(angle < 0)
-    {
-        angle = M_PI - fabs(angle) + M_PI;
-    }
-
-    angle = angle - M_PI/4.0f;
-
-    if(angle < 0)
-    {
-        angle = angle + 2.0f*M_PI;
-    }
-
-    angle = angle/(2.0f*M_PI);
-    angle = angle*4;
-    //angle +=0.5;
-
-    int wp1 = floor(angle);
-
-
-
-
-    return wp1;
+    return (float)(A*x + B*y + C);
 }
-
-
 
 
 int main(int argc, char *argv[])
 {
     ///the next thing to do is to shrink too-large triangles
+
+    //std::cout << interpolate_i(-10, 20, 30, 25, 6, 15, 40, 50, 0, 34, 45);
 
     sf::Clock clo;
     //objects_container *sponza=obj_load("Sponza/testspz.obj");
@@ -108,7 +85,7 @@ int main(int argc, char *argv[])
     //window.add_light(l);
 
 
-    sf::Mouse mouse;
+    //sf::Mouse mouse;
 
     /*while(window.window.isOpen())
     {
@@ -162,11 +139,11 @@ int main(int argc, char *argv[])
             int my = window.get_mouse_y();
             //std::cout << mx << std::endl << my << std::endl;
 
-            /*if(mx > 0 && mx < 800 && my > 0 && my < 600)
-                std::cout << (float)window.d_depth_buf[my*800 + mx] << std::endl;*/
+            //if(mx > 0 && mx < 800 && my > 0 && my < 600)
+                //std::cout << (float)window.d_depth_buf[my*800 + mx]/UINT_MAX << std::endl;
         }
 
-        std::cout << c.getElapsedTime().asMilliseconds() << std::endl;
+        //std::cout << c.getElapsedTime().asMilliseconds() << std::endl;
 
 
     }

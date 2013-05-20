@@ -70,19 +70,7 @@ struct engine
 
     void construct_shadowmaps();
 
-    void draw_poor_objs(objects_container&);
-
-    void draw_obj(object &obj);
-
-    void draw_bulk_objs();
-
     void draw_bulk_objs_n();
-
-    void draw_bulk_objs_new();
-
-    void draw_bulk_objs_test();
-
-    void draw_tile_objs();
 
     void render_buffers();
 

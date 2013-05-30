@@ -258,12 +258,15 @@ struct triangle full_rotate_n_global(__global struct triangle *triangle, float4 
     for(int j=0; j<3; j++)
     {
         float rx;
-        rx=rotpoints[j].x * (fovc/(rotpoints[j].z));
+        rx=(rotpoints[j].x) * (fovc/(rotpoints[j].z));
         float ry;
-        ry=rotpoints[j].y * (fovc/(rotpoints[j].z));
+        ry=(rotpoints[j].y) * (fovc/(rotpoints[j].z));
 
         rx+=width/2;
         ry+=height/2;
+
+        //rx = fabs(rx);
+        //ry = fabs(ry);
 
 
         rotpoints[j].x=rx;
@@ -387,7 +390,8 @@ struct triangle full_rotate_n_global(__global struct triangle *triangle, float4 
     C->s1 = r1;
     C->s2 = r2;
 
-    C->side = sign((r1.x - rotpoints[nob].x)*(r2.y - rotpoints[nob].y) - (r1.y - rotpoints[nob].y)*(r2.x - rotpoints[nob].x));
+    if(nob!=-1)
+        C->side = sign((r1.x - rotpoints[nob].x)*(r2.y - rotpoints[nob].y) - (r1.y - rotpoints[nob].y)*(r2.x - rotpoints[nob].x));
 
 
 
@@ -1618,8 +1622,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
 
     float depths[3]={1.0/tri.vertices[0].pos.z, 1.0/tri.vertices[1].pos.z, 1.0/tri.vertices[2].pos.z};
-    //float depths[3]={1.0/tri.vertices[0].pos.z, 1.0/tri.vertices[1].pos.z, 1.0/tri.vertices[2].pos.z};
-    //float depths[3]={tri.vertices[0].pos.z, tri.vertices[1].pos.z, tri.vertices[2].pos.z};
+
     bool lflag = false;
     for(int i=0; i<3; i++)
     {
@@ -1694,13 +1697,13 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
 
 
-            int sig = sign((icontainer.s1.x - x)*(icontainer.s2.y - y) - (icontainer.s1.y - y)*(icontainer.s2.x - x));
+            /*int sig = sign((icontainer.s1.x - x)*(icontainer.s2.y - y) - (icontainer.s1.y - y)*(icontainer.s2.x - x));
 
-            if(sig==icontainer.side && lflag)
+            if(sig!=icontainer.side && lflag)
             {
                 pcount++;
                 continue;
-            }
+            }*/
 
 
             float fmydepth=interpolate(depths, &icontainer, x, y);
@@ -1798,13 +1801,13 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
 
 
-            int sig = sign((icontainer.s1.x - x)*(icontainer.s2.y - y) - (icontainer.s1.y - y)*(icontainer.s2.x - x));
+            /*int sig = sign((icontainer.s1.x - x)*(icontainer.s2.y - y) - (icontainer.s1.y - y)*(icontainer.s2.x - x));
 
             if(sig!=icontainer.side && lflag)
             {
                 pcount++;
                 continue;
-            }
+            }*/
 
             float fmydepth=interpolate(depths, &icontainer, x, y);
             fmydepth = 1.0 / fmydepth;

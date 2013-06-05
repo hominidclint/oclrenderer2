@@ -13,8 +13,10 @@ std::vector<object*> obj_mem_manager::obj_list;
 cl_uint obj_mem_manager::tri_num;
 
 cl_mem obj_mem_manager::g_tri_mem;
+cl_mem obj_mem_manager::g_tri_emem;
 cl_mem obj_mem_manager::g_tri_smem;
 cl_mem obj_mem_manager::g_tri_num;
+cl_mem obj_mem_manager::g_tri_enum;
 cl_mem obj_mem_manager::g_tri_anum;
 cl_mem obj_mem_manager::g_tri_fstorage;
 cl_mem obj_mem_manager::g_obj_desc;
@@ -378,12 +380,22 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
     delete [] desc;
 
+    cl_uint zero = 0;
+
 
     clReleaseMemObject(g_tri_mem); ///allocate triangle buffers and number buffer
     clReleaseMemObject(g_tri_num);
+    clReleaseMemObject(g_tri_emem); ///allocate triangle buffers and number buffer
+    clReleaseMemObject(g_tri_enum);
+
     g_tri_mem = clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(triangle)*trianglecount, NULL, &cl::error);
-    g_tri_smem = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(triangle)*trianglecount, NULL, &cl::error);
+    //g_tri_smem = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(triangle)*trianglecount, NULL, &cl::error);
+    g_tri_emem = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(triangle)*trianglecount*2, NULL, &cl::error);
+
     g_tri_fstorage = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_float4)*trianglecount*3, NULL, &cl::error);
+
+    g_tri_enum = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_uint), &zero, &cl::error);
+
 
     if(cl::error!=0)
     {

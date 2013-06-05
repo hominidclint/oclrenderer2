@@ -43,6 +43,8 @@ int main(int argc, char *argv[])
     obj_mem_manager g_manage;
 
 
+
+
     engine window;
     oclstuff();
     window.load(800,600,1000, "turtles");

@@ -1,11 +1,11 @@
 # depslib dependency file v1.0
-1367877837 source:c:\users\james\desktop\projects\proj\clstate.cpp
+1369881614 source:c:\users\james\desktop\projects\proj\clstate.cpp
 	"clstate.h"
 
-1367877686 c:\users\james\desktop\projects\proj\clstate.h
+1369881614 c:\users\james\desktop\projects\proj\clstate.h
 	<cl/opencl.h>
 
-1369023669 source:c:\users\james\desktop\projects\proj\engine.cpp
+1370298603 source:c:\users\james\desktop\projects\proj\engine.cpp
 	"engine.hpp"
 	<math.h>
 	<gl/gl3.h>
@@ -17,7 +17,7 @@
 	<stdio.h>
 	<limits.h>
 
-1368585389 c:\users\james\desktop\projects\proj\engine.hpp
+1370023973 c:\users\james\desktop\projects\proj\engine.hpp
 	<SFML/graphics.hpp>
 	"object.hpp"
 	<vector>
@@ -39,11 +39,11 @@
 1356823564 c:\users\james\desktop\projects\proj\objects_container.hpp
 	"object.hpp"
 
-1368585660 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
+1370023948 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
 	"object.hpp"
 	<vector>
 
-1368868999 source:c:\users\james\desktop\projects\proj\main.cpp
+1370298615 source:c:\users\james\desktop\projects\proj\main.cpp
 	<cstdio>
 	<string>
 	<iostream>
@@ -65,13 +65,13 @@
 	"object.hpp"
 	"objects_container.hpp"
 
-1368489278 c:\users\james\desktop\projects\proj\texture.hpp
+1369881614 c:\users\james\desktop\projects\proj\texture.hpp
 	<sfml/graphics.hpp>
 	<cl/cl.h>
 	<vector>
 	"obj_g_descriptor.hpp"
 
-1368909439 c:\users\james\desktop\projects\proj\ocl.h
+1369881614 c:\users\james\desktop\projects\proj\ocl.h
 	<cstdio>
 	<CL/cl.h>
 	<iostream>
@@ -89,7 +89,7 @@
 	<cl/cl.h>
 	<vector>
 
-1368488832 source:c:\users\james\desktop\projects\proj\obj_load.cpp
+1369881614 source:c:\users\james\desktop\projects\proj\obj_load.cpp
 	"obj_load.hpp"
 	<cstdio>
 	<cstdlib>
@@ -102,7 +102,7 @@
 	<math.h>
 	<list>
 
-1368585665 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
+1370024177 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
 	"obj_mem_manager.hpp"
 	<CL/CL.h>
 	"clstate.h"
@@ -120,7 +120,7 @@
 1346894824 source:c:\users\james\desktop\projects\proj\objects_container.cpp
 	"objects_container.hpp"
 
-1368585634 source:c:\users\james\desktop\projects\proj\texture.cpp
+1369881614 source:c:\users\james\desktop\projects\proj\texture.cpp
 	"texture.hpp"
 	"clstate.h"
 	<iostream>

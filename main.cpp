@@ -140,7 +140,8 @@ int main(int argc, char *argv[])
             //std::cout << mx << std::endl << my << std::endl;
 
             //if(mx > 0 && mx < 800 && my > 0 && my < 600)
-                //std::cout << (float)window.d_depth_buf[my*800 + mx]/UINT_MAX << std::endl;
+            //    std::cout << (float)window.d_depth_buf[(600-my)*800 + (mx)]/UINT_MAX << std::endl;
+                //std::cout << window.d_depth_buf[(600-my)*800 + (mx)] << std::endl;
         }
 
         //std::cout << c.getElapsedTime().asMilliseconds() << std::endl;

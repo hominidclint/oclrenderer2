@@ -136,6 +136,8 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     g_id_screen=        clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
     g_normals_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4)*g_size*g_size, blank, &cl::error);
     g_texture_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint4)*g_size*g_size, blank, &cl::error);
+    d_triangle_buf=     clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(triangle), NULL, &cl::error);
+    dc_triangle_buf = new triangle;
 
 
 
@@ -543,7 +545,6 @@ void engine::draw_bulk_objs_n()
 
 
 
-
     sf::Clock c;
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_tri_anum, CL_TRUE, 0, sizeof(cl_uint), &p0, 0, NULL, NULL);
 
@@ -562,10 +563,18 @@ void engine::draw_bulk_objs_n()
 
 
     //cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer[nbuf]};
-    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count};
+    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count, &d_triangle_buf};
     //run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7, true);
-    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 7, true);
+    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 8, true);
 
+
+    clEnqueueReadBuffer(cl::cqueue, d_triangle_buf, CL_TRUE, 0, sizeof(triangle), dc_triangle_buf, 0, NULL, NULL);
+
+    /*std::cout << "b" << std::endl;
+
+    for(int i=0; i<3; i++)
+        for(int j=0; j<3; j++)
+            std::cout << dc_triangle_buf->vertices[i].pos[j] << std::endl;*/
 
 
 
@@ -581,7 +590,7 @@ void engine::draw_bulk_objs_n()
     clFinish(cl::cqueue);
 
     //
-    std::cout << "pseudo fragments: " << id_c << std::endl;
+    //std::cout << "pseudo fragments: " << id_c << std::endl;
 
 
 
@@ -628,18 +637,19 @@ void engine::draw_bulk_objs_n()
     //std::cout << nbuf << " " << nnbuf << std::endl;
 
     cl_mem *p3arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_id_screen, &obj_mem_manager::g_texture_array,
-                          &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num, &obj_mem_manager::g_light_num, &obj_mem_manager::g_light_mem, &g_shadow_light_buffer, &depth_buffer[nnbuf]};
+                          &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num, &obj_mem_manager::g_light_num, &obj_mem_manager::g_light_mem, &g_shadow_light_buffer, &depth_buffer[nnbuf], &g_tid_buf};
 
     //cl_mem *p3arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &g_shadow_light_buffer, &g_id_screen, &obj_mem_manager::g_texture_array,
     //                      &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num, &obj_mem_manager::g_light_num, &obj_mem_manager::g_light_mem};
 
-    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 18, true);
+    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 19, true);
 
 
 
 
 
     //clEnqueueReadBuffer(cl::cqueue, depth_buffer[nbuf], CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
+    //clEnqueueReadBuffer(cl::cqueue, g_id_screen, CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
 
 
 

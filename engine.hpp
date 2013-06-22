@@ -43,6 +43,8 @@ struct engine
     int c_tid_buf_len;
 
     cl_uint* d_depth_buf;
+    cl_mem d_triangle_buf;
+    triangle *dc_triangle_buf;
 
 
 

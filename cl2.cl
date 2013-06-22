@@ -78,7 +78,7 @@ float calc_third_area(int x1, int y1, int x2, int y2, int x3, int y3, int x, int
     //return fabs((float)((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1)))/2.0;
     // x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2)
 
-    return fabs((x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2))/2.0f);
+    return abs((x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2))/2);
 }
 
 struct light
@@ -124,7 +124,7 @@ struct interp_container
     int xbounds[2];
     int ybounds[2];
     float rconstant;
-    float area;
+    int area;
     //float4 s1, s2;
     int side;
     int sg[3];
@@ -140,7 +140,7 @@ struct t_c
 float calc_third_areas_i(int x1, int x2, int x3, int y1, int y2, int y3, int x, int y)
 {
     //return (fabs((float)((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2.0f) + fabs((float)((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2.0f) + fabs((float)((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2.0f));
-    return fabs((float)((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2.0f) + fabs((float)((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2.0f) + fabs((float)((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2.0f);
+    return abs(((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2) + abs(((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2) + abs(((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2);
     ///form was written for this, i think
 }
 
@@ -245,7 +245,7 @@ bool get_intersection(float4 p1, float4 p2, float4 *r)
 }
 
 
-struct interp_container construct_interpolation(struct triangle tri)
+struct interp_container construct_interpolation(struct triangle tri, int width, int height)
 {
     struct interp_container C;
 
@@ -266,22 +266,22 @@ struct interp_container construct_interpolation(struct triangle tri)
     //if(out_of_bounds(miny, 0, SCREENHEIGHT))
     {
         miny=max(miny, 0);
-        miny=min(miny, SCREENHEIGHT);
+        miny=min(miny, height);
     }
     //if(out_of_bounds(maxy, 0, SCREENHEIGHT))
     {
         maxy=max(maxy, 0);
-        maxy=min(maxy, SCREENHEIGHT);
+        maxy=min(maxy, height);
     }
     //if(out_of_bounds(minx, 0, SCREENWIDTH))
     {
         minx=max(minx, 0);
-        minx=min(minx, SCREENWIDTH);
+        minx=min(minx, width);
     }
     //if(out_of_bounds(maxx, 0, SCREENWIDTH))
     {
         maxx=max(maxx, 0);
-        maxx=min(maxx, SCREENWIDTH);
+        maxx=min(maxx, width);
     }
 
     /*int oobw[2] = {-1, -1};
@@ -317,7 +317,7 @@ struct interp_container construct_interpolation(struct triangle tri)
 
     float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
 
-    //int area=calc_third_area(x1, y1, x2, y2, x3, y3, 0, 0, 0);//
+    int area=calc_third_area(x1, y1, x2, y2, x3, y3, 0, 0, 0);//
 
 
 
@@ -363,7 +363,7 @@ struct interp_container construct_interpolation(struct triangle tri)
     }
 
 
-    float area = calc_third_areas(&C, x, y);
+    //float area = calc_third_areas(&C, x, y);
 
 
     C.area=area;
@@ -598,6 +598,7 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
 
     struct t_c t;
 
+
     if(n_behind==0)
     {
         t.t[0] = ret;
@@ -643,7 +644,7 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
     //t.t[0] = ret;
 
 
-    *container = construct_interpolation(ret);
+    *container = construct_interpolation(ret, width, height);
 
     return t;
 }
@@ -1671,7 +1672,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
         int minx, maxx, miny, maxy;
 
-        struct interp_container ic = construct_interpolation(t.t[i]);
+        struct interp_container ic = construct_interpolation(t.t[i], SCREENWIDTH, SCREENHEIGHT);
 
         minx = ic.xbounds[0];
         maxx = ic.xbounds[1];
@@ -1741,7 +1742,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
     struct interp_container ic_b;
 
-    ic_b = construct_interpolation(t.t[wtri]);
+    ic_b = construct_interpolation(t.t[wtri], SCREENWIDTH, SCREENHEIGHT);
 
     struct triangle tri = t.t[wtri];
 
@@ -1910,7 +1911,7 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
     struct interp_container ic_b;
 
 
-    ic_b = construct_interpolation(t.t[wtri]);
+    ic_b = construct_interpolation(t.t[wtri], SCREENWIDTH, SCREENHEIGHT);
 
 
     struct triangle tri = t.t[wtri];

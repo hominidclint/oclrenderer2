@@ -363,7 +363,7 @@ struct interp_container construct_interpolation(struct triangle tri, int width, 
     }
 
 
-    //float area = calc_third_areas(&C, x, y);
+    float area_new = calc_third_areas(&C, x, y);
 
 
     C.area=area;
@@ -618,6 +618,7 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
         t.t[1].vertices[1].pos = c2;
         t.t[1].vertices[2].pos = p2;
 
+        //t.c=4;
         //t.c=4;
     }
     if(n_behind==2)
@@ -928,40 +929,26 @@ float4 texture_filter(struct triangle* c_tri, int2 spos, float4 vt, float depth,
 
     float2 vtm = {vt.x, vt.y};
 
+    float ipart = 0;
+
     if(vtm.x > 1)
     {
-        while(vtm.x > 1)
-        {
-            vtm.x -= 1;
-        }
-        vtm.x = 1.0 - vtm.x;
+        vtm.x = 1.0 - modf(vtm.x, &ipart);
     }
 
     if(vtm.x < 0)
     {
-        while(vtm.x < 0)
-        {
-            vtm.x += 1;
-        }
-        vtm.x = 1.0 - vtm.x;
+        vtm.x = 1.0 + modf(vtm.x, &ipart);
     }
 
     if(vtm.y > 1)
     {
-        while(vtm.y > 1)
-        {
-            vtm.y -= 1;
-        }
-        vtm.y = 1.0 - vtm.y;
+        vtm.y = 1.0 - modf(vtm.y, &ipart);
     }
 
     if(vtm.y < 0)
     {
-        while(vtm.y < 0)
-        {
-            vtm.y += 1;
-        }
-        vtm.y = 1.0 - vtm.y;
+        vtm.y = 1.0 + modf(vtm.y, &ipart);
     }
 
 
@@ -1804,7 +1791,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
         if(iswithin)*/
 
 
-        /*bool iswithin = false;
+        bool iswithin = false;
 
         ///http://www.blackpawn.com/texts/pointinpoly/
         float4 v04 = tri.vertices[2].pos - tri.vertices[0].pos;
@@ -1835,11 +1822,11 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
         iswithin =  ((u >= 0) && (v >= 0) && (u + v < 1));
 
 
-        if(iswithin)*/
+        if(iswithin)
 
-        float s1=calc_third_areas(&ic_b, x, y);
+        //float s1=calc_third_areas(&ic_b, x, y);
 
-        if(s1 > ic_b.area - 2 && s1 < ic_b.area + 2)
+        //if(s1 > ic_b.area - 2 && s1 < ic_b.area + 2)
         {
 
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
@@ -1969,7 +1956,7 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
         if(iswithin)*/
 
-        /*bool iswithin = false;
+        bool iswithin = false;
 
         ///http://www.blackpawn.com/texts/pointinpoly/
         float4 v04 = tri.vertices[2].pos - tri.vertices[0].pos;
@@ -2000,11 +1987,11 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
         iswithin =  ((u >= 0) && (v >= 0) && (u + v < 1));
 
 
-        if(iswithin)*/
+        if(iswithin)
 
-        float s1=calc_third_areas(&ic_b, x, y);
+        //float s1=calc_third_areas(&ic_b, x, y);
 
-        if(s1 > ic_b.area - 2 && s1 < ic_b.area + 2)
+        //if(s1 > ic_b.area - 2 && s1 < ic_b.area + 2)
         {
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
 
@@ -2280,6 +2267,21 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         int2 scoord={x, y};
 
         float4 col=texture_filter(c_tri, scoord, vt, (float)*ft/mulint, *c_pos, *c_rot, gobj[o_id].tid, gobj[o_id].mip_level_ids, nums, sizes, array);
+
+        /*sampler_t sam = CLK_NORMALIZED_COORDS_FALSE |
+           CLK_ADDRESS_CLAMP_TO_EDGE        |
+           CLK_FILTER_NEAREST;
+
+
+        float4 coord1={0, 0, 0, 0};
+
+        uint4 ucol;
+        ucol=read_imageui(array, sam, coord1);
+
+        //float4 col = (float4){ucol.x, ucol.y, ucol.z, 0};
+        //col/=255.0f;
+
+        //float4 col = {1.0, 1.0, 1.0, 0.0};*/
 
         lightaccum.x=clamp(lightaccum.x, 0.0f, 1.0f/col.x);
         lightaccum.y=clamp(lightaccum.y, 0.0f, 1.0f/col.y);

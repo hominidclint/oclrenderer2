@@ -572,9 +572,9 @@ void engine::draw_bulk_objs_n()
 
 
 
-    clEnqueueReadBuffer(cl::cqueue, d_triangle_buf, CL_TRUE, 0, sizeof(triangle), dc_triangle_buf, 0, NULL, NULL);
+    //clEnqueueReadBuffer(cl::cqueue, d_triangle_buf, CL_TRUE, 0, sizeof(triangle), dc_triangle_buf, 0, NULL, NULL);
 
-    std::cout << "b" << std::endl;
+    /*std::cout << "b" << std::endl;
 
     for(int i=0; i<3; i++)
         for(int j=0; j<3; j++)
@@ -588,7 +588,7 @@ void engine::draw_bulk_objs_n()
         {
             std::cout << dc_triangle_buf->vertices[i].vt[j] << std::endl;
         }
-    }
+    }*/
 
 
 

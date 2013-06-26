@@ -197,15 +197,37 @@ float interpolate_2(float vals[3], struct interp_container c, int x, int y)
 
 float interpolate_i(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3, float rconstant)
 {
-    //float A=native_divide((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1),rconstant);
-    //float B=native_divide(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1),rconstant);
-
     float A=((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1) * rconstant);
     float B=(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1) * rconstant);
     float C=f1-A*x1 - B*y1;
 
     return (float)(A*x + B*y + C);
 }
+
+float interpolate_r(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3)
+{
+    float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
+    return interpolate_i(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
+}
+
+float2 interpolate_r_pair(float2 f[3], float2 xy, float2 bounds[3])
+{
+    float2 ip;
+    ip.x = interpolate_r(f[0].x, f[1].x, f[2].x, xy.x, xy.y, bounds[0].x, bounds[1].x, bounds[2].x, bounds[0].y, bounds[1].y, bounds[2].y);
+    ip.y = interpolate_r(f[0].y, f[1].y, f[2].y, xy.x, xy.y, bounds[0].x, bounds[1].x, bounds[2].x, bounds[0].y, bounds[1].y, bounds[2].y);
+    return ip;
+}
+
+
+//float interpolate_3d()
+
+///1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1)
+///A = (x1*(f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1)/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1))
+///B = (-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1)/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1))
+///C = f1 - x1*(x1*(f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1)/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1)) - y1*(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1)/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1))
+///x*(x1*(f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1)/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1)) + y*(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1)/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1)) + f1 - x1*(x1*(f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1)/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1)) - y1*(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1)/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1))
+
+
 
 float interpolate(float f[3], struct interp_container *c, int x, int y)
 {
@@ -442,6 +464,8 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
         rotpoints[j].z=dcalc(rotpoints[j].z);
     }
 
+    ///interpolation doesnt work when odepth close to 0, need to use idcalc(tri) and then work out proper texture coordinates
+
 
 
     struct triangle ret;
@@ -516,6 +540,15 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
     }*/
 
     float4 p1, p2, c1, c2;
+    float2 p1v, p2v, c1v, c2v;
+
+    float rconstant=1.0/(preperp[1].x*preperp[2].y+preperp[0].x*(preperp[1].y-preperp[2].y)-preperp[2].x*preperp[1].y+(preperp[2].x-preperp[1].x)*preperp[0].y);
+    ///    float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
+
+
+
+
+
 
     if(n_behind > 0)
     {
@@ -555,9 +588,6 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
             l1 = (depth_icutoff - preperp[n0].z) / (preperp[v1].z - preperp[n0].z);
             l2 = (depth_icutoff - preperp[n1].z) / (preperp[v1].z - preperp[n1].z);
 
-
-
-
             p1 = preperp[n0] + l1*(preperp[v1] - preperp[n0]);
             p2 = preperp[n1] + l2*(preperp[v1] - preperp[n1]);
 
@@ -566,14 +596,124 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
 
             c1 = preperp[v1];
 
-            /*if(isnan(l1)||isnan(l2))
-            {
-                p1 = preperp[0];
-                p2 = preperp[1];
-                c1 = preperp[2];
+            c1v = ret.vertices[v1].vt;
 
-            }*/
+
+
+            ///c1, p1, p2 are now the 3 vertices of the new triangle. I want the old triangle which is preperp[n0], preperp[n1] and preperp[v1]. Interpolate at points p1, p2
+
+
+
+
+
+            float4 point = p1;
+
+            float4 m1, m2, m3;
+
+            float4 f1, f2, f3;
+
+            float area;
+            float a1, a2, a3;
+
+            m1 = preperp[v1], m2 = preperp[n0], m3 = preperp[n1];
+
+            area = length(cross(m1-m2, m1-m3));
+
+
+            float2 mvt[3];
+
+            mvt[v1] = triangle->vertices[v1].vt;
+            mvt[n0] = triangle->vertices[n0].vt;
+            mvt[n1] = triangle->vertices[n1].vt;
+
+
+            f1 = m1 - point;
+            f2 = m2 - point;
+            f3 = m3 - point;
+
+            a1 = length(cross(f2, f3))/area;
+            a2 = length(cross(f3, f1))/area;
+            a3 = length(cross(f1, f2))/area;
+
+            p1v = mvt[v1] * a1 + mvt[n0] * a2 + mvt[n1] * a3;
+
+
+            point = p2;
+
+            f1 = m1 - point;
+            f2 = m2 - point;
+            f3 = m3 - point;
+
+            a1 = length(cross(f2, f3))/area;
+            a2 = length(cross(f3, f1))/area;
+            a3 = length(cross(f1, f2))/area;
+
+            p2v = mvt[v1] * a1 + mvt[n0] * a2 + mvt[n1] * a3;
+
+
+            //p1v = 2.0*triangle->vertices[n0].vt - p1vt;
+            //p2v = 2.0*triangle->vertices[n1].vt - p2vt;
+
+
+
+
+            ///might be that inputs aren't normalised
+
+
+
+
+            /*float r1 = length(p1 - c1)/length(preperp[n0] - c1);
+            float r2 = length(p2 - c1)/length(preperp[n1] - c1);
+
+            float2 vv1 = ret.vertices[n0].vt - ret.vertices[v1].vt;
+            float2 vv2 = ret.vertices[n1].vt - ret.vertices[v1].vt;
+
+            float2 nv1 = r1 * vv1 + ret.vertices[v1].vt;
+            float2 nv2 = r2 * vv2 + ret.vertices[v1].vt;
+
+            p1v = nv1;
+            p2v = nv2;*/
+
+            ///float interpolate_i(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3, float rconstant)
+
+            /*float2 vts[3];
+            for(int i=0; i<3; i++)
+            {
+                vts[i] = ret.vertices[i].vt;
+            }
+
+
+            int minx = min3(preperp[0].x, preperp[1].x, preperp[2].x);
+            int maxx = max3(preperp[0].x, preperp[1].x, preperp[2].x);
+
+            int miny = min3(preperp[0].y, preperp[1].y, preperp[2].y);
+            int maxy = max3(preperp[0].y, preperp[1].y, preperp[2].y);*/
+
+
+
+
+
+            //float va = length(p1 - c1)/(preperp[n0] - preperp)
+
+            /*float nx1 = interpolate_r(vts[0].x, vts[1].x, vts[2].x, p1.x, p1.y, preperp[0].x, preperp[1].x, preperp[2].x, preperp[0].y, preperp[1].y, preperp[2].y);
+            float ny1 = interpolate_r(vts[0].y, vts[1].y, vts[2].y, p1.x, p1.y, preperp[0].x, preperp[1].x, preperp[2].x, preperp[0].y, preperp[1].y, preperp[2].y);
+
+            ///find depth at these points, use to interpolate
+
+
+            float nx2 = interpolate_r(vts[0].x, vts[1].x, vts[2].x, p2.x, p2.y, preperp[0].x, preperp[1].x, preperp[2].x, preperp[0].y, preperp[1].y, preperp[2].y);
+            float ny2 = interpolate_r(vts[0].y, vts[1].y, vts[2].y, p2.x, p2.y, preperp[0].x, preperp[1].x, preperp[2].x, preperp[0].y, preperp[1].y, preperp[2].y);
+
+
+            p1v = (float2){nx1, ny1};
+            p2v = (float2){nx2, ny2};*/
+
+
+
+
+            //p1v =
         }
+
     }
 
     p1.x = (p1.x * fovc / p1.z) + width/2;
@@ -631,15 +771,24 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
         t.t[0].vertices[id_behind].pos = p1;
         t.t[0].vertices[id_behind_2].pos = p2;
         t.t[0].vertices[id_valid].pos = c1;
+
+        t.t[0].vertices[id_behind].vt = p1v;
+        t.t[0].vertices[id_behind_2].vt = p2v;
+        t.t[0].vertices[id_valid].vt = c1v;
+
+
         t.c=3;
 
     }
     if(n_behind>2)
     {
-        t.t[0] = ret;
+        //t.t[0] = ret;
         //t.c=1;
         t.c=4;
     }
+
+    //t.t[2] = ret;
+
 
     //t.c = 1;
     //t.t[0] = ret;
@@ -1237,13 +1386,7 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
         float4 local_position={((spos.x - SCREENWIDTH/2.0f)*actual_depth/FOV_CONST), ((spos.y - SCREENHEIGHT/2.0f)*actual_depth/FOV_CONST), actual_depth, 0};
         float4 local_position_off={((spos.x + 1 - SCREENWIDTH/2.0f)*actual_depth/FOV_CONST), ((spos.y + 1 - SCREENHEIGHT/2.0f)*actual_depth/FOV_CONST), actual_depth, 0};
 
-
-
         float4 zero = {0,0,0,0};
-
-
-
-
 
         float4 lightaccum={0,0,0,0};
 
@@ -1861,6 +2004,13 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     if(tid == 203279)
     {
         *debug = t.t[0];
+        debug->vertices[0].pos.z = odepth[0];
+        debug->vertices[1].pos.z = odepth[1];
+        debug->vertices[2].pos.z = odepth[2];
+
+        //debug->vertices[0].pos.z *= 3500.0f;
+        //debug->vertices[1].pos.z *= 3500.0f;
+        //debug->vertices[2].pos.z *= 3500.0f;
         //debug->vertices[0].pos.x = ncount;
     }
 
@@ -2076,13 +2226,61 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         __global struct triangle* T = &triangles[fragment_id_buffer[(*fi)*3]];
 
-        struct t_c t = full_rotate(T, c_pos, c_rot, &icontainer, odepth, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+        struct t_c t = full_rotate(T, c_pos, c_rot, &icontainer, odepth, FOV_CONST, SCREENWIDTH, SCREENHEIGHT); ///fix this terrible function dear god, remove odepth and icontainer
 
         uint wtri = fragment_id_buffer[(*fi)*3 + 2];
-        struct triangle c_tri_ = t.t[wtri]; ///
-        c_tri_.vertices[0].pos.z = odepth[0];
-        c_tri_.vertices[1].pos.z = odepth[1];
-        c_tri_.vertices[2].pos.z = odepth[2];
+        struct triangle c_tri_ = t.t[0]; ///
+
+        c_tri_.vertices[0].pos.z = idcalc(c_tri_.vertices[0].pos.z);
+        c_tri_.vertices[1].pos.z = idcalc(c_tri_.vertices[1].pos.z);
+        c_tri_.vertices[2].pos.z = idcalc(c_tri_.vertices[2].pos.z);
+
+
+        icontainer = construct_interpolation(c_tri_, SCREENWIDTH, SCREENHEIGHT);
+
+
+
+
+        float4 opos_otri[3];
+        float4 opos_ntri[3];
+        float2 avt[3];
+        float2 nvt[3];
+
+        ///interpolate_r(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3)
+
+        /*for(int i=0; i<3; i++)
+        {
+            opos_otri[i].x = (icontainer.x[i] - SCREENWIDTH/2.0f)*(odepth[i])/FOV_CONST;
+            opos_otri[i].y = (icontainer.y[i] - SCREENHEIGHT/2.0f)*(odepth[i])/FOV_CONST;
+            opos_otri[i].z = odepth[i];
+
+            opos_ntri[i].x = (c_tri_.vertices[i].pos.x - SCREENWIDTH/2.0f)*(c_tri_.vertices[i].pos.z)/FOV_CONST;
+            opos_ntri[i].y = (c_tri_.vertices[i].pos.y - SCREENHEIGHT/2.0f)*(c_tri_.vertices[i].pos.z)/FOV_CONST;
+            opos_ntri[i].z = (c_tri_.vertices[i].pos.z);
+
+            avt[i] = c_tri_.vertices[i].vt;
+        }
+
+
+        for(int i=0; i<3; i++)
+        {
+            nvt[i].x = interpolate_r(avt[0].x, avt[1].x, avt[2].x, opos_ntri[i].x, opos_ntri[i].y, opos_otri[0].x, opos_otri[0].y, opos_otri[1].x, opos_otri[1].y, opos_otri[2].x, opos_otri[2].y);
+            nvt[i].y = interpolate_r(avt[0].y, avt[1].y, avt[2].y, opos_ntri[i].x, opos_ntri[i].y, opos_otri[0].x, opos_otri[0].y, opos_otri[1].x, opos_otri[1].y, opos_otri[2].x, opos_otri[2].y);
+
+            c_tri_.vertices[i].vt = nvt[i];
+        }*/
+
+
+        //c_tri_.vertices[0].pos.z = odepth[0];
+        //c_tri_.vertices[1].pos.z = odepth[1];
+        //c_tri_.vertices[2].pos.z = odepth[2];
+
+
+
+
+
+
+
 
 
         struct triangle *c_tri = &c_tri_; //ease of code reuse from old screenspace days
@@ -2109,10 +2307,44 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         //float cz = idcalc(((float)*ft / mulint));
 
         float cz[3] = {c_tri->vertices[0].pos.z, c_tri->vertices[1].pos.z, c_tri->vertices[2].pos.z};
-        float icz[3] = {1.0/c_tri->vertices[0].pos.z, 1.0/c_tri->vertices[1].pos.z, 1.0/c_tri->vertices[2].pos.z};
+
+
+        bool isclose = false;
+
+        /*for(int i=0; i<3; i++)
+        {
+            if(fabs(cz[i]) < 20)
+            {
+                //isclose = true;
+                cz[i] = sign(cz[i])*20;
+            }
+        }*/
+
+
+        /*
+        for(int i=0; i<3; i++)
+        {
+            if(isclose)
+            {
+                if(cz[i] < 0)
+                {
+                    cz[i] += -20;
+                }
+                else
+                {
+                    cz[i] += 20;
+                }
+            }
+        }*/
+
+
+        float icz[3] = {1.0/cz[0], 1.0/cz[1], 1.0/cz[2]};
 
 
         float ldepth = interpolate(icz, &icontainer, x, y);
+
+        //float ldepth = 1.0/idcalc((float)*ft/mulint);
+
 
 
 
@@ -2147,7 +2379,9 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         //float namydepth=interpolate(naturaldepths, &icontainer, x, y);
 
-        float namydepth = idcalc ((float)*ft/mulint);
+        //float namydepth = idcalc ((float)*ft/mulint);
+
+        float namydepth = 1.0 / ldepth;
 
 
         float actual_depth = namydepth;

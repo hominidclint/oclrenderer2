@@ -576,17 +576,19 @@ void engine::draw_bulk_objs_n()
 
     std::cout << "b" << std::endl;
 
-    /*for(int i=0; i<3; i++)
+    for(int i=0; i<3; i++)
         for(int j=0; j<3; j++)
-            std::cout << dc_triangle_buf->vertices[i].pos[j] << std::endl;*/
+            std::cout << dc_triangle_buf->vertices[i].pos[j] << std::endl;
 
-    /*for(int i=0; i<3; i++)
+    std::cout << "f" << std::endl;
+
+    for(int i=0; i<3; i++)
     {
         for(int j=0; j<2; j++)
         {
             std::cout << dc_triangle_buf->vertices[i].vt[j] << std::endl;
         }
-    }*/
+    }
 
 
 

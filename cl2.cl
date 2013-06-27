@@ -377,98 +377,78 @@ int backface_cull(struct triangle *tri, int fov, float w, float h)
 }
 
 
+void rot_3(__global struct triangle *triangle, float4 c_pos, float4 c_rot, float4 ret[3])
+{
+    ret[0]=rot(triangle->vertices[0].pos, c_pos, c_rot);
+    ret[1]=rot(triangle->vertices[1].pos, c_pos, c_rot);
+    ret[2]=rot(triangle->vertices[2].pos, c_pos, c_rot);
+}
+
+void rot_3_normal(__global struct triangle *triangle, float4 c_rot, float4 ret[3])
+{
+    float4 centre = {0,0,0,0};
+    ret[0]=rot(triangle->vertices[0].normal, centre, c_rot);
+    ret[1]=rot(triangle->vertices[1].normal, centre, c_rot);
+    ret[2]=rot(triangle->vertices[2].normal, centre, c_rot);
+}
+
+
+void depth_project(float4 rotated[3], int width, int height, float fovc, float4 ret[3])
+{
+    for(int i=0; i<3; i++)
+    {
+        float rx;
+        rx=(rotated[i].x) * (fovc/(rotated[i].z));
+        float ry;
+        ry=(rotated[i].y) * (fovc/(rotated[i].z));
+
+        rx+=width/2;
+        ry+=height/2;
+
+        ret[i].x = rx;
+        ret[i].y = ry;
+        ret[i].z = rotated[i].z;
+    }
+}
+
+
 void full_rotate(__global struct triangle *triangle, struct triangle *passback, int *num, float4 c_pos, float4 c_rot, float fovc, int width, int height)
 {
 
     __global struct triangle *T=triangle;
 
     float4 rotpoints[3];
-    rotpoints[0]=rot(T->vertices[0].pos, c_pos, c_rot);
-    rotpoints[1]=rot(T->vertices[1].pos, c_pos, c_rot);
-    rotpoints[2]=rot(T->vertices[2].pos, c_pos, c_rot);
+    rot_3(T, c_pos, c_rot, rotpoints);
 
-    float4 nought={0,0,0,0};
+    ///this will cause errors, need to fix lighting to use rotated normals rather than globals
     float4 normalrot[3];
-    normalrot[0]=rot(T->vertices[0].normal, nought, c_rot);
-    normalrot[1]=rot(T->vertices[1].normal, nought, c_rot);
-    normalrot[2]=rot(T->vertices[2].normal, nought, c_rot);
+    rot_3_normal(T, c_rot, normalrot);
 
-    float4 prerot[3];
 
-    for(int j=0; j<3; j++)
-    {
-        prerot[j] = rotpoints[j];
-    }
 
-    for(int j=0; j<3; j++)
-    {
-        float rx;
-        rx=(rotpoints[j].x) * (fovc/(rotpoints[j].z));
-        float ry;
-        ry=(rotpoints[j].y) * (fovc/(rotpoints[j].z));
-
-        rx+=width/2;
-        ry+=height/2;
-
-        rotpoints[j].x=rx;
-        rotpoints[j].y=ry;
-    }
+    float4 projected[3];
+    depth_project(rotpoints, width, height, fovc, projected);
 
     ///interpolation doesnt work when odepth close to 0, need to use idcalc(tri) and then work out proper texture coordinates
-
-
-
-    struct triangle ret;
-
-
-    for(int i=0; i<3; i++)
-    {
-        ret.vertices[i]=T->vertices[i];
-
-        ret.vertices[i].pos.x = rotpoints[i].x;
-        ret.vertices[i].pos.y = rotpoints[i].y;
-        ret.vertices[i].pos.z = rotpoints[i].z;
-
-        ret.vertices[i].pad.x = triangle->vertices[i].pad.x;
-        ret.vertices[i].pad.y = triangle->vertices[i].pad.y;
-
-        ret.vertices[i].vt.x  = triangle->vertices[i].vt.x;
-        ret.vertices[i].vt.y  = triangle->vertices[i].vt.y;
-
-        ret.vertices[i].normal= triangle->vertices[i].normal; ///I don't think this is correct, however, it seems to run. Investigate this at some point
-    }
+    ///YAY
 
     ///problem lies here ish
 
 
 
-    float4 preperp[3]; ///pre perspective projection
-
-    for(int i=0; i<3; i++)
-    {
-        preperp[i] = prerot[i];
-    }
-
-
-
-
     int n_behind = 0;
     int w_behind[3]={0,0,0};
-    int id_behind=-1;
-    int id_behind_2 = -1;
+    int ids_behind[2];
+    //int id_behind_2 = -1;
     int id_valid=-1;
 
 
     for(int i=0; i<3; i++)
     {
-        if(preperp[i].z <= depth_icutoff)
+        if(rotpoints[i].z <= depth_icutoff)
         {
+            ids_behind[n_behind] = i;
             n_behind++;
-
-            if(n_behind==1)
-                id_behind = i;
-            else if(n_behind==2)
-                id_behind_2 = i;
         }
         else
         {
@@ -477,105 +457,170 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
     }
 
 
+    if(n_behind>2)
+    {
+        *num = 0;
+        return;
+    }
+
+
 
     float4 p1, p2, c1, c2;
     float2 p1v, p2v, c1v, c2v;
     float4 p1l, p2l, c1l, c2l;
+
+    passback[0].vertices[0].pad = T->vertices[0].pad;
+    passback[0].vertices[1].pad = T->vertices[1].pad;
+    passback[0].vertices[2].pad = T->vertices[2].pad;
+
+
+    if(n_behind==0)
+    {
+        passback[0].vertices[0].pos = projected[0];
+        passback[0].vertices[1].pos = projected[1];
+        passback[0].vertices[2].pos = projected[2];
+
+        passback[0].vertices[0].normal = T->vertices[0].normal;
+        passback[0].vertices[1].normal = T->vertices[1].normal;
+        passback[0].vertices[2].normal = T->vertices[2].normal;
+
+        passback[0].vertices[0].vt = T->vertices[0].vt;
+        passback[0].vertices[1].vt = T->vertices[1].vt;
+        passback[0].vertices[2].vt = T->vertices[2].vt;
+
+        *num = 1;
+        return;
+    }
+
 
 
 
     if(n_behind==1)
     {
         ///find intersections and shit between id and other two id and shit, simply z = dcalc(50) and do a + l*(b-a)
-        int n0 = id_behind;
-        int v1 = (id_behind + 1) % 3;
-        int v2 = (id_behind + 2) % 3;
+        int n0 = ids_behind[0];
+        int v1 = (ids_behind[0] + 1) % 3;
+        int v2 = (ids_behind[0] + 2) % 3;
 
 
 
-        float l1 = (depth_icutoff - preperp[v1].z) / (preperp[n0].z - preperp[v1].z);
-        float l2 = (depth_icutoff - preperp[v2].z) / (preperp[n0].z - preperp[v2].z);
+        float l1 = (depth_icutoff - rotpoints[v1].z) / (rotpoints[n0].z - rotpoints[v1].z);
+        float l2 = (depth_icutoff - rotpoints[v2].z) / (rotpoints[n0].z - rotpoints[v2].z);
 
-        p1 = preperp[v1] + l1*(preperp[n0] - preperp[v1]);
-        p2 = preperp[v2] + l2*(preperp[n0] - preperp[v2]);
+        p1 = rotpoints[v1] + l1*(rotpoints[n0] - rotpoints[v1]);
+        p2 = rotpoints[v2] + l2*(rotpoints[n0] - rotpoints[v2]);
 
-        c1 = preperp[v1];
-        c2 = preperp[v2];
+        c1 = rotpoints[v1];
+        c2 = rotpoints[v2];
 
-
-
-        float r1 = length(p1 - c1)/length(preperp[n0] - c1);
-        float r2 = length(p2 - c2)/length(preperp[n0] - c2);
+        float4 i0 = rotpoints[n0];
 
 
-        float2 vv1 = ret.vertices[n0].vt - ret.vertices[v1].vt;
-        float2 vv2 = ret.vertices[n0].vt - ret.vertices[v2].vt;
 
-        float2 nv1 = r1 * vv1 + ret.vertices[v1].vt;
-        float2 nv2 = r2 * vv2 + ret.vertices[v2].vt;
+        /*float r1 = length(p1 - c1)/length(rotpoints[n0] - c1);
+        float r2 = length(p2 - c2)/length(rotpoints[n0] - c2);
+
+
+        float2 vv1 = T->vertices[n0].vt - T->vertices[v1].vt;
+        float2 vv2 = T->vertices[n0].vt - T->vertices[v2].vt;
+
+        float2 nv1 = r1 * vv1 + T->vertices[v1].vt;
+        float2 nv2 = r2 * vv2 + T->vertices[v2].vt;
 
         p1v = nv1;
         p2v = nv2;
 
-        c1v = ret.vertices[v1].vt;
-        c2v = ret.vertices[v2].vt;
+        c1v = T->vertices[v1].vt;
+        c2v = T->vertices[v2].vt;
 
 
-        float4 vl1 = ret.vertices[n0].normal - ret.vertices[v1].normal;
-        float4 vl2 = ret.vertices[n0].normal - ret.vertices[v2].normal;
+        float4 vl1 = T->vertices[n0].normal - T->vertices[v1].normal;
+        float4 vl2 = T->vertices[n0].normal - T->vertices[v2].normal;
 
-        float4 nl1 = r1 * vl1 + ret.vertices[v1].normal;
-        float4 nl2 = r2 * vl2 + ret.vertices[v2].normal;
+        float4 nl1 = r1 * vl1 + T->vertices[v1].normal;
+        float4 nl2 = r2 * vl2 + T->vertices[v2].normal;
 
         p1l = nl1;
         p2l = nl2;
 
-        c1l = ret.vertices[v1].normal;
-        c2l = ret.vertices[v2].normal;
+        c1l = T->vertices[v1].normal;
+        c2l = T->vertices[v2].normal;*/
+
+
+        float r1 = length(p1 - i0)/length(c1 - i0);
+        float r2 = length(p2 - i0)/length(c2 - i0);
+
+        float2 vv1 = T->vertices[v1].vt - T->vertices[n0].vt;
+        float2 vv2 = T->vertices[v2].vt - T->vertices[n0].vt;
+
+        float2 nv1 = r1 * vv1 + T->vertices[n0].vt;
+        float2 nv2 = r2 * vv2 + T->vertices[n0].vt;
+
+        p1v = nv1;
+        p2v = nv2;
+
+        c1v = T->vertices[v1].vt;
+        c2v = T->vertices[v2].vt;
+
+
+        float4 vl1 = T->vertices[v1].normal - T->vertices[n0].normal;
+        float4 vl2 = T->vertices[v2].normal - T->vertices[n0].normal;
+
+        float4 nl1 = r1 * vl1 + T->vertices[n0].normal;
+        float4 nl2 = r2 * vl2 + T->vertices[n0].normal;
+
+        p1l = nl1;
+        p2l = nl2;
+
+        c1l = T->vertices[v1].normal;
+        c2l = T->vertices[v2].normal;
+
+
+
     }
     else if(n_behind==2)
     {
-        int n0 = id_behind;
-        int n1 = id_behind_2;
+        int n0 = ids_behind[0];
+        int n1 = ids_behind[1];
 
         int v1 = id_valid;
 
         float l1, l2;
-        l1 = (depth_icutoff - preperp[n0].z) / (preperp[v1].z - preperp[n0].z);
-        l2 = (depth_icutoff - preperp[n1].z) / (preperp[v1].z - preperp[n1].z);
+        l1 = (depth_icutoff - rotpoints[n0].z) / (rotpoints[v1].z - rotpoints[n0].z);
+        l2 = (depth_icutoff - rotpoints[n1].z) / (rotpoints[v1].z - rotpoints[n1].z);
 
-        p1 = preperp[n0] + l1*(preperp[v1] - preperp[n0]);
-        p2 = preperp[n1] + l2*(preperp[v1] - preperp[n1]);
+        p1 = rotpoints[n0] + l1*(rotpoints[v1] - rotpoints[n0]);
+        p2 = rotpoints[n1] + l2*(rotpoints[v1] - rotpoints[n1]);
 
-        c1 = preperp[v1];
+        c1 = rotpoints[v1];
 
-        c1v = ret.vertices[v1].vt;
+        c1v = T->vertices[v1].vt;
 
 
 
-        float r1 = length(p1 - c1)/length(preperp[n0] - c1);
-        float r2 = length(p2 - c1)/length(preperp[n1] - c1);
+        float r1 = length(p1 - c1)/length(rotpoints[n0] - c1);
+        float r2 = length(p2 - c1)/length(rotpoints[n1] - c1);
 
-        float2 vv1 = ret.vertices[n0].vt - ret.vertices[v1].vt;
-        float2 vv2 = ret.vertices[n1].vt - ret.vertices[v1].vt;
+        float2 vv1 = T->vertices[n0].vt - T->vertices[v1].vt;
+        float2 vv2 = T->vertices[n1].vt - T->vertices[v1].vt;
 
-        float2 nv1 = r1 * vv1 + ret.vertices[v1].vt;
-        float2 nv2 = r2 * vv2 + ret.vertices[v1].vt;
+        float2 nv1 = r1 * vv1 + T->vertices[v1].vt;
+        float2 nv2 = r2 * vv2 + T->vertices[v1].vt;
 
         p1v = nv1;
         p2v = nv2;
 
 
-        float4 vl1 = ret.vertices[n0].normal - ret.vertices[v1].normal;
-        float4 vl2 = ret.vertices[n1].normal - ret.vertices[v1].normal;
+        float4 vl1 = T->vertices[n0].normal - T->vertices[v1].normal;
+        float4 vl2 = T->vertices[n1].normal - T->vertices[v1].normal;
 
-        float4 nl1 = r1 * vl1 + ret.vertices[v1].normal;
-        float4 nl2 = r2 * vl2 + ret.vertices[v1].normal;
+        float4 nl1 = r1 * vl1 + T->vertices[v1].normal;
+        float4 nl2 = r2 * vl2 + T->vertices[v1].normal;
 
         p1l = nl1;
         p2l = nl2;
 
-        c1l = ret.vertices[v1].normal;
+        c1l = T->vertices[v1].normal;
     }
 
 
@@ -595,15 +640,11 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
     c2.y = (c2.y * fovc / c2.z) + height/2;
 
 
-    if(n_behind==0)
-    {
-        passback[0] = ret;
-        *num = 1;
-    }
+
+
+
     if(n_behind==1)
     {
-        //t.c=2;
-
         passback[0].vertices[0].pos = p1;
         passback[0].vertices[1].pos = c1;
         passback[0].vertices[2].pos = c2;
@@ -630,47 +671,29 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
 
         for(int i=0; i<3; i++)
         {
-            passback[0].vertices[i].pad.x = ret.vertices[i].pad.x;
-            passback[0].vertices[i].pad.y = ret.vertices[i].pad.y;
-            passback[1].vertices[i].pad.x = ret.vertices[i].pad.x;
-            passback[1].vertices[i].pad.y = ret.vertices[i].pad.y;
+            passback[1].vertices[i].pad.x = T->vertices[i].pad.x;
+            passback[1].vertices[i].pad.y = T->vertices[i].pad.y;
         }
         *num = 2;
     }
     if(n_behind==2)
     {
-        passback[0].vertices[id_behind].pos = p1;
-        passback[0].vertices[id_behind_2].pos = p2;
+        passback[0].vertices[ids_behind[0]].pos = p1;
+        passback[0].vertices[ids_behind[1]].pos = p2;
         passback[0].vertices[id_valid].pos = c1;
 
-        passback[0].vertices[id_behind].vt = p1v;
-        passback[0].vertices[id_behind_2].vt = p2v;
+        passback[0].vertices[ids_behind[0]].vt = p1v;
+        passback[0].vertices[ids_behind[1]].vt = p2v;
         passback[0].vertices[id_valid].vt = c1v;
 
-        passback[0].vertices[id_behind].normal = p1l;
-        passback[0].vertices[id_behind_2].normal = p2l;
+        passback[0].vertices[ids_behind[0]].normal = p1l;
+        passback[0].vertices[ids_behind[1]].normal = p2l;
         passback[0].vertices[id_valid].normal = c1l;
 
-        for(int i=0; i<3; i++)
-        {
-            passback[0].vertices[i].pad.x = ret.vertices[i].pad.x;
-            passback[0].vertices[i].pad.y = ret.vertices[i].pad.y;
-        }
-
         *num = 1;
-
-        //t.c=3;
     }
 
-    if(n_behind>2)
-    {
-        *num = 0;
-        //t.c=4;
-    }
 
-    //*container = construct_interpolation(ret, width, height);
-
-    //return t;
 }
 
 

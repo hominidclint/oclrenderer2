@@ -285,61 +285,22 @@ struct interp_container construct_interpolation(struct triangle tri, int width, 
     int minx=min3(x1, x2, x3)-1;
     int maxx=max3(x1, x2, x3);
 
-    //if(out_of_bounds(miny, 0, SCREENHEIGHT))
-    {
-        miny=max(miny, 0);
-        miny=min(miny, height);
-    }
-    //if(out_of_bounds(maxy, 0, SCREENHEIGHT))
-    {
-        maxy=max(maxy, 0);
-        maxy=min(maxy, height);
-    }
-    //if(out_of_bounds(minx, 0, SCREENWIDTH))
-    {
-        minx=max(minx, 0);
-        minx=min(minx, width);
-    }
-    //if(out_of_bounds(maxx, 0, SCREENWIDTH))
-    {
-        maxx=max(maxx, 0);
-        maxx=min(maxx, width);
-    }
+    miny=max(miny, 0);
+    miny=min(miny, height);
 
-    /*int oobw[2] = {-1, -1};
-    int nob = -1;
-    int pc=0;
-    for(int j=0; j<3; j++)
-    {
-        if(tri.vertices[j].pos.z < 0)
-        {
-            oobw[pc++] = j;
-        }
-        else
-        {
-            nob = j;
-        }
-    }
+    maxy=max(maxy, 0);
+    maxy=min(maxy, height);
 
+    minx=max(minx, 0);
+    minx=min(minx, width);
 
-    float4 r1;
-    float4 r2;
-
-    if(pc==2)
-    {
-        get_intersection(tri.vertices[oobw[0]].pos, tri.vertices[nob].pos, &r1);
-        get_intersection(tri.vertices[oobw[1]].pos, tri.vertices[nob].pos, &r2);
-    }
-    else if(pc==1)
-    {
-        get_intersection(tri.vertices[(oobw[0]+1)%3].pos, tri.vertices[oobw[0]].pos, &r1);
-        get_intersection(tri.vertices[(oobw[0]+2)%3].pos, tri.vertices[oobw[0]].pos, &r2);
-    }*/
+    maxx=max(maxx, 0);
+    maxx=min(maxx, width);
 
 
     float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
 
-    int area=calc_third_area(x1, y1, x2, y2, x3, y3, 0, 0, 0);//
+    int area=calc_third_area(x1, y1, x2, y2, x3, y3, 0, 0, 0);
 
 
 
@@ -359,11 +320,6 @@ struct interp_container construct_interpolation(struct triangle tri, int width, 
 
     C.rconstant=rconstant;
 
-    ///(Bx - Ax) * (Cy - Ay) - (By - Ay) * (Cx - Ax)
-
-
-
-
 
     float x = x1 + x2 + x3;
     x/=3.0f;
@@ -371,7 +327,7 @@ struct interp_container construct_interpolation(struct triangle tri, int width, 
     y/=3.0f;
 
 
-    int sg[3];
+    /*int sg[3];
 
     for(int i=0; i<3; i++)
     {
@@ -382,17 +338,13 @@ struct interp_container construct_interpolation(struct triangle tri, int width, 
 
         sg[i] = sign((bx - ax) * (y - ay) - (by - ay) * (x - ax));
         C.sg[i] = sg[i];
-    }
+    }*/
 
 
-    float area_new = calc_third_areas(&C, x, y);
+    //float area_new = calc_third_areas(&C, x, y);
 
 
     C.area=area;
-
-    /*C.s1=r1;
-    C.s2=r2;*/
-
 
     return C;
 }
@@ -425,7 +377,7 @@ int backface_cull(struct triangle *tri, int fov, float w, float h)
 }
 
 
-struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos, float4 c_rot, struct interp_container *container, float odepth[3], float fovc, int width, int height)
+void full_rotate(__global struct triangle *triangle, struct triangle *passback, int *num, float4 c_pos, float4 c_rot, float fovc, int width, int height)
 {
 
     __global struct triangle *T=triangle;
@@ -460,8 +412,6 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
 
         rotpoints[j].x=rx;
         rotpoints[j].y=ry;
-        odepth[j]=rotpoints[j].z;
-        rotpoints[j].z=dcalc(rotpoints[j].z);
     }
 
     ///interpolation doesnt work when odepth close to 0, need to use idcalc(tri) and then work out proper texture coordinates
@@ -527,22 +477,11 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
         }
     }
 
-    /*int b = backface_cull_expanded(rotpoints[0], rotpoints[1], rotpoints[2], fovc, width, height);
 
-    if(b!=1 && n_behind==0)
-    {
-        struct t_c tr;
-        tr.c = 4;
-        return tr;
-    }*/
 
     float4 p1, p2, c1, c2;
     float2 p1v, p2v, c1v, c2v;
-
-    //float rconstant=1.0/(preperp[1].x*preperp[2].y+preperp[0].x*(preperp[1].y-preperp[2].y)-preperp[2].x*preperp[1].y+(preperp[2].x-preperp[1].x)*preperp[0].y);
-    ///    float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
-
-
+    float4 p1l, p2l, c1l, c2l;
 
 
 
@@ -552,13 +491,8 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
         int n0 = id_behind;
         int v1 = (id_behind + 1) % 3;
         int v2 = (id_behind + 2) % 3;
-        ///the two valid coordinates
 
-        ///find intersection of preperp with depth_icutoff
 
-        ///eq 3 = preperp[v1].z + l*(preperp[n0].z - preperp[v1].z) = idepth_cutoff
-        /// l = idepth_cutoff -preperp[v1].z / (preperp[n0].z - preperp[v1].z) = l
-        ///other coords = preperp[v1] + l*(preperp[n0] - preperp[v1])
 
         float l1 = (depth_icutoff - preperp[v1].z) / (preperp[n0].z - preperp[v1].z);
         float l2 = (depth_icutoff - preperp[v2].z) / (preperp[n0].z - preperp[v2].z);
@@ -575,8 +509,6 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
         float r2 = length(p2 - c2)/length(preperp[n0] - c2);
 
 
-
-
         float2 vv1 = ret.vertices[n0].vt - ret.vertices[v1].vt;
         float2 vv2 = ret.vertices[n0].vt - ret.vertices[v2].vt;
 
@@ -589,6 +521,18 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
         c1v = ret.vertices[v1].vt;
         c2v = ret.vertices[v2].vt;
 
+
+        float4 vl1 = ret.vertices[n0].normal - ret.vertices[v1].normal;
+        float4 vl2 = ret.vertices[n0].normal - ret.vertices[v2].normal;
+
+        float4 nl1 = r1 * vl1 + ret.vertices[v1].normal;
+        float4 nl2 = r2 * vl2 + ret.vertices[v2].normal;
+
+        p1l = nl1;
+        p2l = nl2;
+
+        c1l = ret.vertices[v1].normal;
+        c2l = ret.vertices[v2].normal;
     }
     else if(n_behind==2)
     {
@@ -621,27 +565,39 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
 
         p1v = nv1;
         p2v = nv2;
+
+
+        float4 vl1 = ret.vertices[n0].normal - ret.vertices[v1].normal;
+        float4 vl2 = ret.vertices[n1].normal - ret.vertices[v1].normal;
+
+        float4 nl1 = r1 * vl1 + ret.vertices[v1].normal;
+        float4 nl2 = r2 * vl2 + ret.vertices[v1].normal;
+
+        p1l = nl1;
+        p2l = nl2;
+
+        c1l = ret.vertices[v1].normal;
     }
 
 
     p1.x = (p1.x * fovc / p1.z) + width/2;
     p1.y = (p1.y * fovc / p1.z) + height/2;
-    p1.z = dcalc(p1.z);
+    //p1.z = dcalc(p1.z);
 
 
     p2.x = (p2.x * fovc / p2.z) + width/2;
     p2.y = (p2.y * fovc / p2.z) + height/2;
-    p2.z = dcalc(p2.z);
+    //p2.z = dcalc(p2.z);
 
 
     c1.x = (c1.x * fovc / c1.z) + width/2;
     c1.y = (c1.y * fovc / c1.z) + height/2;
-    c1.z = dcalc(c1.z);
+    //c1.z = dcalc(c1.z);
 
 
     c2.x = (c2.x * fovc / c2.z) + width/2;
     c2.y = (c2.y * fovc / c2.z) + height/2;
-    c2.z = dcalc(c2.z);
+    //c2.z = dcalc(c2.z);
 
 
     struct t_c t;
@@ -649,74 +605,82 @@ struct t_c full_rotate_n_global(__global struct triangle *triangle, float4 c_pos
 
     if(n_behind==0)
     {
-        t.t[0] = ret;
-        t.c=1;
+        passback[0] = ret;
+        //t.c=1;
+        *num = 1;
     }
     if(n_behind==1)
     {
-        t.t[0] = ret;
-        t.t[1] = ret;
-        t.c=2;
+        //t.c=2;
 
-        t.t[0].vertices[0].pos = p1;
-        t.t[0].vertices[1].pos = c1;
-        t.t[0].vertices[2].pos = c2;
+        passback[0].vertices[0].pos = p1;
+        passback[0].vertices[1].pos = c1;
+        passback[0].vertices[2].pos = c2;
 
-        t.t[0].vertices[0].vt = p1v;
-        t.t[0].vertices[1].vt = c1v;
-        t.t[0].vertices[2].vt = c2v;
+        passback[0].vertices[0].vt = p1v;
+        passback[0].vertices[1].vt = c1v;
+        passback[0].vertices[2].vt = c2v;
 
-        t.t[1].vertices[0].pos = p1;
-        t.t[1].vertices[1].pos = c2;
-        t.t[1].vertices[2].pos = p2;
+        passback[0].vertices[0].normal = p1l;
+        passback[0].vertices[1].normal = c1l;
+        passback[0].vertices[2].normal = c2l;
 
-        t.t[1].vertices[0].vt = p1v;
-        t.t[1].vertices[1].vt = c2v;
-        t.t[1].vertices[2].vt = p2v;
+        passback[1].vertices[0].pos = p1;
+        passback[1].vertices[1].pos = c2;
+        passback[1].vertices[2].pos = p2;
+
+        passback[1].vertices[0].vt = p1v;
+        passback[1].vertices[1].vt = c2v;
+        passback[1].vertices[2].vt = p2v;
+
+        passback[1].vertices[0].normal = p1l;
+        passback[1].vertices[1].normal = c2l;
+        passback[1].vertices[2].normal = p2l;
+
+        for(int i=0; i<3; i++)
+        {
+            passback[0].vertices[i].pad.x = ret.vertices[i].pad.x;
+            passback[0].vertices[i].pad.y = ret.vertices[i].pad.y;
+            passback[1].vertices[i].pad.x = ret.vertices[i].pad.x;
+            passback[1].vertices[i].pad.y = ret.vertices[i].pad.y;
+        }
+        *num = 2;
     }
     if(n_behind==2)
     {
-        t.t[0] = ret;
+        passback[0].vertices[id_behind].pos = p1;
+        passback[0].vertices[id_behind_2].pos = p2;
+        passback[0].vertices[id_valid].pos = c1;
 
-        t.t[0].vertices[id_behind].pos = p1;
-        t.t[0].vertices[id_behind_2].pos = p2;
-        t.t[0].vertices[id_valid].pos = c1;
+        passback[0].vertices[id_behind].vt = p1v;
+        passback[0].vertices[id_behind_2].vt = p2v;
+        passback[0].vertices[id_valid].vt = c1v;
 
-        t.t[0].vertices[id_behind].vt = p1v;
-        t.t[0].vertices[id_behind_2].vt = p2v;
-        t.t[0].vertices[id_valid].vt = c1v;
+        passback[0].vertices[id_behind].normal = p1l;
+        passback[0].vertices[id_behind_2].normal = p2l;
+        passback[0].vertices[id_valid].normal = c1l;
 
+        for(int i=0; i<3; i++)
+        {
+            passback[0].vertices[i].pad.x = ret.vertices[i].pad.x;
+            passback[0].vertices[i].pad.y = ret.vertices[i].pad.y;
+        }
 
-        t.c=3;
+        *num = 1;
 
+        //t.c=3;
     }
+
     if(n_behind>2)
     {
-        //t.t[0] = ret;
-        //t.c=1;
-        t.c=4;
+        *num = 0;
+        //t.c=4;
     }
 
-    //t.t[2] = ret;
+    //*container = construct_interpolation(ret, width, height);
 
-
-    //t.c = 1;
-    //t.t[0] = ret;
-
-
-    *container = construct_interpolation(ret, width, height);
-
-    return t;
+    //return t;
 }
-
-
-struct t_c full_rotate(__global struct triangle *triangle, __global float4 *c_pos, __global float4 *c_rot, struct interp_container *container, float odepth[3], float fovc, int width, int height)
-{
-    return full_rotate_n_global(triangle, *c_pos, *c_rot, container, odepth, fovc, width, height);
-}
-
-
-
 
 
 ////all texture code was not rewritten for time, does not use proper functions
@@ -871,6 +835,8 @@ float4 texture_filter(struct triangle* c_tri, int2 spos, float4 vt, float depth,
     //float adepth=(rotpoints[0].z + rotpoints[1].z + rotpoints[2].z)/3.0f;
 
     float adepth = idcalc(depth);
+
+    //float adepth = depth;
 
     ///maths works out to be z = 700*n where n is 1/2, 1/4 of the size etc
     ///so, if z of pixel is between 0-700, use least, then first, then second, etc
@@ -1512,11 +1478,26 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
     float4 l_arot = r_struct[bslice];
 
 
-    float odepth[3];
     int cont=0;
 
-    struct t_c t=full_rotate_n_global(&triangles[id], *l_pos, l_arot, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
-    struct triangle tri = t.t[0];
+    struct triangle tris[2];
+
+
+    int num = 0;
+
+    full_rotate(&triangles[id], tris, &num, *l_pos, l_arot, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
+
+    if(num==0)
+    {
+        return;
+    }
+
+    struct triangle tri = tris[0];
+
+    //struct triangle tri = t.t[0];
+
+    icontainer = construct_interpolation(tris[0], LIGHTBUFFERDIM, LIGHTBUFFERDIM);
+
     //struct triangle tri=full_rotate(&triangles[id], l_pos, l_rot, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
 
 
@@ -1529,7 +1510,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
     ///near plane intersection
 
 
-    if((tri.vertices[0].pos.z) < dcalc(depth_icutoff) && (tri.vertices[1].pos.z) < dcalc(depth_icutoff) && (tri.vertices[2].pos.z) < dcalc(depth_icutoff))
+    if((tri.vertices[0].pos.z) < (depth_icutoff) && (tri.vertices[1].pos.z) < (depth_icutoff) && (tri.vertices[2].pos.z) < (depth_icutoff))
     {
         return;
     }
@@ -1550,7 +1531,8 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
     ///begin drawing to depth buffer
 
-    float depths[3]={tri.vertices[0].pos.z, tri.vertices[1].pos.z, tri.vertices[2].pos.z};
+    float depths[3]={1.0/dcalc(tri.vertices[0].pos.z), 1.0/dcalc(tri.vertices[1].pos.z), 1.0/dcalc(tri.vertices[2].pos.z)};
+    //float depths[3]={dcalc(tri.vertices[0].pos.z), dcalc(tri.vertices[1].pos.z), dcalc(tri.vertices[2].pos.z)};
     //float depths[3]={odepth[0], odepth[1], odepth[2]};
 
     for(int y=icontainer.ybounds[0]; y<icontainer.ybounds[1]; y++)
@@ -1566,7 +1548,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
                 ///slice*ldbm^2 + lnum*6*lbdm^2 + y*ldbm + x
 
 
-                float fmydepth=interpolate(depths, &icontainer, x, y);
+                float fmydepth=1.0/interpolate(depths, &icontainer, x, y);
 
                 //fmydepth = dcalc(fmydepth);
 
@@ -1605,39 +1587,30 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
     struct interp_container icontainer;
 
-    float odepth[3];
 
-    struct t_c t = full_rotate(T, c_pos, c_rot, &icontainer, odepth, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+    struct triangle tris[2];
 
-    if(t.c==4)
+    int num=0;
+
+    full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+
+    if(num==0)
     {
         return;
     }
-    /*struct triangle tri = t.t[0];
-    tri.vertices[0].pos.z = odepth[0];
-    tri.vertices[1].pos.z = odepth[1];
-    tri.vertices[2].pos.z = odepth[2];*/
-
 
     int ooany[2];
 
-    ooany[0] = backface_cull(&t.t[0], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+    ooany[0] = backface_cull(&tris[0], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
-    if(t.c==2)
-        ooany[1] = backface_cull(&t.t[1], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
-
-
+    if(num==2)
+        ooany[1] = backface_cull(&tris[1], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
 
 
-    int nct = 1;
-    if(t.c==2)
+
+    for(int j=0; j<num; j++)
     {
-        nct=2;
-    }
-    for(int j=0; j<nct; j++)
-    {
-        //ooany[j]=1;
         int oob = 0;
         int ooxmin = 0;
         int ooxmax = 0;
@@ -1646,25 +1619,24 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
         for(int i=0; i<3; i++)
         {
-            if(t.t[j].vertices[i].pos.z < dcalc(depth_icutoff))
+            if(tris[j].vertices[i].pos.z < (depth_icutoff))
             {
                 oob++;
             }
-            if(t.t[j].vertices[i].pos.x < 0)
+            if(tris[j].vertices[i].pos.x < 0)
             {
                 ooxmin++;
             }
-            if(t.t[j].vertices[i].pos.x >= SCREENWIDTH)
+            if(tris[j].vertices[i].pos.x >= SCREENWIDTH)
             {
                 ooxmax++;
             }
-            if(t.t[j].vertices[i].pos.y < 0)
+            if(tris[j].vertices[i].pos.y < 0)
             {
                 ooymin++;
             }
-            if(t.t[j].vertices[i].pos.y >= SCREENHEIGHT)
+            if(tris[j].vertices[i].pos.y >= SCREENHEIGHT)
             {
-
                 ooymax++;
             }
         }
@@ -1677,29 +1649,8 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
     ///how many pixels does each thread want to render?
 
-    //uint op_size = 1000;
 
-    int loop_c=0;
-
-    if(t.c==1)
-    {
-        loop_c=1;
-    }
-    if(t.c==2)
-    {
-        loop_c=2;
-    }
-    if(t.c==3)
-    {
-        loop_c=1;
-    }
-
-
-
-
-
-
-    for(uint i=0; i<loop_c; i++)
+    for(uint i=0; i<num; i++)
     {
         if(ooany[i]!=1)
         {
@@ -1708,7 +1659,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
         int minx, maxx, miny, maxy;
 
-        struct interp_container ic = construct_interpolation(t.t[i], SCREENWIDTH, SCREENHEIGHT);
+        struct interp_container ic = construct_interpolation(tris[i], SCREENWIDTH, SCREENHEIGHT);
 
         minx = ic.xbounds[0];
         maxx = ic.xbounds[1];
@@ -1729,7 +1680,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
         int c = 0;
 
-        if(b*3 + thread_num*3 < *id_buffer_maxlength)
+        //if(b*3 + thread_num*3 < *id_buffer_maxlength)
         {
             for(uint a = b; a < b + thread_num; a++)
             {
@@ -1763,24 +1714,24 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     struct interp_container icontainer;
 
 
-    float odepth[3];
-
     uint distance = 0;
 
     distance = fragment_id_buffer[id*3 + 1];
 
     int wtri = fragment_id_buffer[id*3 + 2];
 
+    struct triangle tris[2];
 
+    int num = 0;
 
-    struct t_c t = full_rotate(T, c_pos, c_rot, &icontainer, odepth, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+    full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
 
     struct interp_container ic_b;
 
-    ic_b = construct_interpolation(t.t[wtri], SCREENWIDTH, SCREENHEIGHT);
+    ic_b = construct_interpolation(tris[wtri], SCREENWIDTH, SCREENHEIGHT);
 
-    struct triangle tri = t.t[wtri];
+    struct triangle *tri = &tris[wtri];
 
 
 
@@ -1797,7 +1748,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     int ystart = ic_b.ybounds[0];
 
 
-    float depths[3]={1.0/tri.vertices[0].pos.z, 1.0/tri.vertices[1].pos.z, 1.0/tri.vertices[2].pos.z};
+    float depths[3]={1.0/dcalc(tri->vertices[0].pos.z), 1.0/dcalc(tri->vertices[1].pos.z), 1.0/dcalc(tri->vertices[2].pos.z)};
 
     int pcount=0;
 
@@ -1909,7 +1860,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
         pcount++;
     }
 
-    if(tid == 203279)
+    /*if(tid == 203279)
     {
         *debug = t.t[0];
         debug->vertices[0].pos.z = odepth[0];
@@ -1920,7 +1871,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
         //debug->vertices[1].pos.z *= 3500.0f;
         //debug->vertices[2].pos.z *= 3500.0f;
         //debug->vertices[0].pos.x = ncount;
-    }
+    }*/
 
 }
 
@@ -1942,11 +1893,15 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
     struct interp_container icontainer;
 
-    float odepth[3];
 
     __global struct triangle *T = &triangles[tid];
 
-    struct t_c t = full_rotate(T, c_pos, c_rot, &icontainer, odepth, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+
+    struct triangle tris[2];
+
+    int num = 0;
+
+    full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
 
     int distance = 0;
@@ -1956,10 +1911,10 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
     struct interp_container ic_b;
 
 
-    ic_b = construct_interpolation(t.t[wtri], SCREENWIDTH, SCREENHEIGHT);
+    ic_b = construct_interpolation(tris[wtri], SCREENWIDTH, SCREENHEIGHT);
 
 
-    struct triangle tri = t.t[wtri];
+    struct triangle *tri = &tris[wtri];
 
     //struct triangle* tri = &tri_; ///ease of code reuse
 
@@ -1969,7 +1924,7 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
     int pixel_along = op_size*distance;
 
-    float depths[3]={1.0/(tri.vertices[0].pos.z), 1.0/(tri.vertices[1].pos.z), 1.0/(tri.vertices[2].pos.z)};
+    float depths[3]={1.0/dcalc(tri->vertices[0].pos.z), 1.0/dcalc(tri->vertices[1].pos.z), 1.0/dcalc(tri->vertices[2].pos.z)};
 
     int xstart = ic_b.xbounds[0];
     int ystart = ic_b.ybounds[0];
@@ -1987,65 +1942,6 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
             pcount++;
             continue;
         }
-
-        //
-
-
-        /*bool iswithin=true;
-
-        int sg[3]={0};
-
-        for(int i=0; i<3; i++)
-        {
-            float ax = tri.vertices[i % 3].pos.x;
-            float ay = tri.vertices[i % 3].pos.y;
-            float bx = tri.vertices[(i+1) % 3].pos.x;
-            float by = tri.vertices[(i+1) % 3].pos.y;
-
-            float pb = sign((bx - ax) * ((float)y - ay) - (by - ay) * ((float)x - ax));
-
-            sg[i] = pb;
-
-            if(sg[i]!=ic_b.sg[i] && fabs(pb) > 1)
-            {
-                iswithin=false;
-            }
-        }
-
-        if(iswithin)*/
-
-        /*bool iswithin = false;
-
-        ///http://www.blackpawn.com/texts/pointinpoly/
-        float4 v04 = tri.vertices[2].pos - tri.vertices[0].pos;
-        float4 v14 = tri.vertices[1].pos - tri.vertices[0].pos;
-        float4 v24 = (float4){x, y, 0, 0} - tri.vertices[0].pos;
-
-        float2 v0, v1, v2;
-        v0.x = v04.x;
-        v0.y = v04.y;
-        v1.x = v14.x;
-        v1.y = v14.y;
-        v2.x = v24.x;
-        v2.y = v24.y;
-
-        // Compute dot products
-        float dot00 = dot(v0, v0);
-        float dot01 = dot(v0, v1);
-        float dot02 = dot(v0, v2);
-        float dot11 = dot(v1, v1);
-        float dot12 = dot(v1, v2);
-
-        // Compute barycentric coordinates
-        float invDenom = 1.0 / (dot00 * dot11 - dot01 * dot01);
-        float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-        float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
-
-        // Check if point is in triangle
-        iswithin =  ((u >= 0) && (v >= 0) && (u + v < 1));
-
-
-        if(iswithin)*/
 
         float s1=calc_third_areas(&ic_b, x, y);
 
@@ -2134,65 +2030,22 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         __global struct triangle* T = &triangles[fragment_id_buffer[(*fi)*3]];
 
-        struct t_c t = full_rotate(T, c_pos, c_rot, &icontainer, odepth, FOV_CONST, SCREENWIDTH, SCREENHEIGHT); ///fix this terrible function dear god, remove odepth and icontainer
+
+        ///split the different steps to have different full_rotate functions. Prearrange only needs areas not full triangles, part 1-2 do not need texture or normal information
+
+        struct triangle tris[2];
+
+        int num = 0;
+
+        full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
         uint wtri = fragment_id_buffer[(*fi)*3 + 2];
-        struct triangle c_tri_ = t.t[wtri]; ///
 
-        c_tri_.vertices[0].pos.z = idcalc(c_tri_.vertices[0].pos.z);
-        c_tri_.vertices[1].pos.z = idcalc(c_tri_.vertices[1].pos.z);
-        c_tri_.vertices[2].pos.z = idcalc(c_tri_.vertices[2].pos.z);
-
-
-        icontainer = construct_interpolation(c_tri_, SCREENWIDTH, SCREENHEIGHT);
+        icontainer = construct_interpolation(tris[wtri], SCREENWIDTH, SCREENHEIGHT);
 
 
 
-
-        float4 opos_otri[3];
-        float4 opos_ntri[3];
-        float2 avt[3];
-        float2 nvt[3];
-
-        ///interpolate_r(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3)
-
-        /*for(int i=0; i<3; i++)
-        {
-            opos_otri[i].x = (icontainer.x[i] - SCREENWIDTH/2.0f)*(odepth[i])/FOV_CONST;
-            opos_otri[i].y = (icontainer.y[i] - SCREENHEIGHT/2.0f)*(odepth[i])/FOV_CONST;
-            opos_otri[i].z = odepth[i];
-
-            opos_ntri[i].x = (c_tri_.vertices[i].pos.x - SCREENWIDTH/2.0f)*(c_tri_.vertices[i].pos.z)/FOV_CONST;
-            opos_ntri[i].y = (c_tri_.vertices[i].pos.y - SCREENHEIGHT/2.0f)*(c_tri_.vertices[i].pos.z)/FOV_CONST;
-            opos_ntri[i].z = (c_tri_.vertices[i].pos.z);
-
-            avt[i] = c_tri_.vertices[i].vt;
-        }
-
-
-        for(int i=0; i<3; i++)
-        {
-            nvt[i].x = interpolate_r(avt[0].x, avt[1].x, avt[2].x, opos_ntri[i].x, opos_ntri[i].y, opos_otri[0].x, opos_otri[0].y, opos_otri[1].x, opos_otri[1].y, opos_otri[2].x, opos_otri[2].y);
-            nvt[i].y = interpolate_r(avt[0].y, avt[1].y, avt[2].y, opos_ntri[i].x, opos_ntri[i].y, opos_otri[0].x, opos_otri[0].y, opos_otri[1].x, opos_otri[1].y, opos_otri[2].x, opos_otri[2].y);
-
-            c_tri_.vertices[i].vt = nvt[i];
-        }*/
-
-
-        //c_tri_.vertices[0].pos.z = odepth[0];
-        //c_tri_.vertices[1].pos.z = odepth[1];
-        //c_tri_.vertices[2].pos.z = odepth[2];
-
-
-
-
-
-
-
-
-
-        struct triangle *c_tri = &c_tri_; //ease of code reuse from old screenspace days
-
+        struct triangle *c_tri = &tris[wtri];
 
         uint pid = fragment_id_buffer[(*fi)*3];
 
@@ -2205,56 +2058,15 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         int4 coord={x, y, 0, 0};
 
-        //uint4 col;
-        //col=read_imageui(array, sam, coord);
-
-        uint depth=*ft;
-        //uint id=*fi;
-
-
-        //float cz = idcalc(((float)*ft / mulint));
 
         float cz[3] = {c_tri->vertices[0].pos.z, c_tri->vertices[1].pos.z, c_tri->vertices[2].pos.z};
 
 
-        bool isclose = false;
-
-        /*for(int i=0; i<3; i++)
-        {
-            if(fabs(cz[i]) < 20)
-            {
-                //isclose = true;
-                cz[i] = sign(cz[i])*20;
-            }
-        }*/
 
 
-        /*
-        for(int i=0; i<3; i++)
-        {
-            if(isclose)
-            {
-                if(cz[i] < 0)
-                {
-                    cz[i] += -20;
-                }
-                else
-                {
-                    cz[i] += 20;
-                }
-            }
-        }*/
+        //float ldepth = interpolate(icz, &icontainer, x, y);
 
-
-        float icz[3] = {1.0/cz[0], 1.0/cz[1], 1.0/cz[2]};
-
-
-        float ldepth = interpolate(icz, &icontainer, x, y);
-
-        //float ldepth = 1.0/idcalc((float)*ft/mulint);
-
-
-
+        float ldepth = idcalc((float)*ft/mulint);
 
 
         float4 vt;
@@ -2266,7 +2078,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         float yvt[3]={c_tri->vertices[0].vt.y/cz[0], c_tri->vertices[1].vt.y/cz[1], c_tri->vertices[2].vt.y/cz[2]};
         vt.y=interpolate(yvt, &icontainer, x, y);
 
-        vt /= ldepth;
+        vt *= ldepth;
 
 
         float normalsx[3]={c_tri->vertices[0].normal.x/cz[0], c_tri->vertices[1].normal.x/cz[1], c_tri->vertices[2].normal.x/cz[2]};
@@ -2279,20 +2091,10 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         normal.y=interpolate(normalsy, &icontainer, x, y);
         normal.z=interpolate(normalsz, &icontainer, x, y);
 
-        normal /= ldepth;
+        normal *= ldepth;
 
 
-
-        //float naturaldepths[3]={(c_tri->vertices[0].pos.z), (c_tri->vertices[1].pos.z), (c_tri->vertices[2].pos.z)};
-
-        //float namydepth=interpolate(naturaldepths, &icontainer, x, y);
-
-        //float namydepth = idcalc ((float)*ft/mulint);
-
-        float namydepth = 1.0 / ldepth;
-
-
-        float actual_depth = namydepth;
+        float actual_depth = ldepth;
 
 
         float4 local_position={((x - SCREENWIDTH/2.0f)*actual_depth/FOV_CONST), ((y - SCREENHEIGHT/2.0f)*actual_depth/FOV_CONST), actual_depth, 0};
@@ -2347,7 +2149,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
             {
 
 
-                average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, namydepth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
+                average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, actual_depth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
 
 
 
@@ -2360,9 +2162,6 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
                 uint ldepth_map_id = ret_cubeface(global_position, lpos);
                 float4 *rotation = &r_struct[ldepth_map_id];
 
-
-
-                //struct triangle lspace = full_rotate_n_global(g_tri, lpos, *rotation, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
 
 
                 float4 local_light_pos = rot(global_position, lpos, *rotation);
@@ -2418,12 +2217,11 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         float4 coord1={0, 0, 0, 0};
 
         uint4 ucol;
-        ucol=read_imageui(array, sam, coord1);
+        ucol=read_imageui(array, sam, coord1);*/
 
         //float4 col = (float4){ucol.x, ucol.y, ucol.z, 0};
         //col/=255.0f;
 
-        //float4 col = {1.0, 1.0, 1.0, 0.0};*/
 
         lightaccum.x=clamp(lightaccum.x, 0.0f, 1.0f/col.x);
         lightaccum.y=clamp(lightaccum.y, 0.0f, 1.0f/col.y);
@@ -2434,13 +2232,9 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         float hbao = 0;
 
 
-        float4 dcol = {dcalc(namydepth), dcalc(namydepth), dcalc(namydepth), 0};
-
+        //float4 dcol = {dcalc(namydepth), dcalc(namydepth), dcalc(namydepth), 0};
 
         write_imagef(screen, scoord, col*(lightaccum)*(1.0-hbao));
-
-
-        //*fi=0;
     }
 
 }

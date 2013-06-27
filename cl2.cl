@@ -492,12 +492,77 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
         return;
     }
 
+    int g1, g2, g3;
 
+    if(n_behind==1)
+    {
+        ///n0, v1, v2
+        g1 = ids_behind[0];
+        g2 = (ids_behind[0] + 1) % 3;
+        g3 = (ids_behind[0] + 2) % 3;
+    }
+    if(n_behind==2)
+    {
+        g2 = ids_behind[0];
+        g3 = ids_behind[1];
+        g1 = id_valid;
+    }
+
+
+    float l1 = (depth_icutoff - rotpoints[g2].z) / (rotpoints[g1].z - rotpoints[g2].z);
+    float l2 = (depth_icutoff - rotpoints[g3].z) / (rotpoints[g1].z - rotpoints[g3].z);
+
+
+    p1 = rotpoints[g2] + l1*(rotpoints[g1] - rotpoints[g2]);
+    p2 = rotpoints[g3] + l2*(rotpoints[g1] - rotpoints[g3]);
+
+
+
+    float r1 = length(p1 - rotpoints[g1])/length(rotpoints[g2] - rotpoints[g1]);
+    float r2 = length(p2 - rotpoints[g1])/length(rotpoints[g3] - rotpoints[g1]);
+
+    float2 vv1 = T->vertices[g2].vt - T->vertices[g1].vt;
+    float2 vv2 = T->vertices[g3].vt - T->vertices[g1].vt;
+
+    float2 nv1 = r1 * vv1 + T->vertices[g1].vt;
+    float2 nv2 = r2 * vv2 + T->vertices[g1].vt;
+
+    p1v = nv1;
+    p2v = nv2;
+
+
+
+    float4 vl1 = T->vertices[g2].normal - T->vertices[g1].normal;
+    float4 vl2 = T->vertices[g3].normal - T->vertices[g1].normal;
+
+    float4 nl1 = r1 * vl1 + T->vertices[g1].normal;
+    float4 nl2 = r2 * vl2 + T->vertices[g1].normal;
+
+    p1l = nl1;
+    p2l = nl2;
 
 
     if(n_behind==1)
     {
-        ///find intersections and shit between id and other two id and shit, simply z = dcalc(50) and do a + l*(b-a)
+        c1 = rotpoints[g2];
+        c2 = rotpoints[g3];
+        c1v = T->vertices[g2].vt;
+        c2v = T->vertices[g3].vt;
+        c1l = T->vertices[g2].normal;
+        c2l = T->vertices[g3].normal;
+    }
+    else
+    {
+        c1 = rotpoints[g1];
+        c1v = T->vertices[g1].vt;
+        c1l = T->vertices[g1].normal;
+    }
+
+
+
+
+    /*if(n_behind==1)
+    {
         int n0 = ids_behind[0];
         int v1 = (ids_behind[0] + 1) % 3;
         int v2 = (ids_behind[0] + 2) % 3;
@@ -513,42 +578,15 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
         c1 = rotpoints[v1];
         c2 = rotpoints[v2];
 
-        float4 i0 = rotpoints[n0];
 
 
 
-        /*float r1 = length(p1 - c1)/length(rotpoints[n0] - c1);
-        float r2 = length(p2 - c2)/length(rotpoints[n0] - c2);
 
 
-        float2 vv1 = T->vertices[n0].vt - T->vertices[v1].vt;
-        float2 vv2 = T->vertices[n0].vt - T->vertices[v2].vt;
-
-        float2 nv1 = r1 * vv1 + T->vertices[v1].vt;
-        float2 nv2 = r2 * vv2 + T->vertices[v2].vt;
-
-        p1v = nv1;
-        p2v = nv2;
-
-        c1v = T->vertices[v1].vt;
-        c2v = T->vertices[v2].vt;
 
 
-        float4 vl1 = T->vertices[n0].normal - T->vertices[v1].normal;
-        float4 vl2 = T->vertices[n0].normal - T->vertices[v2].normal;
-
-        float4 nl1 = r1 * vl1 + T->vertices[v1].normal;
-        float4 nl2 = r2 * vl2 + T->vertices[v2].normal;
-
-        p1l = nl1;
-        p2l = nl2;
-
-        c1l = T->vertices[v1].normal;
-        c2l = T->vertices[v2].normal;*/
-
-
-        float r1 = length(p1 - i0)/length(c1 - i0);
-        float r2 = length(p2 - i0)/length(c2 - i0);
+        float r1 = length(p1 - rotpoints[n0])/length(c1 - rotpoints[n0]);
+        float r2 = length(p2 - rotpoints[n0])/length(c2 - rotpoints[n0]);
 
         float2 vv1 = T->vertices[v1].vt - T->vertices[n0].vt;
         float2 vv2 = T->vertices[v2].vt - T->vertices[n0].vt;
@@ -582,7 +620,6 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
     {
         int n0 = ids_behind[0];
         int n1 = ids_behind[1];
-
         int v1 = id_valid;
 
         float l1, l2;
@@ -595,6 +632,9 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
         c1 = rotpoints[v1];
 
         c1v = T->vertices[v1].vt;
+
+
+
 
 
 
@@ -621,7 +661,8 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
         p2l = nl2;
 
         c1l = T->vertices[v1].normal;
-    }
+    }*/
+
 
 
     p1.x = (p1.x * fovc / p1.z) + width/2;

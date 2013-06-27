@@ -458,7 +458,6 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
     int id_behind_2 = -1;
     int id_valid=-1;
 
-    //int table[3];
 
     for(int i=0; i<3; i++)
     {
@@ -582,31 +581,23 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
 
     p1.x = (p1.x * fovc / p1.z) + width/2;
     p1.y = (p1.y * fovc / p1.z) + height/2;
-    //p1.z = dcalc(p1.z);
 
 
     p2.x = (p2.x * fovc / p2.z) + width/2;
     p2.y = (p2.y * fovc / p2.z) + height/2;
-    //p2.z = dcalc(p2.z);
 
 
     c1.x = (c1.x * fovc / c1.z) + width/2;
     c1.y = (c1.y * fovc / c1.z) + height/2;
-    //c1.z = dcalc(c1.z);
 
 
     c2.x = (c2.x * fovc / c2.z) + width/2;
     c2.y = (c2.y * fovc / c2.z) + height/2;
-    //c2.z = dcalc(c2.z);
-
-
-    struct t_c t;
 
 
     if(n_behind==0)
     {
         passback[0] = ret;
-        //t.c=1;
         *num = 1;
     }
     if(n_behind==1)
@@ -2151,12 +2142,6 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
                 average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, actual_depth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
 
-
-
-
-                float odepth[3];
-
-                struct interp_container icontainer;
 
 
                 uint ldepth_map_id = ret_cubeface(global_position, lpos);

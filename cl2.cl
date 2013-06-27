@@ -411,6 +411,106 @@ void depth_project(float4 rotated[3], int width, int height, float fovc, float4 
     }
 }
 
+void generate_new_triangles(float4 points[3], int ids[3], float lconst[2], int *num, float4 ret[2][3])
+{
+    int id_valid;
+    int ids_behind[2];
+    int n_behind = 0;
+
+    for(int i=0; i<3; i++)
+    {
+        if(points[i].z <= depth_icutoff)
+        {
+            ids_behind[n_behind] = i;
+            n_behind++;
+        }
+        else
+        {
+            id_valid = i;
+        }
+    }
+
+    if(n_behind>2)
+    {
+        *num = 0;
+        return;
+    }
+
+
+    float4 p1, p2, c1, c2;
+
+
+    if(n_behind==0)
+    {
+        ret[0][0] = points[0]; ///copy nothing?
+        ret[0][1] = points[1];
+        ret[0][2] = points[2];
+
+        *num = 1;
+        return;
+    }
+
+
+    int g1, g2, g3;
+
+    if(n_behind==1)
+    {
+        ///n0, v1, v2
+        g1 = ids_behind[0];
+        g2 = (ids_behind[0] + 1) % 3;
+        g3 = (ids_behind[0] + 2) % 3;
+    }
+    if(n_behind==2)
+    {
+        g2 = ids_behind[0];
+        g3 = ids_behind[1];
+        g1 = id_valid;
+    }
+
+    ids[0] = g1;
+    ids[1] = g2;
+    ids[2] = g3;
+
+
+    float l1 = (depth_icutoff - points[g2].z) / (points[g1].z - points[g2].z);
+    float l2 = (depth_icutoff - points[g3].z) / (points[g1].z - points[g3].z);
+
+
+    p1 = points[g2] + l1*(points[g1] - points[g2]);
+    p2 = points[g3] + l2*(points[g1] - points[g3]);
+
+    float r1 = length(p1 - points[g1])/length(points[g2] - points[g1]);
+    float r2 = length(p2 - points[g1])/length(points[g3] - points[g1]);
+
+
+
+    lconst[0] = l1;
+    lconst[1] = l2;
+
+
+    if(n_behind==1)
+    {
+        c1 = points[g2];
+        c2 = points[g3];
+        ret[0][0] = p1;
+        ret[0][1] = c1;
+        ret[0][2] = c2;
+
+        ret[1][0] = p1;
+        ret[1][1] = c2;
+        ret[1][2] = p2;
+        *num = 2;
+    }
+    else
+    {
+        c1 = points[g1];
+        ret[0][ids_behind[0]] = p1;
+        ret[0][ids_behind[1]] = p2;
+        ret[0][id_valid] = c1;
+        *num = 1;
+    }
+}
+
 
 void full_rotate(__global struct triangle *triangle, struct triangle *passback, int *num, float4 c_pos, float4 c_rot, float fovc, int width, int height)
 {
@@ -509,6 +609,7 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
     }
 
 
+
     float l1 = (depth_icutoff - rotpoints[g2].z) / (rotpoints[g1].z - rotpoints[g2].z);
     float l2 = (depth_icutoff - rotpoints[g3].z) / (rotpoints[g1].z - rotpoints[g3].z);
 
@@ -560,111 +661,6 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
 
 
 
-
-    /*if(n_behind==1)
-    {
-        int n0 = ids_behind[0];
-        int v1 = (ids_behind[0] + 1) % 3;
-        int v2 = (ids_behind[0] + 2) % 3;
-
-
-
-        float l1 = (depth_icutoff - rotpoints[v1].z) / (rotpoints[n0].z - rotpoints[v1].z);
-        float l2 = (depth_icutoff - rotpoints[v2].z) / (rotpoints[n0].z - rotpoints[v2].z);
-
-        p1 = rotpoints[v1] + l1*(rotpoints[n0] - rotpoints[v1]);
-        p2 = rotpoints[v2] + l2*(rotpoints[n0] - rotpoints[v2]);
-
-        c1 = rotpoints[v1];
-        c2 = rotpoints[v2];
-
-
-
-
-
-
-
-
-        float r1 = length(p1 - rotpoints[n0])/length(c1 - rotpoints[n0]);
-        float r2 = length(p2 - rotpoints[n0])/length(c2 - rotpoints[n0]);
-
-        float2 vv1 = T->vertices[v1].vt - T->vertices[n0].vt;
-        float2 vv2 = T->vertices[v2].vt - T->vertices[n0].vt;
-
-        float2 nv1 = r1 * vv1 + T->vertices[n0].vt;
-        float2 nv2 = r2 * vv2 + T->vertices[n0].vt;
-
-        p1v = nv1;
-        p2v = nv2;
-
-        c1v = T->vertices[v1].vt;
-        c2v = T->vertices[v2].vt;
-
-
-        float4 vl1 = T->vertices[v1].normal - T->vertices[n0].normal;
-        float4 vl2 = T->vertices[v2].normal - T->vertices[n0].normal;
-
-        float4 nl1 = r1 * vl1 + T->vertices[n0].normal;
-        float4 nl2 = r2 * vl2 + T->vertices[n0].normal;
-
-        p1l = nl1;
-        p2l = nl2;
-
-        c1l = T->vertices[v1].normal;
-        c2l = T->vertices[v2].normal;
-
-
-
-    }
-    else if(n_behind==2)
-    {
-        int n0 = ids_behind[0];
-        int n1 = ids_behind[1];
-        int v1 = id_valid;
-
-        float l1, l2;
-        l1 = (depth_icutoff - rotpoints[n0].z) / (rotpoints[v1].z - rotpoints[n0].z);
-        l2 = (depth_icutoff - rotpoints[n1].z) / (rotpoints[v1].z - rotpoints[n1].z);
-
-        p1 = rotpoints[n0] + l1*(rotpoints[v1] - rotpoints[n0]);
-        p2 = rotpoints[n1] + l2*(rotpoints[v1] - rotpoints[n1]);
-
-        c1 = rotpoints[v1];
-
-        c1v = T->vertices[v1].vt;
-
-
-
-
-
-
-        float r1 = length(p1 - c1)/length(rotpoints[n0] - c1);
-        float r2 = length(p2 - c1)/length(rotpoints[n1] - c1);
-
-        float2 vv1 = T->vertices[n0].vt - T->vertices[v1].vt;
-        float2 vv2 = T->vertices[n1].vt - T->vertices[v1].vt;
-
-        float2 nv1 = r1 * vv1 + T->vertices[v1].vt;
-        float2 nv2 = r2 * vv2 + T->vertices[v1].vt;
-
-        p1v = nv1;
-        p2v = nv2;
-
-
-        float4 vl1 = T->vertices[n0].normal - T->vertices[v1].normal;
-        float4 vl2 = T->vertices[n1].normal - T->vertices[v1].normal;
-
-        float4 nl1 = r1 * vl1 + T->vertices[v1].normal;
-        float4 nl2 = r2 * vl2 + T->vertices[v1].normal;
-
-        p1l = nl1;
-        p2l = nl2;
-
-        c1l = T->vertices[v1].normal;
-    }*/
-
-
-
     p1.x = (p1.x * fovc / p1.z) + width/2;
     p1.y = (p1.y * fovc / p1.z) + height/2;
 
@@ -679,7 +675,6 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
 
     c2.x = (c2.x * fovc / c2.z) + width/2;
     c2.y = (c2.y * fovc / c2.z) + height/2;
-
 
 
 
@@ -717,6 +712,7 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
         }
         *num = 2;
     }
+
     if(n_behind==2)
     {
         passback[0].vertices[ids_behind[0]].pos = p1;
@@ -1054,24 +1050,6 @@ float4 texture_filter(struct triangle* c_tri, int2 spos, float4 vt, float depth,
 
 ///Actually is cubemap
 
-
-///If one point loops round the 0 to 2PI, works out this by checking if any points are more thatn 180 away from each other and returns the closest, possible negative or >2pi value. Then we can simply reverse pixel direction
-/*float return_180sideclamp(float a, float b, float c)
-{
-    float p[3]={a, b, c};
-    float sorted[3];
-    sorted[0]=min3(a, b, c);
-    sorted[1]=max3(a, b, c);
-    for(int i=0; i<3; i++)
-    {
-        if(p[i]!=sorted[0] && p[i]!=sorted[1])
-        {
-            sorted[2]=p[i];
-            break;
-        }
-    }
-
-}*/
 ///redundant, using cube mapping instead
 
 int ret_cubeface(float4 point, float4 light)
@@ -1629,7 +1607,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
 __constant int op_size = 50;
 
-__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc)
+__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global struct triangle* debug)
 {
     uint id = get_global_id(0);
 
@@ -1645,21 +1623,49 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
     struct triangle tris[2];
 
+    //int num=0;
+
+    ///void rot_3(__global struct triangle *triangle, float4 c_pos, float4 c_rot, float4 ret[3])
+    ///void generate_new_triangles(float4 points[3], int ids[3], float lconst[2], int *num, float4 ret[2][3])
+    ///void depth_project(float4 rotated[3], int width, int height, float fovc, float4 ret[3])
+
+
+    float4 rotated[3];
+    rot_3(T, *c_pos, *c_rot, rotated);
+
+    int ids[3];
+    float lconst[2];
     int num=0;
+    float4 newtris[2][3];
+    generate_new_triangles(rotated, ids, lconst, &num, newtris);
 
-    full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
-    if(num==0)
+
+    if(num == 0)
     {
         return;
     }
 
+
+    float4 tris_proj[2][3];
+    for(int i=0; i<num; i++)
+        depth_project(newtris[i], SCREENWIDTH, SCREENHEIGHT, FOV_CONST, tris_proj[i]);
+
+
+
+
+    ///left here
+
+
+
+
+    //full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+
+
     int ooany[2];
 
-    ooany[0] = backface_cull(&tris[0], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
-
-    if(num==2)
-        ooany[1] = backface_cull(&tris[1], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+    for(int i=0; i<num; i++)
+        ooany[i] = backface_cull_expanded(tris_proj[i][0], tris_proj[i][1], tris_proj[i][2], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
 
 
@@ -1674,23 +1680,23 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
         for(int i=0; i<3; i++)
         {
-            if(tris[j].vertices[i].pos.z < (depth_icutoff))
+            if(tris_proj[j][i].z < (depth_icutoff))
             {
                 oob++;
             }
-            if(tris[j].vertices[i].pos.x < 0)
+            if(tris_proj[j][i].x < 0)
             {
                 ooxmin++;
             }
-            if(tris[j].vertices[i].pos.x >= SCREENWIDTH)
+            if(tris_proj[j][i].x >= SCREENWIDTH)
             {
                 ooxmax++;
             }
-            if(tris[j].vertices[i].pos.y < 0)
+            if(tris_proj[j][i].y < 0)
             {
                 ooymin++;
             }
-            if(tris[j].vertices[i].pos.y >= SCREENHEIGHT)
+            if(tris_proj[j][i].y >= SCREENHEIGHT)
             {
                 ooymax++;
             }
@@ -1700,6 +1706,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
             ooany[j]=0;
         }
     }
+
 
 
     ///how many pixels does each thread want to render?
@@ -1714,24 +1721,39 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
         int minx, maxx, miny, maxy;
 
-        struct interp_container ic = construct_interpolation(tris[i], SCREENWIDTH, SCREENHEIGHT);
+        //struct interp_container ic = construct_interpolation(tris[i], SCREENWIDTH, SCREENHEIGHT);
 
-        minx = ic.xbounds[0];
-        maxx = ic.xbounds[1];
-        miny = ic.ybounds[0];
-        maxy = ic.ybounds[1];
+        minx = min3(tris_proj[i][0].x, tris_proj[i][1].x, tris_proj[i][2].x);
+        maxx = max3(tris_proj[i][0].x, tris_proj[i][1].x, tris_proj[i][2].x);
+        miny = min3(tris_proj[i][0].y, tris_proj[i][1].y, tris_proj[i][2].y);
+        maxy = max3(tris_proj[i][0].y, tris_proj[i][1].y, tris_proj[i][2].y);
+
+
+
+
+
+        //maxx = ic.xbounds[1];
+        //miny = ic.ybounds[0];
+        //maxy = ic.ybounds[1];
 
         int area = (maxx-minx+1)*(maxy-miny+1);
 
         float thread_num = ceil((float)area/op_size);
 
 
-        if(id == 203279)
+        /*if(id == 203279)
         {
             //thread_num *=200;
-        }
+            debug->vertices[0].pos.x = minx;
+            debug->vertices[0].pos.y = maxx;
+            debug->vertices[0].pos.z = miny;
+            debug->vertices[0].pos.w = maxy;
+        }*/
+
 
         uint b = atom_add(id_buffer_atomc, (uint)thread_num);
+
+        //return;
 
         int c = 0;
 
@@ -1746,6 +1768,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
             }
 
         }
+
     }
 
 }

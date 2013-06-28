@@ -266,6 +266,37 @@ bool get_intersection(float4 p1, float4 p2, float4 *r)
     return true;
 }
 
+void calc_min_max(float4 points[3], int width, int height, int ret[4])
+{
+    int x[3];
+    int y[3];
+
+    for(int i=0; i<3; i++)
+    {
+        x[i] = round(points[i].x);
+        y[i] = round(points[i].y);
+    }
+
+
+    ret[0] = min3(x[0], x[1], x[2]) - 1;
+    ret[1] = max3(x[0], x[1], x[2]);
+    ret[2] = min3(y[0], y[1], y[2]) - 1;
+    ret[3] = max3(y[0], y[1], y[2]);
+
+
+    ret[2]=max(ret[2], 0);
+    ret[2]=min(ret[2], height);
+
+    ret[3]=max(ret[3], 0);
+    ret[3]=min(ret[3], height);
+
+    ret[0]=max(ret[0], 0);
+    ret[0]=min(ret[0], width);
+
+    ret[1]=max(ret[1], 0);
+    ret[1]=min(ret[1], width);
+}
+
 
 struct interp_container construct_interpolation(struct triangle tri, int width, int height)
 {
@@ -411,7 +442,7 @@ void depth_project(float4 rotated[3], int width, int height, float fovc, float4 
     }
 }
 
-void generate_new_triangles(float4 points[3], int ids[3], float lconst[2], int *num, float4 ret[2][3])
+void generate_new_triangles(float4 points[3], int ids[3], float rconst[2], int *num, float4 ret[2][3])
 {
     int id_valid;
     int ids_behind[2];
@@ -484,14 +515,15 @@ void generate_new_triangles(float4 points[3], int ids[3], float lconst[2], int *
 
 
 
-    lconst[0] = l1;
-    lconst[1] = l2;
+    rconst[0] = r1;
+    rconst[1] = r2;
 
 
     if(n_behind==1)
     {
         c1 = points[g2];
         c2 = points[g3];
+
         ret[0][0] = p1;
         ret[0][1] = c1;
         ret[0][2] = c2;
@@ -509,6 +541,30 @@ void generate_new_triangles(float4 points[3], int ids[3], float lconst[2], int *
         ret[0][id_valid] = c1;
         *num = 1;
     }
+}
+
+void full_rotate_n_extra(__global struct triangle *triangle, float4 passback[2][3], int *num, float4 c_pos, float4 c_rot, float fovc, int width, int height)
+{
+    ///void rot_3(__global struct triangle *triangle, float4 c_pos, float4 c_rot, float4 ret[3])
+    ///void generate_new_triangles(float4 points[3], int ids[3], float lconst[2], int *num, float4 ret[2][3])
+    ///void depth_project(float4 rotated[3], int width, int height, float fovc, float4 ret[3])
+
+    float4 tris[2][3];
+
+    //float4 triback[2][3];
+
+    float4 pr[3];
+
+    int ids[3];
+
+    float rconst[2];
+
+    rot_3(triangle, c_pos, c_rot, pr);
+
+    generate_new_triangles(pr, ids, rconst, num, tris);
+
+    for(int i=0; i<*num; i++)
+        depth_project(tris[i], width, height, fovc, passback[i]);
 }
 
 
@@ -1607,7 +1663,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
 __constant int op_size = 50;
 
-__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global struct triangle* debug)
+__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc)
 {
     uint id = get_global_id(0);
 
@@ -1618,10 +1674,10 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
     __global struct triangle *T=&triangles[id];
 
-    struct interp_container icontainer;
+    //struct interp_container icontainer;
 
 
-    struct triangle tris[2];
+    //struct triangle tris[2];
 
     //int num=0;
 
@@ -1630,36 +1686,18 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
     ///void depth_project(float4 rotated[3], int width, int height, float fovc, float4 ret[3])
 
 
-    float4 rotated[3];
-    rot_3(T, *c_pos, *c_rot, rotated);
 
-    int ids[3];
-    float lconst[2];
+    float4 tris_proj[2][3];
+
     int num=0;
-    float4 newtris[2][3];
-    generate_new_triangles(rotated, ids, lconst, &num, newtris);
 
-
+    full_rotate_n_extra(T, tris_proj, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
     if(num == 0)
     {
         return;
     }
 
-
-    float4 tris_proj[2][3];
-    for(int i=0; i<num; i++)
-        depth_project(newtris[i], SCREENWIDTH, SCREENHEIGHT, FOV_CONST, tris_proj[i]);
-
-
-
-
-    ///left here
-
-
-
-
-    //full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
 
     int ooany[2];
@@ -1719,41 +1757,16 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
             continue;
         }
 
-        int minx, maxx, miny, maxy;
+        int min_max[4];
+        calc_min_max(tris_proj[i], SCREENWIDTH, SCREENHEIGHT, min_max);
 
-        //struct interp_container ic = construct_interpolation(tris[i], SCREENWIDTH, SCREENHEIGHT);
-
-        minx = min3(tris_proj[i][0].x, tris_proj[i][1].x, tris_proj[i][2].x);
-        maxx = max3(tris_proj[i][0].x, tris_proj[i][1].x, tris_proj[i][2].x);
-        miny = min3(tris_proj[i][0].y, tris_proj[i][1].y, tris_proj[i][2].y);
-        maxy = max3(tris_proj[i][0].y, tris_proj[i][1].y, tris_proj[i][2].y);
-
-
-
-
-
-        //maxx = ic.xbounds[1];
-        //miny = ic.ybounds[0];
-        //maxy = ic.ybounds[1];
-
-        int area = (maxx-minx+1)*(maxy-miny+1);
+        int area = (min_max[1]-min_max[0]+1)*(min_max[3]-min_max[2]+1);
 
         float thread_num = ceil((float)area/op_size);
 
 
-        /*if(id == 203279)
-        {
-            //thread_num *=200;
-            debug->vertices[0].pos.x = minx;
-            debug->vertices[0].pos.y = maxx;
-            debug->vertices[0].pos.z = miny;
-            debug->vertices[0].pos.w = maxy;
-        }*/
-
-
         uint b = atom_add(id_buffer_atomc, (uint)thread_num);
 
-        //return;
 
         int c = 0;
 

@@ -531,8 +531,8 @@ void engine::draw_bulk_objs_n()
     sf::Clock c;
 
 
-    cl_mem *prearglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &g_tid_buf, &g_tid_buf_max_len, &g_tid_buf_atomic_count, &d_triangle_buf};
-    run_kernel_with_args(cl::kernel_prearrange, &p1global_ws, &local, 1, prearglist, 8, true);
+    cl_mem *prearglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &g_tid_buf, &g_tid_buf_max_len, &g_tid_buf_atomic_count};
+    run_kernel_with_args(cl::kernel_prearrange, &p1global_ws, &local, 1, prearglist, 7, true);
 
     //std::cout << "ptime " << c.getElapsedTime().asMilliseconds() << std::endl;
 
@@ -541,14 +541,14 @@ void engine::draw_bulk_objs_n()
 
     clEnqueueReadBuffer(cl::cqueue, g_tid_buf_atomic_count, CL_TRUE, 0, sizeof(cl_uint), &id_c, 0, NULL, NULL);
 
-    std::cout << "id \n"<< id_c << std::endl;
+    //std::cout << "id \n"<< id_c << std::endl;
 
-    clEnqueueReadBuffer(cl::cqueue, d_triangle_buf, CL_TRUE, 0, sizeof(triangle), dc_triangle_buf, 0, NULL, NULL);
+    //clEnqueueReadBuffer(cl::cqueue, d_triangle_buf, CL_TRUE, 0, sizeof(triangle), dc_triangle_buf, 0, NULL, NULL);
 
-    for(int i=0; i<4; i++)
+    /*for(int i=0; i<4; i++)
     {
         std::cout << dc_triangle_buf->vertices[0].pos[i] << std::endl;
-    }
+    }*/
 
 
 

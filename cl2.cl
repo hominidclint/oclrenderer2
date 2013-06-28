@@ -178,6 +178,11 @@ float idcalc(float value)
     return value * depth_far;
 }
 
+float calc_rconstant(int x1, int x2, int x3, int y1, int y2, int y3)
+{
+    return 1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
+}
+
 float interpolate_2(float vals[3], struct interp_container c, int x, int y)
 {
     ///x1, y1, x2, y2, x3, y3, x, y, which
@@ -561,10 +566,19 @@ void full_rotate_n_extra(__global struct triangle *triangle, float4 passback[2][
 
     rot_3(triangle, c_pos, c_rot, pr);
 
-    generate_new_triangles(pr, ids, rconst, num, tris);
+    int n = 0;
 
-    for(int i=0; i<*num; i++)
-        depth_project(tris[i], width, height, fovc, passback[i]);
+    generate_new_triangles(pr, ids, rconst, &n, tris);
+
+    //for(int i=0; i<n; i++)
+    depth_project(tris[0], width, height, fovc, passback[0]);
+
+    if(n == 2)
+    {
+        depth_project(tris[1], width, height, fovc, passback[1]);
+    }
+
+    *num = n;
 }
 
 
@@ -1781,7 +1795,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 }
 
 
-__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len, __global struct triangle* debug)
+__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len)
 {
     uint id = get_global_id(0);
 
@@ -1793,10 +1807,6 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     uint tid = fragment_id_buffer[id*3];
 
     __global struct triangle *T = &triangles[tid];
-
-
-
-    //struct interp_container icontainer;
 
 
     uint distance = 0;
@@ -1824,16 +1834,13 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     int pixel_along = op_size*distance;
 
 
-    int xstart = min_max[0];
-    int ystart = min_max[2];
-
     int xp[3];
     int yp[3];
 
     for(int i=0; i<3; i++)
     {
-        xp[i] = tris_proj[wtri][i].x;
-        yp[i] = tris_proj[wtri][i].y;
+        xp[i] = round(tris_proj[wtri][i].x);
+        yp[i] = round(tris_proj[wtri][i].y);
     }
 
 
@@ -1846,11 +1853,12 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
     int pcount=0;
 
+    float rconst = calc_rconstant(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2]);
 
     while(pcount <= op_size)
     {
-        int x = ((pixel_along + pcount) % width) + xstart;
-        int y = ((pixel_along + pcount) / width) + ystart;
+        int x = ((pixel_along + pcount) % width) + min_max[0];
+        int y = ((pixel_along + pcount) / width) + min_max[2];
 
         if(y < 0 || y >= SCREENHEIGHT)
         {
@@ -1865,7 +1873,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
 
-            float fmydepth = interpolate_r(depths[0], depths[1], depths[2], x, y, xp[0], xp[1], xp[2], yp[0], yp[1], yp[2]);
+            float fmydepth = interpolate_i(depths[0], depths[1], depths[2], x, y, xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], rconst);
 
             fmydepth = 1.0 / fmydepth;
 
@@ -1889,12 +1897,6 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     }
 }
 
-/*if(mydepth > *ft - 50 && mydepth < *ft + 50)
-{
-    __global uint *fi=&id_buffer[y*SCREENWIDTH + x];
-    *fi=id;
-}*/
-
 
 
 __kernel void part2(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global uint* depth_buffer, __global uint* id_buffer, __global float4* c_pos, __global float4* c_rot, __global uint* f_len)
@@ -1909,10 +1911,6 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
     uint tid = fragment_id_buffer[id*3];
 
     __global struct triangle *T = &triangles[tid];
-
-
-
-    //struct interp_container icontainer;
 
 
     uint distance = 0;
@@ -1937,16 +1935,13 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
     int pixel_along = op_size*distance;
 
-    int xstart = min_max[0];
-    int ystart = min_max[2];
-
     int xp[3];
     int yp[3];
 
     for(int i=0; i<3; i++)
     {
-        xp[i] = tris_proj[wtri][i].x;
-        yp[i] = tris_proj[wtri][i].y;
+        xp[i] = round(tris_proj[wtri][i].x);
+        yp[i] = round(tris_proj[wtri][i].y);
     }
 
 
@@ -1960,10 +1955,13 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
     int pcount=0;
 
 
+    float rconst = calc_rconstant(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2]);
+
+
     while(pcount <= op_size)
     {
-        int x = ((pixel_along + pcount) % width) + xstart;
-        int y = ((pixel_along + pcount) / width) + ystart;
+        int x = ((pixel_along + pcount) % width) + min_max[0];
+        int y = ((pixel_along + pcount) / width) + min_max[2];
 
         if(y < 0 || y >= SCREENHEIGHT)
         {
@@ -1978,7 +1976,7 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
 
-            float fmydepth = interpolate_r(depths[0], depths[1], depths[2], x, y, xp[0], xp[1], xp[2], yp[0], yp[1], yp[2]);
+            float fmydepth = interpolate_i(depths[0], depths[1], depths[2], x, y, xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], rconst);
 
             fmydepth = 1.0 / fmydepth;
 
@@ -2088,15 +2086,15 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
 
         float cz[3] = {c_tri->vertices[0].pos.z, c_tri->vertices[1].pos.z, c_tri->vertices[2].pos.z};
-        float icz[3] = {1.0/c_tri->vertices[0].pos.z, 1.0/c_tri->vertices[1].pos.z, 1.0/c_tri->vertices[2].pos.z};
+        //float icz[3] = {1.0/c_tri->vertices[0].pos.z, 1.0/c_tri->vertices[1].pos.z, 1.0/c_tri->vertices[2].pos.z};
 
 
 
 
-        float ldepth = interpolate(icz, &icontainer, x, y);
+        //float ldepth = interpolate(icz, &icontainer, x, y);
 
 
-        //float ldepth = idcalc((float)*ft/mulint);
+        float ldepth = idcalc((float)*ft/mulint);
 
 
         float4 vt;

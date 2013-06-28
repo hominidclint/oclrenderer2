@@ -571,9 +571,9 @@ void engine::draw_bulk_objs_n()
     sf::Clock p1;
 
     //cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer[nbuf]};
-    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count, &d_triangle_buf};
+    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count};
     //run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7, true);
-    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 8, true);
+    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 7, true);
 
     //std::cout << "p1time " << p1.getElapsedTime().asMilliseconds() << std::endl;
 
@@ -675,8 +675,6 @@ void engine::draw_bulk_objs_n()
 
     //clEnqueueReadBuffer(cl::cqueue, depth_buffer[nbuf], CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
     //clEnqueueReadBuffer(cl::cqueue, g_id_screen, CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
-
-
 
     nbuf++;
 

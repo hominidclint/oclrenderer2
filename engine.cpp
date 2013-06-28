@@ -645,7 +645,6 @@ void engine::draw_bulk_objs_n()
 
 
 
-
     clEnqueueWriteBuffer(cl::cqueue, g_tid_buf_atomic_count, CL_TRUE, 0, sizeof(cl_uint), &zero, 0, NULL, NULL); ///!!!/?!?-
 
     //sf::Clock p1clk;

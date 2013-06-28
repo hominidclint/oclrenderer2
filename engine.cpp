@@ -516,7 +516,7 @@ void engine::draw_bulk_objs_n()
 
 
     cl_uint p1global_ws = obj_mem_manager::tri_num;
-    cl_uint local=256;
+    cl_uint local=128;
 
     if(p1global_ws % local!=0)
     {

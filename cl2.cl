@@ -1675,7 +1675,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
 }
 
-__constant int op_size = 50;
+__constant int op_size = 200;
 
 __kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc)
 {

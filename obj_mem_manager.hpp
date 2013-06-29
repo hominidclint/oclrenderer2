@@ -32,6 +32,9 @@ struct obj_mem_manager
     static cl_mem g_light_num;
     static cl_mem g_light_buf; ///screenspace depth buffer for shadow casting lights. This is going to be slow
 
+    static cl_mem g_cut_tri_mem;
+    static cl_mem g_cut_tri_num;
+
 
     static cl_uchar4* c_texture_array;
 

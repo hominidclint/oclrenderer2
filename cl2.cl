@@ -1677,7 +1677,7 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
 __constant int op_size = 200;
 
-__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc)
+__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global uint* id_cutdown_tris, __global float4* cutdown_tris)
 {
     uint id = get_global_id(0);
 
@@ -1768,12 +1768,18 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
         int min_max[4];
         calc_min_max(tris_proj[i], SCREENWIDTH, SCREENHEIGHT, min_max);
 
-        int area = (min_max[1]-min_max[0]+1)*(min_max[3]-min_max[2]+1);
+        int area = (min_max[1]-min_max[0])*(min_max[3]-min_max[2]);
 
         float thread_num = ceil((float)area/op_size);
 
 
         uint b = atom_add(id_buffer_atomc, (uint)thread_num);
+
+        uint c_id = atom_inc(id_cutdown_tris);
+
+        cutdown_tris[c_id*3] = tris_proj[i][0];
+        cutdown_tris[c_id*3+1] = tris_proj[i][1];
+        cutdown_tris[c_id*3+2] = tris_proj[i][2];
 
 
         int c = 0;
@@ -1782,9 +1788,11 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
         {
             for(uint a = b; a < b + thread_num; a++)
             {
-                fragment_id_buffer[a*3] = id;
-                fragment_id_buffer[a*3+1] = c;
-                fragment_id_buffer[a*3+2] = i;
+                //fragment_id_buffer[a*3] = id;
+                fragment_id_buffer[a*4] = id;
+                fragment_id_buffer[a*4+1] = c;
+                fragment_id_buffer[a*4+2] = i;
+                fragment_id_buffer[a*4+3] = c_id;
                 c++;
             }
 
@@ -1795,7 +1803,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 }
 
 
-__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len)
+__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris)
 {
     uint id = get_global_id(0);
 
@@ -1804,26 +1812,32 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
         return;
     }
 
-    uint tid = fragment_id_buffer[id*3];
+
+    uint tid = fragment_id_buffer[id*4];
 
     __global struct triangle *T = &triangles[tid];
 
 
     uint distance = 0;
 
-    distance = fragment_id_buffer[id*3 + 1];
+    distance = fragment_id_buffer[id*4 + 1];
 
-    int wtri = fragment_id_buffer[id*3 + 2];
+    int wtri = fragment_id_buffer[id*4 + 2];
+
+    uint ctri = fragment_id_buffer[id*4 + 3];
 
 
-    float4 tris_proj[2][3];
+    float4 tris_proj_n[3];
 
     int num=0;
 
-    full_rotate_n_extra(T, tris_proj, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+
+    tris_proj_n[0] = cutdown_tris[ctri*3 + 0];
+    tris_proj_n[1] = cutdown_tris[ctri*3 + 1];
+    tris_proj_n[2] = cutdown_tris[ctri*3 + 2];
 
     int min_max[4];
-    calc_min_max(tris_proj[wtri], SCREENWIDTH, SCREENHEIGHT, min_max);
+    calc_min_max(tris_proj_n, SCREENWIDTH, SCREENHEIGHT, min_max);
 
 
     int width  = min_max[1] - min_max[0];
@@ -1839,16 +1853,15 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
     for(int i=0; i<3; i++)
     {
-        xp[i] = round(tris_proj[wtri][i].x);
-        yp[i] = round(tris_proj[wtri][i].y);
+        xp[i] = round(tris_proj_n[i].x);
+        yp[i] = round(tris_proj_n[i].y);
     }
 
 
 
-    float depths[3]={1.0/dcalc(tris_proj[wtri][0].z), 1.0/dcalc(tris_proj[wtri][1].z), 1.0/dcalc(tris_proj[wtri][2].z)};
+    float depths[3]={1.0/dcalc(tris_proj_n[0].z), 1.0/dcalc(tris_proj_n[1].z), 1.0/dcalc(tris_proj_n[2].z)};
 
     int area=calc_third_area(xp[0], yp[0], xp[1], yp[1], xp[2], yp[2], 0, 0, 0);
-
 
 
     int pcount=0;
@@ -1877,7 +1890,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
             fmydepth = 1.0 / fmydepth;
 
-            if(isnan(fmydepth) || fmydepth < dcalc(depth_icutoff) || fmydepth > 1)
+            if(isnan(fmydepth) || fmydepth > 1)
             {
                 pcount++;
                 continue;
@@ -1898,8 +1911,14 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 }
 
 
+/*if(mydepth > *ft - 50 && mydepth < *ft + 50)
+{
+    __global uint *fi=&id_buffer[y*SCREENWIDTH + x];
+    *fi=id;
+}*/
 
-__kernel void part2(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global uint* depth_buffer, __global uint* id_buffer, __global float4* c_pos, __global float4* c_rot, __global uint* f_len)
+
+__kernel void part2(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global uint* depth_buffer, __global uint* id_buffer, __global float4* c_pos, __global float4* c_rot, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris)
 {
     uint id = get_global_id(0);
 
@@ -1908,55 +1927,61 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
         return;
     }
 
-    uint tid = fragment_id_buffer[id*3];
+
+    uint tid = fragment_id_buffer[id*4];
 
     __global struct triangle *T = &triangles[tid];
 
 
     uint distance = 0;
 
-    distance = fragment_id_buffer[id*3 + 1];
+    distance = fragment_id_buffer[id*4 + 1];
 
-    int wtri = fragment_id_buffer[id*3 + 2];
+    int wtri = fragment_id_buffer[id*4 + 2];
+
+    uint ctri = fragment_id_buffer[id*4 + 3];
 
 
-    float4 tris_proj[2][3];
+    float4 tris_proj_n[3];
 
     int num=0;
 
-    full_rotate_n_extra(T, tris_proj, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+
+    tris_proj_n[0] = cutdown_tris[ctri*3 + 0];
+    tris_proj_n[1] = cutdown_tris[ctri*3 + 1];
+    tris_proj_n[2] = cutdown_tris[ctri*3 + 2];
 
     int min_max[4];
-    calc_min_max(tris_proj[wtri], SCREENWIDTH, SCREENHEIGHT, min_max);
+    calc_min_max(tris_proj_n, SCREENWIDTH, SCREENHEIGHT, min_max);
 
 
     int width  = min_max[1] - min_max[0];
     int height = min_max[3] - min_max[2];
 
+
+
     int pixel_along = op_size*distance;
+
 
     int xp[3];
     int yp[3];
 
     for(int i=0; i<3; i++)
     {
-        xp[i] = round(tris_proj[wtri][i].x);
-        yp[i] = round(tris_proj[wtri][i].y);
+        xp[i] = round(tris_proj_n[i].x);
+        yp[i] = round(tris_proj_n[i].y);
     }
 
 
 
-    float depths[3]={1.0/dcalc(tris_proj[wtri][0].z), 1.0/dcalc(tris_proj[wtri][1].z), 1.0/dcalc(tris_proj[wtri][2].z)};
+    float depths[3]={1.0/dcalc(tris_proj_n[0].z), 1.0/dcalc(tris_proj_n[1].z), 1.0/dcalc(tris_proj_n[2].z)};
 
     int area=calc_third_area(xp[0], yp[0], xp[1], yp[1], xp[2], yp[2], 0, 0, 0);
 
 
-
     int pcount=0;
 
-
     float rconst = calc_rconstant(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2]);
-
 
     while(pcount <= op_size)
     {
@@ -1973,14 +1998,13 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
         if(s1 > area - 2 && s1 < area + 2)
         {
-
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
 
             float fmydepth = interpolate_i(depths[0], depths[1], depths[2], x, y, xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], rconst);
 
             fmydepth = 1.0 / fmydepth;
 
-            if(isnan(fmydepth) || fmydepth < dcalc(depth_icutoff) || fmydepth > 1)
+            if(isnan(fmydepth) || fmydepth > 1)
             {
                 pcount++;
                 continue;
@@ -1999,8 +2023,6 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
                 __global uint *fi=&id_buffer[y*SCREENWIDTH + x];
                 *fi=id;
             }
-
-            //uint sdepth=atomic_min(ft, mydepth);
         }
         pcount++;
     }
@@ -2054,7 +2076,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         struct interp_container icontainer;
         float odepth[3];
 
-        __global struct triangle* T = &triangles[fragment_id_buffer[(*fi)*3]];
+        __global struct triangle* T = &triangles[fragment_id_buffer[(*fi)*4]];
 
 
         ///split the different steps to have different full_rotate functions. Prearrange only needs areas not full triangles, part 1-2 do not need texture or normal information
@@ -2065,7 +2087,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
-        uint wtri = fragment_id_buffer[(*fi)*3 + 2];
+        uint wtri = fragment_id_buffer[(*fi)*4 + 2];
 
         icontainer = construct_interpolation(tris[wtri], SCREENWIDTH, SCREENHEIGHT);
 
@@ -2073,7 +2095,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         struct triangle *c_tri = &tris[wtri];
 
-        uint pid = fragment_id_buffer[(*fi)*3];
+        uint pid = fragment_id_buffer[(*fi)*4];
 
         __global struct triangle *g_tri=&triangles[pid];
 
@@ -2243,6 +2265,8 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         //float4 col = (float4){ucol.x, ucol.y, ucol.z, 0};
         //col/=255.0f;
+
+        //lightaccum = (float4){1.0, 1.0, 1.0, 0.0};
 
 
         lightaccum.x=clamp(lightaccum.x, 0.0f, 1.0f/col.x);

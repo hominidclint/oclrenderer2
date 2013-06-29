@@ -530,9 +530,11 @@ void engine::draw_bulk_objs_n()
 
     sf::Clock c;
 
+    clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_cut_tri_num, CL_TRUE, 0, sizeof(cl_uint), &zero, 0, NULL, NULL);
 
-    cl_mem *prearglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &g_tid_buf, &g_tid_buf_max_len, &g_tid_buf_atomic_count};
-    run_kernel_with_args(cl::kernel_prearrange, &p1global_ws, &local, 1, prearglist, 7, true);
+
+    cl_mem *prearglist[]={&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &g_tid_buf, &g_tid_buf_max_len, &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem};
+    run_kernel_with_args(cl::kernel_prearrange, &p1global_ws, &local, 1, prearglist, 9, true);
 
     //std::cout << "ptime " << c.getElapsedTime().asMilliseconds() << std::endl;
 
@@ -571,9 +573,9 @@ void engine::draw_bulk_objs_n()
     sf::Clock p1;
 
     //cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer[nbuf]};
-    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count};
+    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem};
     //run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7, true);
-    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 7, true);
+    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 9, true);
 
     //std::cout << "p1time " << p1.getElapsedTime().asMilliseconds() << std::endl;
 
@@ -620,7 +622,7 @@ void engine::draw_bulk_objs_n()
 
 
     cl_uint p2global_ws=atom_count;
-    cl_uint local2=512;
+    cl_uint local2=128;
 
     if(p2global_ws % local2!=0)
     {
@@ -636,10 +638,10 @@ void engine::draw_bulk_objs_n()
     //std::cout << p1global_ws << " " << atom_count << std::endl;
 
     //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer[nbuf], &g_id_screen};
-    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &depth_buffer[nbuf], &g_id_screen, &g_c_pos, &g_c_rot, &g_tid_buf_atomic_count};
+    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &depth_buffer[nbuf], &g_id_screen, &g_c_pos, &g_c_rot, &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem};
     ///__global struct triangle* triangles, __global uint* tri_num, __global uint* depth_buffer, __global uint* id_buffer, __global float4* c_pos, __global float4* c_rot)
     //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_shadow_light_buffer, &g_id_screen};
-    run_kernel_with_args(cl::kernel2, &p1global_ws_new, &local, 1, p2arglist, 8, true);
+    run_kernel_with_args(cl::kernel2, &p1global_ws_new, &local, 1, p2arglist, 10, true);
 
     //std::cout << "p2time " << p2.getElapsedTime().asMilliseconds() << std::endl;
 
@@ -655,7 +657,7 @@ void engine::draw_bulk_objs_n()
     sf::Clock c3;
 
     cl_uint p3global_ws[]= {g_size, g_size};
-    cl_uint p3local_ws[]= {32, 32};
+    cl_uint p3local_ws[]= {16, 16};
 
     int nnbuf = (nbuf + 1) % 2;
 

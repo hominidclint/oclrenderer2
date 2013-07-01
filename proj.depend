@@ -24,7 +24,7 @@
 	"objects_container.hpp"
 	"light.hpp"
 
-1367545501 c:\users\james\desktop\projects\proj\object.hpp
+1372670854 c:\users\james\desktop\projects\proj\object.hpp
 	<vector>
 	"triangle.hpp"
 	<string>
@@ -43,7 +43,7 @@
 	"object.hpp"
 	<vector>
 
-1372464007 source:c:\users\james\desktop\projects\proj\main.cpp
+1372674125 source:c:\users\james\desktop\projects\proj\main.cpp
 	<cstdio>
 	<string>
 	<iostream>
@@ -60,7 +60,7 @@
 	<math.h>
 	<limits.h>
 
-1345256836 c:\users\james\desktop\projects\proj\obj_load.hpp
+1372673285 c:\users\james\desktop\projects\proj\obj_load.hpp
 	<string>
 	"object.hpp"
 	"objects_container.hpp"
@@ -89,12 +89,13 @@
 	<cl/cl.h>
 	<vector>
 
-1369881614 source:c:\users\james\desktop\projects\proj\obj_load.cpp
+1372673585 source:c:\users\james\desktop\projects\proj\obj_load.cpp
 	"obj_load.hpp"
 	<cstdio>
 	<cstdlib>
 	<vector>
 	<iostream>
+	<fstream>
 	<cstdio>
 	<string.h>
 	"triangle.hpp"
@@ -120,7 +121,7 @@
 1346894824 source:c:\users\james\desktop\projects\proj\objects_container.cpp
 	"objects_container.hpp"
 
-1369881614 source:c:\users\james\desktop\projects\proj\texture.cpp
+1372671004 source:c:\users\james\desktop\projects\proj\texture.cpp
 	"texture.hpp"
 	"clstate.h"
 	<iostream>

@@ -18,36 +18,6 @@
 #include <limits.h>
 
 
-float interpolate_i(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3, float rconstant)
-{
-    float A=((f2*y3+f1*(y2-y3)-f3*y2+(f3-f2)*y1) * rconstant);
-    float B=(-(f2*x3+f1*(x2-x3)-f3*x2+(f3-f2)*x1) * rconstant);
-    float C=f1-A*x1 - B*y1;
-    return (float)(A*x + B*y + C);
-}
-
-float interpolate_r(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3)
-{
-    float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
-    return interpolate_i(f1, f2, f3, x, y, x1, x2, x3, y1, y2, y3, rconstant);
-}
-
-
-cl_float4 cross(cl_float4 u, cl_float4 v)
-{
-    return (cl_float4){u.y*v.z - u.z*v.y, u.z*v.x - u.x*v.z, u.x*v.y - u.y*v.x, 0};
-}
-
-float length(cl_float4 u)
-{
-    return sqrt(u.x*u.x + u.y*u.y + u.z*u.z);
-}
-
-cl_float4 sub(cl_float4 u, cl_float4 v)
-{
-    return (cl_float4){u.x - v.x, u.y - v.y, u.z - v.z, 0};
-}
-
 int main(int argc, char *argv[])
 {
     ///the next thing to do is to shrink too-large triangles
@@ -55,8 +25,16 @@ int main(int argc, char *argv[])
     //std::cout << interpolate_i(-10, 20, 30, 25, 6, 15, 40, 50, 0, 34, 45);
 
     sf::Clock clo;
-    //objects_container *sponza=obj_load("Sponza/testspz.obj");
+
     objects_container *sponza=obj_load("Sp2/sp2.obj");
+
+    std::cout << clo.getElapsedTime().asMilliseconds() << std::endl;
+    if(sponza == NULL)
+    {
+        std::cout << "could not load file" << std::endl;
+        exit(1);
+    }
+
     //std::cout << clo.getElapsedTime().asMilliseconds() << std::endl;
 
 
@@ -90,17 +68,18 @@ int main(int argc, char *argv[])
     light l;
     l.set_pos((cl_float4){175, 135, 815, 0});
     l.set_pos((cl_float4){-800, 150, -800, 0});
+    l.set_pos((cl_float4){-0, 300, 0, 0});
     l.set_col((cl_float4){1.0, 1.0, 1.0, 0});
     l.set_shadow_bright(1, 1);
     //for(int i=0; i<10; i++)
     window.add_light(l);
 
-    l.set_pos((cl_float4){0, 300, 800, 0});
-    l.shadow=0;
-    window.add_light(l);
+    //l.set_pos((cl_float4){0, 1000, 800, 0});
+    //l.shadow=0;
+    //window.add_light(l);
 
-    l.set_pos((cl_float4){-750, 0, -700, 0});
-    l.brightness=0.4;
+    //l.set_pos((cl_float4){-750, 0, -700, 0});
+    //l.brightness=0.4;
 
     //window.add_light(l);
 

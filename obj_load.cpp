@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <cstdio>
 #include <string.h>
 #include "triangle.hpp"
@@ -10,747 +11,311 @@
 #include <math.h>
 #include <list>
 
-void face_decompose(std::string face_section, int *vertex, int *tc, int *normal)
+std::string retrieve_diffuse_new(std::vector<std::string> file, std::string name)
 {
-
-    size_t pos=face_section.find('/');
-    size_t pos2=face_section.find('/', pos+1);
-
-
-    std::string useful("");
-
-    useful.append(face_section.c_str(), 0, pos);
-    *vertex=atoi(useful.c_str());
-    useful.clear();
-    useful.append(face_section.c_str(), pos+1, pos2-pos-1);
-
-    *tc=atoi(useful.c_str());
-    useful.clear();
-    useful.append(face_section.c_str(), pos2+1, face_section.size() - pos2);
-    *normal=atoi(useful.c_str());
-    //std::cout << normal << std::endl;
-}
-
-std::string getfollowingword(std::vector<char>::iterator &it)
-{
-    //char c=*it;
-
-    while(*it != ' ' && *it != '\n' && *it!= '\0')
+    bool found = false;
+    for(int i=0; i<file.size(); i++)
     {
-        it++;
-    }
-
-    it++;
-
-    while(*it==' ')
-        it++;
-
-    ///first letter of next word.
-
-    std::vector<char>::iterator it2=it;
-    std::string ret;
-
-    while(*it2 != ' ' && *it2 != '\n' && *it2!= '\0')
-    {
-        it2++;
-    }
-
-
-
-    if(it==it2)
-    {
-        ret='\n';
-    }
-    else
-    {
-        ret.append(it, it2);
-    }
-
-    return ret;
-
-
-}
-
-std::string retrieve_diffuse(std::string fname, std::string name)
-{
-    ///implement as part of load_textures?
-
-    FILE *pFile=fopen(fname.c_str(), "r");
-
-    if(pFile==NULL)
-    {
-        std::cout << "Error in obj_load.cpp (retrieve_diffuse)" << std::endl;
-        exit(0xDEADBEEF);
-    }
-
-    std::vector<char> lines;
-
-    while(!feof(pFile))
-    {
-        lines.push_back(fgetc(pFile));
-    }
-
-    fclose(pFile);
-
-    std::string result;
-
-    bool accept=false;
-
-    for(std::vector<char>::iterator it=lines.begin(); it!=lines.end(); it++)
-    {
-
-        if(!accept && strncmp(&(*it), name.c_str(), strlen(name.c_str()))==0)
+        if(strncmp(file[i].c_str(), "newmtl ", 7)==0 && file[i].substr(file[i].find_last_of(" ")+1, name.size()) == name)
         {
-            accept=true;
+            found = true;
         }
-
-        if(accept && strncmp(&(*it), "map_Kd", 6)==0)
+        if(found && strncmp(file[i].c_str(), "map_Kd ", 7)==0)
         {
-            result=getfollowingword((it));
-            break;
+            return file[i].substr(file[i].find_last_of(" ")+1, std::string::npos);
         }
-
     }
-
-    //std::cout << result << std::endl;
-
-    return result;
-
-    ///lines now contains newmtl
-
 }
 
 
-void copy_vertex(vertex &vt, vertex v2)
+
+///vertex, texture coordinate, normal
+///remember, offset by one for faces
+
+template <typename T>
+void decompose_attribute(const std::string &str, T a[], int n)
 {
+    size_t pos = str.find(".");
+    int s[n+1];
+    ///initialise first element to be initial position
+    s[0]={str.find(" ")};
+    for(int i=1; i<n+1; i++)
+    {
+        s[i] = str.find(" ", s[i-1]+1); ///implicitly finds end, so correct for n despite no /
+        std::string p = str.substr(s[i-1]+1, (s[i] - s[i-1] - 1));
+
+        if(pos==std::string::npos)
+        {
+            a[i-1] = atoi(p.c_str());
+        }
+        else
+        {
+            a[i-1] = atof(p.c_str());
+        }
+    }
+}
+
+void decompose_face(const std::string &str, int v[3], int vt[3], int vn[3])
+{
+    ///assume valid str because there is no sensible fail case where this isn't a bug
+    int start = 2;
 
     for(int i=0; i<3; i++)
-        vt.pos[i] = v2.pos[i];
-    for(int i=0; i<3; i++)
-        vt.normal[i] = v2.normal[i];
-    for(int i=0; i<2; i++)
-        vt.vt[i] = v2.vt[i];
-    for(int i=0; i<2; i++)
-        vt.pad[i] = v2.pad[i];
+    {
+        int s1 = str.find("/", start);
+        int s2 = str.find("/", s1+1);
+        int s3 = str.find(" ", s2+1);
 
+        std::string p1 = str.substr(start, s1-start);
+        std::string p2 = str.substr(s1+1, (s2 - s1 - 1));
+        std::string p3 = str.substr(s2+1, (s3 - s2 - 1));
+
+        v[i]  = atoi(p1.c_str()) - 1;
+        vt[i] = atoi(p2.c_str()) - 1;
+        vn[i] = atoi(p3.c_str()) - 1;
+
+        start = s3 + 1;
+    }
 }
 
-vertex avg_two(vertex v1, vertex v2)
+struct component
 {
-    cl_float apos[4];
-    apos[0] = (v1.pos[0] + v2.pos[0])/2.0;
-    apos[1] = (v1.pos[1] + v2.pos[1])/2.0;
-    apos[2] = (v1.pos[2] + v2.pos[2])/2.0;
+    float x, y, z;
+};
 
-    cl_float anorm[4];
-    anorm[0] = (v1.normal[0] + v2.normal[0])/2.0;
-    anorm[1] = (v1.normal[1] + v2.normal[1])/2.0;
-    anorm[2] = (v1.normal[2] + v2.normal[2])/2.0;
-
-    cl_float avt[2];
-    avt[0] = (v1.vt[0] + v2.vt[0])/2.0;
-    avt[1] = (v1.vt[1] + v2.vt[1])/2.0;
-    //apos[2] = (t.vertices[0].pos[2] + t.vertices[1].pos[2] + t.vertices[2].pos[2])/3.0;
-
-    vertex cent; ///need to average positions, normals, and vt
-    cent.pos[3]=0;
-
-    for(int i=0; i<3; i++)
-        cent.pos[i] = apos[i];
-    for(int i=0; i<3; i++)
-        cent.normal[i] = anorm[i];
-    for(int i=0; i<2; i++)
-        cent.vt[i] = avt[i];
-
-    return cent;
-}
-
-
-std::vector<triangle> tesselate_triangles(triangle &t)
+struct indices
 {
-    float mindsep = 40;
-    float cutsep = 200;
-    bool exceededsep = false;
-    for(int i=0; i<3; i++)
-    {
-        for(int j=1; j<3; j++)
-        {
-            float xsep = fabs(t.vertices[i].pos[0] - t.vertices[(i+j) % 3].pos[0]);
-            float ysep = fabs(t.vertices[i].pos[1] - t.vertices[(i+j) % 3].pos[1]);
-            float zsep = fabs(t.vertices[i].pos[2] - t.vertices[(i+j) % 3].pos[2]);
-            if( xsep > cutsep || ysep > cutsep || zsep > cutsep )
-            {
-                std::vector<triangle> v;
-                v.push_back(t);
-                return v;
-            }
-            if( xsep > mindsep || ysep > mindsep || zsep > mindsep )
-            {
-                ///this triangle dun need be tesselated!
-                exceededsep = true;
-            }
-        }
-    }
-
-    ///clockwise winding order, i assume
-
-    if(exceededsep)
-    {
-        std::vector<triangle> v;
-        cl_float apos[4];
-        apos[0] = (t.vertices[0].pos[0] + t.vertices[1].pos[0] + t.vertices[2].pos[0])/3.0;
-        apos[1] = (t.vertices[0].pos[1] + t.vertices[1].pos[1] + t.vertices[2].pos[1])/3.0;
-        apos[2] = (t.vertices[0].pos[2] + t.vertices[1].pos[2] + t.vertices[2].pos[2])/3.0;
-
-        cl_float anorm[4];
-        anorm[0] = (t.vertices[0].normal[0] + t.vertices[1].normal[0] + t.vertices[2].normal[0])/3.0;
-        anorm[1] = (t.vertices[0].normal[1] + t.vertices[1].normal[1] + t.vertices[2].normal[1])/3.0;
-        anorm[2] = (t.vertices[0].normal[2] + t.vertices[1].normal[2] + t.vertices[2].normal[2])/3.0;
-
-        cl_float avt[2];
-        avt[0] = (t.vertices[0].vt[0] + t.vertices[1].vt[0] + t.vertices[2].vt[0])/3.0;
-        avt[1] = (t.vertices[0].vt[1] + t.vertices[1].vt[1] + t.vertices[2].vt[1])/3.0;
-        //apos[2] = (t.vertices[0].pos[2] + t.vertices[1].pos[2] + t.vertices[2].pos[2])/3.0;
-
-        vertex cent; ///need to average positions, normals, and vt
-        cent.pos[3]=0;
-
-        for(int i=0; i<3; i++)
-            cent.pos[i] = apos[i];
-        for(int i=0; i<3; i++)
-            cent.normal[i] = anorm[i];
-        for(int i=0; i<2; i++)
-            cent.vt[i] = avt[i];
-
-
-        vertex ev1, ev2, ev3;
-        ev1 = avg_two(t.vertices[0], t.vertices[1]); ///cracks because these will not be calculated exactly the same for bordering triangles
-        ev2 = avg_two(t.vertices[1], t.vertices[2]);
-        ev3 = avg_two(t.vertices[2], t.vertices[0]);
-
-
-
-
-        /*triangle t1;
-        copy_vertex(t1.vertices[0], t.vertices[0]);
-        copy_vertex(t1.vertices[1], t.vertices[1]);
-        copy_vertex(t1.vertices[2], cent);
-
-        triangle t2;
-        copy_vertex(t2.vertices[0], t.vertices[1]);
-        copy_vertex(t2.vertices[1], t.vertices[2]);
-        copy_vertex(t2.vertices[2], cent);
-
-        triangle t3;
-        copy_vertex(t3.vertices[0], t.vertices[2]);
-        copy_vertex(t3.vertices[1], t.vertices[0]);
-        copy_vertex(t3.vertices[2], cent);*/
-
-        triangle t1, t2, t3, t4;
-
-        copy_vertex(t1.vertices[0], t.vertices[0]);
-        copy_vertex(t1.vertices[1], ev1);
-        copy_vertex(t1.vertices[2], ev3);
-
-
-        copy_vertex(t2.vertices[0], t.vertices[1]);
-        copy_vertex(t2.vertices[1], ev2);
-        copy_vertex(t2.vertices[2], ev1);
-
-        copy_vertex(t3.vertices[0], t.vertices[2]);
-        copy_vertex(t3.vertices[1], ev3);
-        copy_vertex(t3.vertices[2], ev2);
-
-        copy_vertex(t4.vertices[0], ev1);
-        copy_vertex(t4.vertices[1], ev2);
-        copy_vertex(t4.vertices[2], ev3);
-
-
-
-
-        /*t2.vertices[0] = t.vertices[1];
-        t2.vertices[1] = t.vertices[2];
-        t2.vertices[2] = cent;
-
-
-        t3.vertices[0] = t.vertices[2];
-        t3.vertices[1] = t.vertices[0];
-        t3.vertices[2] = cent;*/
-
-
-        std::vector<triangle> v1, v2, v3, v4;
-        v1 = tesselate_triangles(t1);
-        v2 = tesselate_triangles(t2);
-        v3 = tesselate_triangles(t3);
-        v4 = tesselate_triangles(t4);
-
-        for(unsigned int i=0; i<v1.size(); i++)
-        {
-            v.push_back(v1[i]);
-        }
-        for(unsigned int i=0; i<v2.size(); i++)
-        {
-            v.push_back(v2[i]);
-        }
-        for(unsigned int i=0; i<v3.size(); i++)
-        {
-            v.push_back(v3[i]);
-        }
-        for(unsigned int i=0; i<v4.size(); i++)
-        {
-            v.push_back(v4[i]);
-        }
-
-        return v;
-    }
-    else
-    {
-        std::vector<triangle> v;
-        v.push_back(t);
-        return v;
-    }
-
-}
-
-
+    int v[3];
+    int vt[3];
+    int vn[3];
+};
 
 objects_container* obj_load(std::string filename)
 {
+    std::string mtlname;
+    int tp = filename.find_last_of(".");
+    mtlname = filename.substr(0, tp) + std::string(".mtl");
 
-    std::vector<char> file;
-    std::vector<float> vertex_coords;
-    std::vector<float> vt_coords;
-    std::vector<float> normals;
+    int lslash = filename.find_last_of("/");
 
-    std::vector<int>         usemtl_pos;
-    std::vector<std::string> usemtl_name;
+    std::string dir = filename.substr(0, lslash);
 
-    std::vector<int> faces;
-    //std::vector<int> fourface;
+    std::ifstream file;
+    std::ifstream mtlfile;
+    file.open(filename.c_str());
+    mtlfile.open(mtlname.c_str());
+    std::vector<std::string> file_contents;
+    std::vector<std::string> mtlf_contents;
 
-    std::string tfname;
-    //std::cout << filename << std::endl;
-    tfname.append(filename, 0, (filename.size()-4));
-    tfname.append(".mtl");
+    int vc=0, vnc=0, fc=0, vtc=0;
 
-    std::string tdir=filename;
-
-    if(filename[filename.size()-1]=='\\' || filename[filename.size()-1] == '/')
+    if(!file.is_open())
     {
-        tdir.append(filename, 0, filename.size()-1);
-    }
-
-    std::string dir;
-    dir.append(tdir, 0, tdir.find_last_of("\\/"));
-    //std::cout << dir << std::endl;
-
-    FILE *pFile=fopen(filename.c_str(), "r");
-
-    if(pFile==NULL)
-    {
-        std::cout << "invalid file name in obj_load.cpp" << std::endl;
+        std::cout << filename << " could not be opened" << std::endl;
         return NULL;
     }
 
-
-    int facenum=0;
-
-
-    while(!feof(pFile))
+    if(!mtlfile.is_open())
     {
-        char character=fgetc(pFile);
-        file.push_back(character);
+        std::cout << mtlname << " could not be found" << std::endl;
     }
 
-    fclose(pFile);
-    float scale=1; /// /////////////////////////////// ///scale!!!         !!!!!!!!!!!!!!!!!!!!!!
-    //bool first=true;
-    objects_container *objs = new objects_container;
-
-    for(std::vector<char>::iterator it=file.begin(); it!=file.end(); it++)
+    while(file.good())
     {
+        std::string str;
+        std::getline(file, str);
+        file_contents.push_back(str);
+    }
 
-        char current=(*it);
+    while(mtlfile.good())
+    {
+        std::string str;
+        std::getline(mtlfile, str);
+        mtlf_contents.push_back(str);
+    }
 
-        char next= (it == file.end()  ? '\0' : (*(it+1)));
-        char supernext= (it == file.end()  ? '\0' : (*(it+2)));
-        char prev= (it == file.begin() ? '\0' : (*(it-1)));
+    //std::cout << retrieve_diffuse_new(mtlf_contents, "Material__298_background.tga");
 
-        //printf("%c\n", next);
-        if(current=='v' && next==' ')
+    for(size_t i=0; i<file_contents.size(); i++)
+    {
+        std::string ln = file_contents[i];
+        if(ln.size() < 2)
         {
-
-            for(int i=0; i<3; i++)
-            {
-                std::string str=getfollowingword(it);
-                vertex_coords.push_back(atof(str.c_str())*scale);
-            }
-
-
-
-
+            continue;
         }
 
-        else if(current=='v' && next=='n' && supernext == ' ')
+        if(ln[0]=='v' && ln[1]!=' ')
         {
-
-            for(int i=0; i<3; i++)
-            {
-                std::string str=getfollowingword(it);
-                normals.push_back(atof(str.c_str()));
-            }
-
-
+            vc++;
         }
-
-        else if(current=='v' && next=='t' && supernext == ' ')
+        if(ln[0]=='v' && ln[1]=='n')
         {
-            std::string str;
-
-            for(int i=0; i<2; i++)
-            {
-                str=getfollowingword(it);
-                vt_coords.push_back(atof(str.c_str()));
-            }
-
-            if(*(it + str.length())=='\n')
-            {
-
-                vt_coords.push_back(0.0); ///cannot handle if space and then nothinng
-                //std::cout << "hello" << std::endl;
-            }
-            else
-            {
-                str=getfollowingword(it);
-                vt_coords.push_back(atof(str.c_str()));
-            }
-
-            // ///if start of word after this one is a newline
-            // ///push 0
-
-
+            vnc++;
         }
-
-        else if(strncmp("usemtl", &(*it), 6)==0)
+        if(ln[0]=='v' && ln[1]=='t')
         {
-            ///OH MY GOD A NEW MATERIAL HAS EMERGED
-
-            //if(!first)
-            // {
-            //    first=false;
-            // }
-
-            usemtl_pos.push_back(facenum);
-            //std::cout << facenum << std::endl;
-            usemtl_name.push_back(getfollowingword((it)));
-            //std::cout << *(usemtl_name.end()-1) << std::endl;
-            //facenum=0;
-
-
+            vtc++;
         }
-
-        else if(current == 'f' && next==' ' && prev == '\n')
+        if(ln[0]=='f' && ln[1] == ' ')
         {
-            int vnum[4], vtnum[4], nnum[4];
-            //bool four=false;
-            //std::vector<int> temp4;
-            /*for(int i=0; i<4; i++)
-            {
-                vnum[i]=0;
-                vtnum[i]=0;
-                nnum[i]=0;
-                std::string str=getfollowingword(it);
-                std::cout << i << " " <<  str << std::endl;
-                if(strncmp(str.c_str(), "\n", 1)==0 || strncmp(str.c_str(), " \n", 2)==0)
-                {
-                    //std::cout << "hi" << std::endl;
-                    break;
-                }
-                if(i==3)
-                {
-                    four=true;
-                }
-
-
-
-                //std::cout << str << std::endl;
-                //std::cout << i << std::endl;
-
-                //std::cout << str << std::endl;
-                face_decompose(str, &vnum[i], &vtnum[i], &nnum[i]);
-            }
-
-            //if(four)
-            //{
-                ///123
-                ///134
-                faces.push_back(vnum[0]);
-                faces.push_back(vtnum[0]);
-                faces.push_back(nnum[0]);
-
-                faces.push_back(vnum[1]);
-                faces.push_back(vtnum[1]);
-                faces.push_back(nnum[1]);
-
-                faces.push_back(vnum[2]);
-                faces.push_back(vtnum[2]);
-                faces.push_back(nnum[2]);
-                facenum++;
-
-            if(four)
-            {
-
-                faces.push_back(vnum[0]);
-                faces.push_back(vtnum[0]);
-                faces.push_back(nnum[0]);
-
-                faces.push_back(vnum[2]);
-                faces.push_back(vtnum[2]);
-                faces.push_back(nnum[2]);
-
-                faces.push_back(vnum[3]);
-                faces.push_back(vtnum[3]);
-                faces.push_back(nnum[3]);
-                facenum++;
-                //std::cout << "hi";
-
-
-            }*/
-
-
-            for(int i=0; i<3; i++)
-            {
-                vnum[i]=0;
-                vtnum[i]=0;
-                nnum[i]=0;
-                std::string str=getfollowingword(it);
-                //std::cout << i << " " <<  str << std::endl;
-
-
-                face_decompose(str, &vnum[i], &vtnum[i], &nnum[i]);
-            }
-
-
-            faces.push_back(vnum[0]);
-            faces.push_back(vtnum[0]);
-            faces.push_back(nnum[0]);
-
-            faces.push_back(vnum[1]);
-            faces.push_back(vtnum[1]);
-            faces.push_back(nnum[1]);
-
-            faces.push_back(vnum[2]);
-            faces.push_back(vtnum[2]);
-            faces.push_back(nnum[2]);
-            facenum++;
-
-
-
-
-
-            //exit(1);
-            //std::cout << vnum << std::endl << vtnum << std::endl << nnum << std::endl;
-            //std::cout << "hi" << std::endl;
-
-            //system("pause");
-
+            fc++;
         }
-
-
-
-
-
     }
 
 
-    int tri_num=faces.size()/9; ///is always a multiple of 9.
+    std::vector<int> usemtl_pos;
+    std::vector<std::string> usemtl_name;
+    std::vector<component> vl, vnl, vtl;
+    std::vector<indices> fl;
 
-    //std::vector<triangle> tris;
-    triangle *tris=new triangle[tri_num];
-    int counter=0;
-    int excounter=0;
-    int faceposc=0;
-    bool tempb=false;
+    vl.reserve(vc);
+    vnl.reserve(vnc);
+    vtl.reserve(vtc);
+    fl.reserve(fc);
 
-    for(std::vector<int>::iterator it=faces.begin(); it<faces.end(); counter++)
+    int usefc=0;
+
+    for(size_t i=0; i<file_contents.size(); i++)
     {
-        triangle tri;
-
-        //std::cout << usemtl_pos[faceposc] << std::endl;
-        if(counter==usemtl_pos[faceposc])
+        if(strncmp(file_contents[i].c_str(), "f ", 2)==0)
         {
-
-
-            if(counter!=0)
+            usefc++;
+            int v[3];
+            int vt[3];
+            int vn[3];
+            decompose_face(file_contents[i], v, vt, vn);
+            indices f;
+            for(int j=0; j<3; j++)
             {
-                ///push all current triangles into a subobject?
-
-                if(false)
-                {
-                    end_cleanup:
-                    tempb=true;
-
-                    // std::cout << "hi";
-                }
-
-                object obj;
-                //obj.alloc(counter-excounter);
-                obj.mtlname=usemtl_name[faceposc-1];
-                //std::cout << obj.mtlname << std::endl;
-                obj.tex_name=retrieve_diffuse(tfname, usemtl_name[faceposc-1]);
-
-                texture temp;
-                std::string full=dir + std::string("\\") + obj.tex_name;
-                //std::cout << full << std::endl;
-                temp.loadtomaster(full); ///  --------========---------===-=-=-=--=-=_+_************* THIS IS WHERE TEXTURES ARE LOADED!!!
-
-                //std::cout << obj.mtlname << std::endl << obj.tex_name << std::endl;
-
-
-
-                //memcpy(obj.tri_list, tris, sizeof(triangle)*(counter-excounter));
-                /*for(int i=0; i<counter-excounter; i++)
-                {
-                    std::vector<triangle> v = tesselate_triangles(tris[i]);
-
-                    for(int j=0; j<v.size(); j++)
-                    {
-                        obj.tri_list.push_back(v[j]);
-                    }
-                }*/
-
-                for(int i=0; i<counter-excounter; i++)
-                {
-                    obj.tri_list.push_back(tris[i]);
-                    //obj.tri_list[i] = tris[i];
-                }
-
-                //std::cout << objs->objs.size() << std::endl;
-                //obj.tri_num=counter-excounter;
-                obj.tri_num = obj.tri_list.size();
-                obj.tid=temp.id;
-                //obj.x=0, obj.y=0, obj.z=0;
-                objs->objs.push_back(obj);
-
-                //std::cout << obj.tri_num << std::endl;
-
-                if(tempb)
-                {
-                    break;
-                }
-
-                //std::cout << "hihih";
-
-
+                f.v[j]  = v[j];
+                f.vt[j] = vt[j];
+                f.vn[j] = vn[j];
             }
-
-            //std::cout << usemtl_name[faceposc] << std::endl;
-
-            faceposc++;
-
-            excounter=counter;
-
-
+            fl.push_back(f);
+            continue;
         }
-
-        for(int i=0; i<3; i++)
+        ///if == n then push normals etc
+        if(strncmp(file_contents[i].c_str(), "v ", 2)==0)
         {
-
-            int vnum=(*it);
-            it++;
-            int vtnum=(*it);
-            it++;
-            int nnum=(*it);
-            it++;
-
-            vnum-=1; ///wavefront obj is a slag and starts from 1 for no particularly good reason
-            vtnum-=1;
-            nnum-=1;
-
-
-            float px=vertex_coords[vnum*3];
-            float py=vertex_coords[vnum*3+1];
-            float pz=vertex_coords[vnum*3+2];
-
-            float vx=vt_coords[vtnum*3];
-            float vy=vt_coords[vtnum*3+1];
-            //float vz=vt_coords[vtnum*3+2];
-
-            float nx=normals[nnum*3];
-            float ny=normals[nnum*3+1];
-            float nz=normals[nnum*3+2];
-
-            tri.vertices[i].pos[0]=px;
-            tri.vertices[i].pos[1]=py;
-            tri.vertices[i].pos[2]=pz;
-
-            //std::cout << px << std::endl;
-
-
-
-            tri.vertices[i].vt[0]=vx;
-            tri.vertices[i].vt[1]=vy;
-            //tri.vertices[i].vt[2]=vz;
-
-            tri.vertices[i].normal[0]=nx;
-            tri.vertices[i].normal[1]=ny;
-            tri.vertices[i].normal[2]=nz;
-
-            //std::cout << px << std::endl << py << std::endl << pz << std::endl;
-
-            //system("pause");
-
-
-
+            float v[3];
+            decompose_attribute(file_contents[i], v, 3);
+            component t;
+            t.x = v[0];
+            t.y = v[1];
+            t.z = v[2];
+            vl.push_back(t);
+            continue;
         }
-
-
-
-        tris[counter-excounter]=tri;
-
-        if(it==faces.end())
+        if(strncmp(file_contents[i].c_str(), "vt ", 3)==0)
         {
-            goto end_cleanup; ///..... :OOOOOOOOOOOOOOOOO THE END IS NIGH
+            float vt[3];
+            decompose_attribute(file_contents[i], vt, 2);
+            component t;
+            t.x = vt[0];
+            t.y = vt[1];
+            //t.z = vt[2];
+            vtl.push_back(t);
+            continue;
         }
-
-
-
-
+        if(strncmp(file_contents[i].c_str(), "vn ", 3)==0)
+        {
+            float vn[3];
+            decompose_attribute(file_contents[i], vn, 3);
+            component t;
+            t.x = vn[0];
+            t.y = vn[1];
+            t.z = vn[2];
+            vnl.push_back(t);
+            continue;
+        }
+        if(strncmp(file_contents[i].c_str(), "usemtl", 6)==0)
+        {
+            usemtl_pos.push_back(usefc);
+            usemtl_name.push_back(file_contents[i].substr(file_contents[i].find_last_of(" ")+1, std::string::npos));
+            continue;
+        }
     }
 
+    file_contents.clear();
+
+    ///now, resolve
+
+    std::vector<triangle> tris;
+    std::vector<vertex> fr;
+    fr.reserve(fc);
+
+    tris.reserve(fc);
+
+    for(size_t i=0; i<fl.size(); i++)
+    {
+        vertex vert[3];
+        indices index;
+        index = fl[i];
+        for(int j=0; j<3; j++)
+        {
+            component v, vt, vn;
+            v  = vl [index.v [j]];
+            vt = vtl[index.vt[j]];
+            vn = vnl[index.vn[j]];
+
+            vert[j].pos[0] = v.x;
+            vert[j].pos[1] = v.y;
+            vert[j].pos[2] = v.z;
+
+            vert[j].vt[0] = vt.x;
+            vert[j].vt[1] = vt.y;
+
+            vert[j].normal[0] = vn.x;
+            vert[j].normal[1] = vn.y;
+            vert[j].normal[2] = vn.z;
+        }
+        triangle t;
+        t.vertices[0] = vert[0];
+        t.vertices[1] = vert[1];
+        t.vertices[2] = vert[2];
+        tris.push_back(t);
+    }
+
+    vl.clear();
+    vtl.clear();
+    vnl.clear();
+    fl.clear();
+
+    objects_container *c = new objects_container;
 
 
+    for(int i=0; i<usemtl_pos.size()-1; i++)
+    {
+        object obj;
+        obj.mtlname = usemtl_name[i];
+        obj.tex_name = retrieve_diffuse_new(mtlf_contents, obj.mtlname);
 
+        texture temp;
+        std::string full = dir + std::string("/") + obj.tex_name;
+        temp.loadtomaster(full);
 
+        obj.tri_list.reserve(usemtl_pos[i+1]-usemtl_pos[i]);
 
+        for(int j=usemtl_pos[i]; j<usemtl_pos[i+1]; j++)
+        {
+            obj.tri_list.push_back(tris[j]);
+        }
 
+        obj.tri_num = obj.tri_list.size();
+        obj.tid = temp.id;
 
-    objs->pos[0]=0;
-    objs->pos[1]=0;
-    objs->pos[2]=0;
+        obj.pos = (cl_float4){0,0,0,0};
+        obj.rot = (cl_float4){0,0,0,0};
 
-    objs->rot[0]=0;
-    objs->rot[1]=0;
-    objs->rot[2]=0;
+        c->objs.push_back(obj);
+    }
 
+    c->pos[0] = 0;
+    c->pos[1] = 0;
+    c->pos[2] = 0;
+    c->rot[0] = 0;
+    c->rot[1] = 0;
+    c->rot[2] = 0;
 
-
-
-    //std::cout << tfname << std::endl;
-
-    /*object *obj=new object;
-    obj->tri_list=tris;
-    obj->tri_num=tri_num;
-    obj->x=0;
-    obj->y=0;
-    obj->z=0;*/
-
-    return objs;
-
-
-
-    //std::cout << "hi";
-
-
-
+    return c;
 }

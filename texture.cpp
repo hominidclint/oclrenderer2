@@ -60,9 +60,9 @@ cl_uint texture::loadtomaster(std::string loc)
         location=loc;
         c_image.loadFromFile(loc);
 
-        if(c_image.getSize().x!=c_image.getSize().x)
+        if(c_image.getSize().x!=c_image.getSize().y)
         {
-            std::cout << "you loaded a non square texture, god damned you " << loc << std::endl;
+            //std::cout << "you loaded a non square texture, god damned you " << loc << std::endl;
             //exit(12);
         }
 
@@ -73,12 +73,12 @@ cl_uint texture::loadtomaster(std::string loc)
 
         if(c_image.getSize().x<256)
         {
-            std::cout << "minsize limit " << loc << std::endl;
+            //std::cout << "minsize limit " << loc << std::endl;
         }
 
         if(c_image.getSize().x!=256 && c_image.getSize().x!=512 && c_image.getSize().x!=1024 && c_image.getSize().x!=2048)
         {
-            std::cout << "not between 256 and 2048 " << loc << std::endl;
+            //std::cout << "not between 256 and 2048 " << loc << std::endl;
         }
 
         id=gidc++;

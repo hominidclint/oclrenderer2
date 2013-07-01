@@ -9,7 +9,6 @@ std::vector<texture> texture::texturelist;
 
 texture::texture()
 {
-
     loaded=false;
     g_pushed=false;
 }
@@ -26,9 +25,7 @@ cl_uint texture::idquerystring(std::string name)
         {
             return id;
         }
-
     }
-
     return -1;
 }
 
@@ -47,38 +44,20 @@ cl_uint texture::init()
     return id;
 }
 
+///this really needs to be changed
+
 cl_uint texture::loadtomaster(std::string loc)
 {
-    //std::cout << loc << std::endl;
-
     cl_uint idq=-1;
 
     if((idq=idquerystring(loc))==-1)
     {
-        //std::cout << "hi";
-
         location=loc;
         c_image.loadFromFile(loc);
-
-        if(c_image.getSize().x!=c_image.getSize().y)
-        {
-            //std::cout << "you loaded a non square texture, god damned you " << loc << std::endl;
-            //exit(12);
-        }
 
         if(c_image.getSize().x>2048)
         {
             std::cout << "maxsize limit " << loc << std::endl;
-        }
-
-        if(c_image.getSize().x<256)
-        {
-            //std::cout << "minsize limit " << loc << std::endl;
-        }
-
-        if(c_image.getSize().x!=256 && c_image.getSize().x!=512 && c_image.getSize().x!=1024 && c_image.getSize().x!=2048)
-        {
-            //std::cout << "not between 256 and 2048 " << loc << std::endl;
         }
 
         id=gidc++;
@@ -86,10 +65,8 @@ cl_uint texture::loadtomaster(std::string loc)
         texturelist.push_back(*this);
 
         return id;
-
     }
 
     id=idq;
     return idq;
-
 }

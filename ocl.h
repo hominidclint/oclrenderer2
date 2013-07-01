@@ -291,21 +291,7 @@ void oclstuff()
 
     clGetDeviceInfo(cl::device, CL_DEVICE_EXTENSIONS, 2000, returnstring, NULL);
 
-    //printf("test: %s", returnstring);
-
     size_t *optimum=new size_t[200];
-
-    //clGetDeviceInfo(cl::device, CL_KERNEL_WORK_GROUP_SIZE, 200, optimum, NULL);
-
-    //printf("herp: %i", optimum[0]);
-
-    //std::cout << "herp" << optimum;
-
-    //cl::optimum=optimum;
-
-    //delete optimum;
-
-    //exit(2);
 
 
     std::string buildoptions = " ";

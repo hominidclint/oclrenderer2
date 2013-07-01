@@ -2,10 +2,10 @@
 1369881614 source:c:\users\james\desktop\projects\proj\clstate.cpp
 	"clstate.h"
 
-1369881614 c:\users\james\desktop\projects\proj\clstate.h
+1372675431 c:\users\james\desktop\projects\proj\clstate.h
 	<cl/opencl.h>
 
-1372463416 source:c:\users\james\desktop\projects\proj\engine.cpp
+1372717291 source:c:\users\james\desktop\projects\proj\engine.cpp
 	"engine.hpp"
 	<math.h>
 	<gl/gl3.h>
@@ -17,33 +17,33 @@
 	<stdio.h>
 	<limits.h>
 
-1372448611 c:\users\james\desktop\projects\proj\engine.hpp
+1372692813 c:\users\james\desktop\projects\proj\engine.hpp
 	<SFML/graphics.hpp>
 	"object.hpp"
 	<vector>
 	"objects_container.hpp"
 	"light.hpp"
 
-1372670854 c:\users\james\desktop\projects\proj\object.hpp
+1372675452 c:\users\james\desktop\projects\proj\object.hpp
 	<vector>
 	"triangle.hpp"
 	<string>
 	<cl/cl.h>
 
-1345214457 c:\users\james\desktop\projects\proj\triangle.hpp
+1372675487 c:\users\james\desktop\projects\proj\triangle.hpp
 	"vertex.hpp"
 
-1360811189 c:\users\james\desktop\projects\proj\vertex.hpp
+1372675490 c:\users\james\desktop\projects\proj\vertex.hpp
 	<cl/cl.h>
 
-1356823564 c:\users\james\desktop\projects\proj\objects_container.hpp
+1372675457 c:\users\james\desktop\projects\proj\objects_container.hpp
 	"object.hpp"
 
-1372448643 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
+1372694190 c:\users\james\desktop\projects\proj\obj_mem_manager.hpp
 	"object.hpp"
 	<vector>
 
-1372674125 source:c:\users\james\desktop\projects\proj\main.cpp
+1372675826 source:c:\users\james\desktop\projects\proj\main.cpp
 	<cstdio>
 	<string>
 	<iostream>
@@ -65,13 +65,13 @@
 	"object.hpp"
 	"objects_container.hpp"
 
-1369881614 c:\users\james\desktop\projects\proj\texture.hpp
+1372675483 c:\users\james\desktop\projects\proj\texture.hpp
 	<sfml/graphics.hpp>
 	<cl/cl.h>
 	<vector>
 	"obj_g_descriptor.hpp"
 
-1369881614 c:\users\james\desktop\projects\proj\ocl.h
+1372675473 c:\users\james\desktop\projects\proj\ocl.h
 	<cstdio>
 	<CL/cl.h>
 	<iostream>
@@ -89,7 +89,7 @@
 	<cl/cl.h>
 	<vector>
 
-1372673585 source:c:\users\james\desktop\projects\proj\obj_load.cpp
+1372675333 source:c:\users\james\desktop\projects\proj\obj_load.cpp
 	"obj_load.hpp"
 	<cstdio>
 	<cstdlib>
@@ -103,7 +103,7 @@
 	<math.h>
 	<list>
 
-1372448741 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
+1372717270 source:c:\users\james\desktop\projects\proj\obj_mem_manager.cpp
 	"obj_mem_manager.hpp"
 	<CL/CL.h>
 	"clstate.h"
@@ -114,14 +114,14 @@
 	"obj_g_descriptor.hpp"
 	"texture.hpp"
 
-1367545613 source:c:\users\james\desktop\projects\proj\object.cpp
+1372675371 source:c:\users\james\desktop\projects\proj\object.cpp
 	"object.hpp"
 	"clstate.h"
 
-1346894824 source:c:\users\james\desktop\projects\proj\objects_container.cpp
+1372675378 source:c:\users\james\desktop\projects\proj\objects_container.cpp
 	"objects_container.hpp"
 
-1372671004 source:c:\users\james\desktop\projects\proj\texture.cpp
+1372675422 source:c:\users\james\desktop\projects\proj\texture.cpp
 	"texture.hpp"
 	"clstate.h"
 	<iostream>
@@ -136,7 +136,7 @@
 1365820206 source:c:\users\james\desktop\projects\proj\light.cpp
 	"light.hpp"
 
-1365820184 c:\users\james\desktop\projects\proj\light.hpp
+1372675441 c:\users\james\desktop\projects\proj\light.hpp
 	<cl/cl.h>
 	<vector>
 

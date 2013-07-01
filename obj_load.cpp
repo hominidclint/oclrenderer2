@@ -134,8 +134,7 @@ objects_container* obj_load(std::string filename)
         mtlf_contents.push_back(str);
     }
 
-    //std::cout << retrieve_diffuse_new(mtlf_contents, "Material__298_background.tga");
-
+    ///find number of different types of things - vertices, faces, uv coordinates, normals
     for(size_t i=0; i<file_contents.size(); i++)
     {
         std::string ln = file_contents[i];

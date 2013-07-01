@@ -13,18 +13,6 @@ unsigned int engine::gl_framebuffer_id=0;
 unsigned int engine::gl_screen_id=0;
 
 
-
-/*&void engine::add_shadow_light(light l)
-{
-    c_shadow_light_list.push_back(l);
-    ///realloc memory for light buffer
-    ///>.>
-    ///wait can we just pass it in?
-    ///i think so. It shouldnt take much to copy in a bunch of shitty lights.
-
-}*/
-
-
 void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string name)
 {
 
@@ -64,19 +52,12 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
 
 
 
-
-
-
-
     PFNGLGENFRAMEBUFFERSEXTPROC glGenFramebuffersEXT = (PFNGLGENFRAMEBUFFERSEXTPROC)wglGetProcAddress("glGenFramebuffersEXT");
     PFNGLBINDFRAMEBUFFEREXTPROC glBindFramebufferEXT = (PFNGLBINDFRAMEBUFFEREXTPROC)wglGetProcAddress("glBindFramebufferEXT");
     PFNGLGENRENDERBUFFERSEXTPROC glGenRenderbuffersEXT = (PFNGLGENRENDERBUFFERSEXTPROC)wglGetProcAddress("glGenRenderbuffersEXT");
     PFNGLBINDRENDERBUFFEREXTPROC glBindRenderbufferEXT = (PFNGLBINDRENDERBUFFEREXTPROC)wglGetProcAddress("glBindRenderbufferEXT");
     PFNGLRENDERBUFFERSTORAGEEXTPROC glRenderbufferStorageEXT = (PFNGLRENDERBUFFERSTORAGEEXTPROC)wglGetProcAddress("glRenderbufferStorageEXT");
     PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC glFramebufferRenderbufferEXT = (PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC)wglGetProcAddress("glFramebufferRenderbufferEXT");
-    //PFNGLBLITFRAMEBUFFEREXTPROC glBlitFramebufferEXT = (PFNGLBLITFRAMEBUFFEREXTPROC)wglGetProcAddress("glBlitFramebufferEXT");
-    //PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC glCheckFramebufferStatusEXT = (PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC)wglGetProcAddress("glCheckFramebufferStatusEXT");
-
 
     glGenRenderbuffersEXT(1, &gl_screen_id);
     glBindRenderbufferEXT(GL_RENDERBUFFER, gl_screen_id);
@@ -104,14 +85,10 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     }
 
 
-
-
     cl_image_format fermat;
     fermat.image_channel_order=CL_RGBA;
     fermat.image_channel_data_type=CL_FLOAT;
 
-    //g_triangle_id_framebuffer=      clCreateImage2D(cl::context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, &fermat, g_size, g_size, 0, NULL, &cl::error);
-    //g_triangle_depth_framebuffer=   clCreateImage2D(cl::context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, &fermat, g_size, g_size, 0, NULL, &cl::error);
 
     if(cl::error!=0)
     {
@@ -124,7 +101,7 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     c_pos.z=-570;
     ///700
 
-    cl_uint size_of_uid_buffer = 20*1024*1024;
+    cl_uint size_of_uid_buffer = 40*1024*1024;
     cl_uint zero=0;
 
 
@@ -206,20 +183,11 @@ void engine::realloc_light_gmem() ///for the moment, just reallocate everything
     blank_light_buf = new cl_uint[l_size*l_size*6];
     memset(blank_light_buf, UINT_MAX, l_size*l_size*sizeof(cl_uint)*6);
 
-    //g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*l_size*l_size*6*ln, blank_light_buf, &cl::error);
     g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE , sizeof(cl_uint)*l_size*l_size*6*ln, NULL, &cl::error);
     for(int i=0; i<ln; i++)
     {
         clEnqueueWriteBuffer(cl::cqueue, g_shadow_light_buffer, CL_TRUE, sizeof(cl_uint)*l_size*l_size*6*i, sizeof(cl_uint)*l_size*l_size*6, blank_light_buf, 0, NULL, NULL);
     }
-
-
-
-    //delete [] arr;
-
-
-
-
 }
 
 int engine::add_light(light l)
@@ -258,18 +226,11 @@ cl_float4 rot(double x, double y, double z, cl_float4 rotation)
     ret.z=i3z;
 
     return ret;
-
-
 }
 
 void engine::input()
 {
     sf::Keyboard keyboard;
-
-
-
-    //double frametime=window.getframetime(); ///function no longer exists
-    //window.
 
     static int distance_multiplier=1;
 
@@ -284,7 +245,7 @@ void engine::input()
 
     double distance=0.04*distance_multiplier*30;
 
-    if(keyboard.isKeyPressed(sf::Keyboard::W))  ///get engine to do this itself. Engine.ProcessInput
+    if(keyboard.isKeyPressed(sf::Keyboard::W))
     {
         cl_float4 t=rot(0, 0, distance, c_rot);
         c_pos.x+=t.x;
@@ -302,7 +263,6 @@ void engine::input()
 
     if(keyboard.isKeyPressed(sf::Keyboard::A))
     {
-        //c_pos.x-=0.04*frametime*mult;
         cl_float4 t=rot(-distance, 0, 0, c_rot);
         c_pos.x+=t.x;
         c_pos.y+=t.y;
@@ -357,32 +317,9 @@ void engine::input()
         std::cout << "rerr: " << c_pos.x << " " << c_pos.y << " " << c_pos.z << std::endl;
     }
 
-    if(keyboard.isKeyPressed(sf::Keyboard::V))
-    {
-        //std::cout << frametime << std::endl;
-    }
-
-
     clEnqueueWriteBuffer(cl::cqueue, g_c_pos, true, 0, sizeof(cl_float4), &c_pos, 0, NULL, NULL);
     clEnqueueWriteBuffer(cl::cqueue, g_c_rot, true, 0, sizeof(cl_float4), &c_rot, 0, NULL, NULL);
-    //clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_light_mem, true, 0, sizeof(cl_float4), &c_pos, 0, NULL, NULL);
-
-
-
 }
-
-
-
-
-/*void engine::draw_tile_objs()
-{
-    ///rotate triangles
-    ///for every block, split into half and sort triangles
-    ///
-
-
-
-}*/
 
 
 
@@ -401,24 +338,11 @@ void run_kernel_with_args(cl_kernel &kernel, cl_uint *global_ws, cl_uint *local_
         }
     }
 
-
-    //size_t local=*local_ws;
-    //size_t local=*local_ws;
-
-    /*if(*global_ws % local!=0)
-    {
-        int rem=global_ws % local;
-        *global_ws-=(rem);
-        *global_ws+=local;
-    }*/
-
     cl::error = clEnqueueNDRangeKernel(cl::cqueue, kernel, d, NULL, global_ws, local_ws, 0, NULL, NULL);
 
 
     if(blocking)
         clFinish(cl::cqueue);
-
-    //std::cout << "c1 " << c.getElapsedTime().asMilliseconds() << std::endl;
 
     if(cl::error!=0)
     {
@@ -557,6 +481,7 @@ void engine::draw_bulk_objs_n()
 
 
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_tri_anum, CL_TRUE, 0, sizeof(cl_uint), &p0, 0, NULL, NULL);
+    clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_valid_tri_num, CL_TRUE, 0, sizeof(cl_uint), &p0, 0, NULL, NULL);
 
 
     //__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer)
@@ -573,9 +498,9 @@ void engine::draw_bulk_objs_n()
     sf::Clock p1;
 
     //cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot,  &depth_buffer[nbuf]};
-    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem};
+    cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem, &obj_mem_manager::g_valid_tri_num, &obj_mem_manager::g_valid_tri_mem};
     //run_kernel_with_args(cl::kernel, &p1global_ws, &local, 1, p1arglist, 7, true);
-    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 9, true);
+    run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 11, true);
 
     //std::cout << "p1time " << p1.getElapsedTime().asMilliseconds() << std::endl;
 
@@ -638,10 +563,10 @@ void engine::draw_bulk_objs_n()
     //std::cout << p1global_ws << " " << atom_count << std::endl;
 
     //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_anum, &depth_buffer[nbuf], &g_id_screen};
-    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &depth_buffer[nbuf], &g_id_screen, &g_c_pos, &g_c_rot, &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem};
+    cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &depth_buffer[nbuf], &g_id_screen, &g_c_pos, &g_c_rot, &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem, &obj_mem_manager::g_valid_tri_num, &obj_mem_manager::g_valid_tri_mem};
     ///__global struct triangle* triangles, __global uint* tri_num, __global uint* depth_buffer, __global uint* id_buffer, __global float4* c_pos, __global float4* c_rot)
     //cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_shadow_light_buffer, &g_id_screen};
-    run_kernel_with_args(cl::kernel2, &p1global_ws_new, &local, 1, p2arglist, 10, true);
+    run_kernel_with_args(cl::kernel2, &p1global_ws_new, &local, 1, p2arglist, 12, true);
 
     //std::cout << "p2time " << p2.getElapsedTime().asMilliseconds() << std::endl;
 
@@ -728,27 +653,3 @@ int engine::get_mouse_y()
 {
     return mouse.getPosition(window).y;
 }
-
-
-
-
-/*void engine::draw_poor_objs(objects_container &container)
-{
-
-    glFinish();
-    clEnqueueAcquireGLObjects(cl::cqueue, 1, &g_screen, 0, NULL, NULL);
-    clFinish(cl::cqueue);
-
-
-    for(std::vector<object>::iterator it=container.objs.begin(); it!=container.objs.end(); it++)
-    {
-        draw_obj((*it));
-    }
-
-
-    clEnqueueReleaseGLObjects(cl::cqueue, 1, &g_screen, 0, NULL, NULL);
-    clFinish(cl::cqueue);
-    glFinish();
-
-
-}*/

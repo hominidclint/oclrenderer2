@@ -3,7 +3,6 @@
 #include <cl/cl.h>
 struct vertex
 {
-
     cl_float pos[4];
 
     cl_float normal[4]; ///xyz
@@ -11,7 +10,6 @@ struct vertex
     cl_float vt[2];
 
     cl_float pad[2];
-
 
 };
 

@@ -3,9 +3,7 @@
 #include "vertex.hpp"
 struct triangle
 {
-
     vertex vertices[3];
-
 };
 
 

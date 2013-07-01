@@ -21,7 +21,6 @@ struct light
     void set_shadow_bright(cl_uint shadow, cl_float bright);
 
     static std::vector<light> lightlist;
-    //static cl_uint lnum;
 };
 
 

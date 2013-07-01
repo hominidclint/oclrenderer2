@@ -3,12 +3,10 @@
 #include "object.hpp"
 struct objects_container
 {
-
     double pos[3];
     double rot[3];
 
     std::vector<object> objs;
-
 };
 
 

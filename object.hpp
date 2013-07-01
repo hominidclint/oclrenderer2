@@ -6,11 +6,9 @@
 #include <cl/cl.h>
 struct object
 {
-    //double x, y, z;
     cl_float4 pos;
     cl_float4 rot;
     bool onvector;
-    //std::vector<triangle*> tri_list;
 
     cl_mem g_mem;
     cl_mem g_tri_num;
@@ -26,13 +24,6 @@ struct object
 
     object();
     void alloc(int num);
-
-    //void g_alloc();
-
-    //void gettexname();
-
-
-
 };
 
 

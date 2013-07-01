@@ -10,7 +10,6 @@ struct texture
 {
 
     cl_mem image;
-    //cl_float4 ** c_gcompatible_image;
     sf::Image c_image;
     std::string location;
 
@@ -20,15 +19,12 @@ struct texture
 
     bool g_pushed;
 
-
     cl_uint id; ///starts from 1
     static cl_uint gidc;
 
     cl_uint mip_level_ids[MIP_LEVELS];
 
-
     texture();
-
 
 
     static bool t_compare(texture one, texture two);
@@ -41,15 +37,7 @@ struct texture
 
     cl_uint init();
 
-
     void unload();
-
-    /*void g_push();
-    void g_pull();*/
-
-
-
-
 };
 
 

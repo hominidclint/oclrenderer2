@@ -35,8 +35,8 @@ struct obj_mem_manager
     static cl_mem g_cut_tri_mem;
     static cl_mem g_cut_tri_num;
 
-    static cl_mem g_valid_tri_mem;
-    static cl_mem g_valid_tri_num;
+    //static cl_mem g_valid_tri_mem;
+    //static cl_mem g_valid_tri_num;
 
 
 

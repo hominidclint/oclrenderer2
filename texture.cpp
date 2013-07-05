@@ -10,7 +10,6 @@ std::vector<texture> texture::texturelist;
 texture::texture()
 {
     loaded=false;
-    g_pushed=false;
 }
 
 cl_uint texture::idquerystring(std::string name)
@@ -31,9 +30,12 @@ cl_uint texture::idquerystring(std::string name)
 
 bool texture::t_compare(texture one, texture two)
 {
+    return one.get_largest_dimension() < two.get_largest_dimension();
+}
 
-    return one.c_image.getSize().x < two.c_image.getSize().x;
-
+cl_uint texture::get_largest_dimension()
+{
+    return c_image.getSize().x > c_image.getSize().y ? c_image.getSize().x : c_image.getSize().y;
 }
 
 cl_uint texture::init()
@@ -55,7 +57,7 @@ cl_uint texture::loadtomaster(std::string loc)
         location=loc;
         c_image.loadFromFile(loc);
 
-        if(c_image.getSize().x>2048)
+        if(get_largest_dimension()>2048)
         {
             std::cout << "maxsize limit " << loc << std::endl;
         }

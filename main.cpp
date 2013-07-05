@@ -17,6 +17,8 @@
 #include <math.h>
 #include <limits.h>
 
+///todo
+///modify textures to return largest dimension
 
 int main(int argc, char *argv[])
 {
@@ -96,7 +98,7 @@ int main(int argc, char *argv[])
                 //std::cout << window.d_depth_buf[(600-my)*800 + (mx)] << std::endl;
         }
 
-        std::cout << c.getElapsedTime().asMilliseconds() << std::endl;
+        std::cout << c.getElapsedTime().asMicroseconds() << std::endl;
 
     }
 }

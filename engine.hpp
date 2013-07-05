@@ -22,14 +22,18 @@ struct engine
     cl_mem g_c_pos;
     cl_mem g_c_rot;
 
-    cl_mem g_triangle_id_framebuffer;
-    cl_mem g_triangle_depth_framebuffer;
+    //cl_mem g_triangle_id_framebuffer;
+    //cl_mem g_triangle_depth_framebuffer;
 
     cl_mem depth_buffer[2]; ///switches between the two every frame
+
+    //cl_mem depth_buffer_tex[2];
 
     cl_mem g_depth_screen;
 
     cl_mem g_id_screen;
+
+    cl_mem g_id_screen_tex;
 
     cl_mem g_normals_screen;
 
@@ -42,19 +46,15 @@ struct engine
     cl_mem g_tid_buf_atomic_count;
     int c_tid_buf_len;
 
+    cl_mem g_valid_fragment_mem;
+    cl_mem g_valid_fragment_num;
+
 
 
     cl_uint* d_depth_buf;
     cl_mem d_triangle_buf;
     triangle *dc_triangle_buf;
 
-
-
-    //std::vector<light> c_shadow_light_list;
-
-
-
-    //cl_mem g_obj_descriptors;
 
     static unsigned int gl_screen_id;
     static unsigned int gl_framebuffer_id;
@@ -67,8 +67,6 @@ struct engine
     sf::RenderWindow window;
 
     std::vector<object*> objects;
-
-    //int add_shadow_light(light *l);
 
     void load(cl_uint, cl_uint, cl_uint, std::string);
 
@@ -90,12 +88,6 @@ struct engine
 
 
     void update_lights();
-
-
-
-
-
-
 };
 
 

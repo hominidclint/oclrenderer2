@@ -114,7 +114,7 @@ struct t_c
 int calc_third_areas_i(int x1, int x2, int x3, int y1, int y2, int y3, int x, int y)
 {
     //return (fabs((float)((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2.0f) + fabs((float)((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2.0f) + fabs((float)((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2.0f));
-    return abs(((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2) + abs(((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2) + abs(((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2);
+    return (abs(((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))) + abs(((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))) + abs(((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))))/2;
     ///form was written for this, i think
 }
 
@@ -147,9 +147,9 @@ float idcalc(float value)
     return value * depth_far;
 }
 
-float calc_rconstant(int x1, int x2, int x3, int y1, int y2, int y3)
+float calc_rconstant(int x[3], int y[3])
 {
-    return 1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
+    return 1.0/(x[1]*y[2]+x[0]*(y[1]-y[2])-x[2]*y[1]+(x[2]-x[1])*y[0]);
 }
 
 float interpolate_2(float vals[3], struct interp_container c, int x, int y)
@@ -179,6 +179,15 @@ float interpolate_i(float f1, float f2, float f3, int x, int y, int x1, int x2, 
     return (float)(A*x + B*y + C);
 }
 
+float interpolate_p(float f[3], int xn, int yn, int x[3], int y[3], float rconstant)
+{
+    float A=((f[1]*y[2]+f[0]*(y[1]-y[2])-f[2]*y[1]+(f[2]-f[1])*y[0]) * rconstant);
+    float B=(-(f[1]*x[2]+f[0]*(x[1]-x[2])-f[2]*x[1]+(f[2]-f[1])*x[0]) * rconstant);
+    float C=f[0]-A*x[0] - B*y[0];
+
+    return (float)(A*xn + B*yn + C);
+}
+
 float interpolate_r(float f1, float f2, float f3, int x, int y, int x1, int x2, int x3, int y1, int y2, int y3)
 {
     float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
@@ -195,7 +204,8 @@ float2 interpolate_r_pair(float2 f[3], float2 xy, float2 bounds[3])
 
 float interpolate(float f[3], struct interp_container *c, int x, int y)
 {
-    return interpolate_i(f[0], f[1], f[2], x, y, c->x[0], c->x[1], c->x[2], c->y[0], c->y[1], c->y[2], c->rconstant);
+    //return interpolate_i(f[0], f[1], f[2], x, y, c->x[0], c->x[1], c->x[2], c->y[0], c->y[1], c->y[2], c->rconstant);
+    return interpolate_p(f, x, y, c->x, c->y, c->rconstant);
 }
 
 int out_of_bounds(float val, float min, float max)
@@ -757,7 +767,7 @@ float4 read_tex_array(float4 coords, uint tid, global uint *num, global uint *si
 {
 
     sampler_t sam = CLK_NORMALIZED_COORDS_FALSE |
-                    CLK_ADDRESS_CLAMP_TO_EDGE        |
+                    CLK_ADDRESS_CLAMP_TO_EDGE   |
                     CLK_FILTER_NEAREST;
 
     int d=get_image_depth(array);
@@ -804,8 +814,8 @@ float4 read_tex_array(float4 coords, uint tid, global uint *num, global uint *si
     float tx=tnumx*width;
     float ty=tnumy*width;
 
-
-    float4 coord= {tx + x, ty + y, slice, 0};
+    ///width - fixes bug
+    float4 coord= {tx + width - x, ty + y, slice, 0};
 
     uint4 col;
     col=read_imageui(array, sam, coord);
@@ -1735,9 +1745,9 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
     int ooany[2];
 
     for(int i=0; i<num; i++)
+    {
         ooany[i] = backface_cull_expanded(tris_proj[i][0], tris_proj[i][1], tris_proj[i][2], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
-
-
+    }
 
 
     for(int j=0; j<num; j++)
@@ -1750,11 +1760,6 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
         for(int i=0; i<3; i++)
         {
-            if(tris_proj[j][i].z < (depth_icutoff))
-            {
-                oob++;
-            }
-
             if(tris_proj[j][i].x < 0)
             {
                 ooxmin++;
@@ -1776,7 +1781,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
             }
         }
 
-        if(ooxmin >= 3 || ooxmax >= 3 || ooymin >= 3 || ooymax >= 3 || oob >=3)
+        if(ooxmin >= 3 || ooxmax >= 3 || ooymin >= 3 || ooymax >= 3)
         {
             ooany[j]=0;
         }
@@ -1802,25 +1807,38 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
         float thread_num = ceil((float)area/op_size);
 
 
+        //int a = calc_third_area_i(tris_proj[0].x, tris_proj[1].x, tris_proj[2].x, tris_proj[0].y, tris_proj[1].y, tris_proj[2].y, 0, 0, 0);
+
+
         //uint b = atom_add(id_buffer_atomc, (uint)thread_num);
 
         uint c_id = atom_inc(id_cutdown_tris);
 
-        cutdown_tris[c_id*3] = tris_proj[i][0];
+        cutdown_tris[c_id*3]   = tris_proj[i][0];
         cutdown_tris[c_id*3+1] = tris_proj[i][1];
         cutdown_tris[c_id*3+2] = tris_proj[i][2];
-
 
         int c = 0;
 
         //if(b*3 + thread_num*3 < *id_buffer_maxlength)
         {
-            //for(uint a = b; a < b + thread_num; a++)
             for(uint a = 0; a < thread_num; a++)
+            //for(uint a = 0; a < thread_num; a++)
             {
                 //fragment_id_buffer[a*3] = id;
-
                 ///work out if is valid, if not do c++ then continue;
+
+                /*uint distance = i;
+
+                int width = min_max[1] - min_max[0];
+
+                int pixel_along = op_size*distance;
+
+                int bx = ((pixel_along + 0) % width) + min_max[0];
+                int by = ((pixel_along + 0) / width) + min_max[2];
+
+                int ex = ((pixel_along + op_size) % width) + min_max[0];
+                int ey = ((pixel_along + op_size) / width) + min_max[2];*/
 
                 uint f = atom_inc(id_buffer_atomc);
                 fragment_id_buffer[f*4] = id;
@@ -1836,8 +1854,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
 }
 
-
-__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global float4* valid_tri_mem)
+__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global uint* valid_tri_mem)
 {
     uint id = get_global_id(0);
 
@@ -1849,7 +1866,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
     uint tid = fragment_id_buffer[id*4];
 
-    __global struct triangle *T = &triangles[tid];
+    //__global struct triangle *T = &triangles[tid];
 
 
     uint distance = 0;
@@ -1900,7 +1917,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
     int pcount=0;
 
-    float rconst = calc_rconstant(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2]);
+    float rconst = calc_rconstant(xp, yp);
 
     bool valid = false;
 
@@ -1922,7 +1939,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
 
-            float fmydepth = interpolate_i(depths[0], depths[1], depths[2], x, y, xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], rconst);
+            float fmydepth = interpolate_p(depths, x, y, xp, yp, rconst);
 
             fmydepth = 1.0 / fmydepth;
 
@@ -1942,7 +1959,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
 
             uint sdepth=atomic_min(ft, mydepth);
 
-            if(mydepth == sdepth)
+            if(mydepth < sdepth)
             {
                 valid = true;
             }
@@ -1951,35 +1968,32 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
         pcount++;
     }
 
-    /*if(valid)
+    if(valid)
     {
         uint v_id = atom_inc(valid_tri_num);
-        valid_tri_mem[v_id*3 + 0] = tris_proj_n[0];
-        valid_tri_mem[v_id*3 + 1] = tris_proj_n[1];
-        valid_tri_mem[v_id*3 + 2] = tris_proj_n[2];
-    }*/
+
+        valid_tri_mem[v_id*3 + 0] = id;
+        valid_tri_mem[v_id*3 + 1] = distance;
+        valid_tri_mem[v_id*3 + 2] = ctri;
+    }
 }
 
-__kernel void part2(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global uint* depth_buffer, __global uint* id_buffer, __global float4* c_pos, __global float4* c_rot, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global float4* valid_tri_mem)
+__kernel void part2(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global uint* depth_buffer, __global __write_only image2d_t id_buffer, __global float4* c_pos, __global float4* c_rot, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global uint* valid_tri_mem)
 {
     uint id = get_global_id(0);
 
-    if(id >= *f_len)
+    //if(id >= *f_len)
+    if(id >= *valid_tri_num)
     {
         return;
     }
 
+    uint tid = valid_tri_mem[id*3];
 
-    uint tid = fragment_id_buffer[id*4];
+    uint distance = valid_tri_mem[id*3 + 1];
 
-    __global struct triangle *T = &triangles[tid];
+    uint ctri = valid_tri_mem[id*3 + 2];
 
-
-    uint distance = fragment_id_buffer[id*4 + 1];
-
-    //int wtri = fragment_id_buffer[id*4 + 2];
-
-    uint ctri = fragment_id_buffer[id*4 + 3];
 
 
     float4 tris_proj_n[3];
@@ -2021,7 +2035,7 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
     int pcount=0;
 
-    float rconst = calc_rconstant(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2]);
+    float rconst = calc_rconstant(xp, yp);
 
     while(pcount <= op_size)
     {
@@ -2040,7 +2054,8 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
         {
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
 
-            float fmydepth = interpolate_i(depths[0], depths[1], depths[2], x, y, xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], rconst);
+            //float fmydepth = interpolate_i(depths[0], depths[1], depths[2], x, y, xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], rconst);
+            float fmydepth = interpolate_p(depths, x, y, xp, yp, rconst);
 
             fmydepth = 1.0 / fmydepth;
 
@@ -2060,8 +2075,9 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
             if(mydepth > *ft - 50 && mydepth < *ft + 50)
             {
-                __global uint *fi=&id_buffer[y*SCREENWIDTH + x];
-                *fi=id;
+                int2 coord = {x, y};
+                uint4 d = {tid, 0, 0, 0};
+                write_imageui(id_buffer, coord, d);
             }
         }
 
@@ -2071,7 +2087,7 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
 
 
-__kernel void part3(__global struct triangle *triangles, __global struct triangle *screen_triangles, __global uint *tri_num, __global uint *anum, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global uint* id_buffer,
+__kernel void part3(__global struct triangle *triangles, __global struct triangle *screen_triangles, __global uint *tri_num, __global uint *anum, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global __read_only image2d_t id_buffer,
                     __read_only image3d_t array, __write_only image2d_t screen, __global uint *nums, __global uint *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights, __global uint* light_depth_buffer, __global uint * to_clear, __global uint* fragment_id_buffer)
 ///__global uint sacrifice_children_to_argument_god
 {
@@ -2094,7 +2110,15 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         *ftc = mulint;
 
         __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
-        __global uint *fi=&id_buffer   [y*SCREENWIDTH + x];
+        //__global uint *fi=&id_buffer   [y*SCREENWIDTH + x];
+
+
+
+        uint4 id_val4 = read_imageui(id_buffer, sam, (int2){x, y});
+
+        uint id_val = id_val4.x;
+
+
 
         if(*ft==mulint)
         {
@@ -2135,7 +2159,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
         struct interp_container icontainer;
         float odepth[3];
 
-        __global struct triangle* T = &triangles[fragment_id_buffer[(*fi)*4]];
+        __global struct triangle* T = &triangles[fragment_id_buffer[id_val*4]];
 
 
         ///split the different steps to have different full_rotate functions. Prearrange only needs areas not full triangles, part 1-2 do not need texture or normal information
@@ -2146,7 +2170,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
-        uint wtri = fragment_id_buffer[(*fi)*4 + 2];
+        uint wtri = fragment_id_buffer[id_val*4 + 2];
 
         icontainer = construct_interpolation(tris[wtri], SCREENWIDTH, SCREENHEIGHT);
 
@@ -2154,7 +2178,7 @@ __kernel void part3(__global struct triangle *triangles, __global struct triangl
 
         struct triangle *c_tri = &tris[wtri];
 
-        uint pid = fragment_id_buffer[(*fi)*4];
+        uint pid = fragment_id_buffer[id_val*4];
 
         __global struct triangle *g_tri=&triangles[pid];
 

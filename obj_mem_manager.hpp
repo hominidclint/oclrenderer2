@@ -11,7 +11,6 @@ struct texture_array_descriptor;
 
 struct obj_mem_manager
 {
-
     static texture_array_descriptor tdescrip;
 
     static cl_uint tri_num;
@@ -19,42 +18,29 @@ struct obj_mem_manager
     static std::vector<object*> obj_list;
 
     static cl_mem g_tri_mem;
-    static cl_mem g_tri_smem;
-    static cl_mem g_tri_fstorage;
-
     static cl_mem g_tri_num;
-    static cl_mem g_tri_anum;
 
     static cl_mem g_obj_desc;
     static cl_mem g_obj_num;
 
+    ///screenspace depth buffer for shadow casting lights. This is going to be slow
     static cl_mem g_light_mem;
     static cl_mem g_light_num;
-    static cl_mem g_light_buf; ///screenspace depth buffer for shadow casting lights. This is going to be slow
+    static cl_mem g_light_buf;
+    ///array of lights in g_mem
+
 
     static cl_mem g_cut_tri_mem;
     static cl_mem g_cut_tri_num;
-
-    //static cl_mem g_valid_tri_mem;
-    //static cl_mem g_valid_tri_num;
-
 
 
     static cl_uchar4* c_texture_array;
 
     static cl_mem g_texture_array;
-
     static cl_mem g_texture_sizes;
-
     static cl_mem g_texture_nums;
 
-
-
-
     void g_arrange_mem();
-
-
-
 };
 
 

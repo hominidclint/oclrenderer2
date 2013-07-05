@@ -62,7 +62,7 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     glGenRenderbuffersEXT(1, &gl_screen_id);
     glBindRenderbufferEXT(GL_RENDERBUFFER, gl_screen_id);
 
-    glRenderbufferStorageEXT(GL_RENDERBUFFER, GL_RGBA, g_size, g_size); ///find nearest power of two to screen size and use that.
+    glRenderbufferStorageEXT(GL_RENDERBUFFER, GL_RGBA, g_size, g_size);
 
 
 
@@ -544,11 +544,11 @@ void engine::draw_bulk_objs_n()
     int nnbuf = (nbuf + 1) % 2;
 
 
-    cl_mem *p3arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_smem, &obj_mem_manager::g_tri_num, &obj_mem_manager::g_tri_anum, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_id_screen_tex, &obj_mem_manager::g_texture_array,
+    cl_mem *p3arglist[]= {&obj_mem_manager::g_tri_mem, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_id_screen_tex, &obj_mem_manager::g_texture_array,
                           &g_screen, &obj_mem_manager::g_texture_nums, &obj_mem_manager::g_texture_sizes, &obj_mem_manager::g_obj_desc, &obj_mem_manager::g_obj_num, &obj_mem_manager::g_light_num, &obj_mem_manager::g_light_mem, &g_shadow_light_buffer, &depth_buffer[nnbuf], &g_tid_buf};
 
 
-    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 19, true);
+    run_kernel_with_args(cl::kernel3, p3global_ws, p3local_ws, 2, p3arglist, 17, true);
 
 
     //std::cout << "p3 " << c3.getElapsedTime().asMicroseconds() << std::endl;

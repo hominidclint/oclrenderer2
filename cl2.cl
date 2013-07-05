@@ -845,8 +845,6 @@ float return_bilinear_shadf(float2 coord, float values[4])
 
 float4 return_bilinear_col(float4 coord, uint tid, global uint *nums, global uint *sizes, __read_only image3d_t array) ///takes a normalised input
 {
-
-
     float4 mcoord;
 
     int which=nums[tid];
@@ -864,7 +862,6 @@ float4 return_bilinear_col(float4 coord, uint tid, global uint *nums, global uin
     coords[1].x=pos.x+1, coords[1].y=pos.y;
     coords[2].x=pos.x, coords[2].y=pos.y+1;
     coords[3].x=pos.x+1, coords[3].y=pos.y+1;
-
 
 
     float4 colours[4];
@@ -2087,7 +2084,7 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
 
 
-__kernel void part3(__global struct triangle *triangles, __global struct triangle *screen_triangles, __global uint *tri_num, __global uint *anum, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global __read_only image2d_t id_buffer,
+__kernel void part3(__global struct triangle *triangles,__global uint *tri_num, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global __read_only image2d_t id_buffer,
                     __read_only image3d_t array, __write_only image2d_t screen, __global uint *nums, __global uint *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights, __global uint* light_depth_buffer, __global uint * to_clear, __global uint* fragment_id_buffer)
 ///__global uint sacrifice_children_to_argument_god
 {

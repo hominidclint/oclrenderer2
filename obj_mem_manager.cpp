@@ -13,12 +13,9 @@ std::vector<object*> obj_mem_manager::obj_list;
 cl_uint obj_mem_manager::tri_num;
 
 cl_mem obj_mem_manager::g_tri_mem;
-cl_mem obj_mem_manager::g_tri_smem;
 cl_mem obj_mem_manager::g_tri_num;
 cl_mem obj_mem_manager::g_cut_tri_mem;
 cl_mem obj_mem_manager::g_cut_tri_num;
-cl_mem obj_mem_manager::g_tri_anum;
-cl_mem obj_mem_manager::g_tri_fstorage;
 cl_mem obj_mem_manager::g_obj_desc;
 cl_mem obj_mem_manager::g_obj_num;
 cl_mem obj_mem_manager::g_light_mem;
@@ -102,10 +99,10 @@ sf::Color pixel4(sf::Color &p0, sf::Color &p1, sf::Color &p2, sf::Color &p3)
     return ret;
 }
 
-void gen_miplevel(texture &tex, texture &gen, int level) ///call from main mem_alloc func?
+void gen_miplevel(texture &tex, texture &gen) ///call from main mem_alloc func?
 {
     int size=tex.get_largest_dimension();
-    int newsize=size >> level;
+    int newsize=size >> 1;
 
     gen.c_image.create(newsize, newsize);
 
@@ -156,7 +153,6 @@ void add_texture(texture &tex, int &newid)
 
         ti++;
         tj=0;
-
     }
 
     ///so, num represents which slice its in
@@ -179,9 +175,9 @@ void add_texture_and_mipmaps(texture &tex, cl_uint4 &newmips, int &newid)
     for(int n=0; n<MIP_LEVELS; n++)
     {
         if(n==0)
-            gen_miplevel(tex, mip[n], 1);
+            gen_miplevel(tex, mip[n]);
         else
-            gen_miplevel(mip[n-1], mip[n], 1);
+            gen_miplevel(mip[n-1], mip[n]);
 
         mip[n].init();
         add_texture(mip[n], ((int*)&newmips)[n]); ///totally legit
@@ -199,25 +195,22 @@ int num_to_divide(int target, int tsize)
     }
 
     return f;
-
 }
 
 
 void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture ids
 {
-
-
     cl_uint trianglecount=0;
 
     obj_g_descriptor *desc=new obj_g_descriptor[obj_list.size()];
     unsigned int n=0;
 
-
     std::vector<int> newtexid;
+    std::vector<int> mtexids; ///mipmaps
 
     int osize=texture::texturelist.size();
 
-    std::vector<int> mtexids; ///mipmaps
+
 
     for(int i=0; i<osize; i++)
     {
@@ -241,7 +234,6 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     }
 
 
-
     for(std::vector<object*>::iterator it=obj_list.begin(); it!=obj_list.end(); it++) ///if you call this more than once, it will break. Need to store how much it has already done, and start it again from there to prevent issues with mipmaps
     {
         desc[n].tri_num=(*it)->tri_num;
@@ -263,27 +255,30 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
 
     clReleaseMemObject(g_texture_sizes);
     clReleaseMemObject(g_texture_nums);
+    clReleaseMemObject(g_obj_desc);
+    clReleaseMemObject(g_obj_num);
+    clReleaseMemObject(g_tri_mem);
+    clReleaseMemObject(g_cut_tri_mem);
+    clReleaseMemObject(g_tri_num);
+    clReleaseMemObject(g_cut_tri_num);
+    clReleaseMemObject(g_texture_array);
 
 
     g_texture_sizes  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int)*obj_mem_manager::tdescrip.texture_sizes.size(), obj_mem_manager::tdescrip.texture_sizes.data(), &cl::error);
     g_texture_nums   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,                                sizeof(int)*newtexid.size(),                                newtexid.data(), &cl::error);
 
-    clReleaseMemObject(g_texture_array);
+
 
     cl_image_format fermat;
     fermat.image_channel_order=CL_RGBA;
     fermat.image_channel_data_type=CL_UNSIGNED_INT8;
 
-    g_texture_array=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 2048, 2048, obj_mem_manager::tdescrip.texture_sizes.size(), 2048*MIP_LEVELS, (2048*2048*MIP_LEVELS), obj_mem_manager::c_texture_array, &cl::error);
-
+    ///2048*4 2048*2048*4 are row pitch and row size
+    g_texture_array=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 2048, 2048, obj_mem_manager::tdescrip.texture_sizes.size(), 2048*4, (2048*2048*4), obj_mem_manager::c_texture_array, &cl::error);
 
 
     ///now, we need to lump texture sizes into catagories
 
-
-
-    clReleaseMemObject(g_obj_desc);
-    clReleaseMemObject(g_obj_num);
 
     cl_mem g_obj_d  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(obj_g_descriptor)*n, desc, &cl::error);
     cl_mem g_obj_n  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint),              &n, &cl::error);
@@ -292,18 +287,11 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     g_obj_num  =  g_obj_n;
 
 
-    delete [] desc;
+    delete [] desc; /// memory release here ///
 
-    clReleaseMemObject(g_cut_tri_mem);
-    clReleaseMemObject(g_tri_mem); ///allocate triangle buffers and number buffer
-    clReleaseMemObject(g_tri_smem); ///allocate triangle buffers and number buffer
-    clReleaseMemObject(g_tri_fstorage);
-    //clReleaseMemObject(g_valid_tri_mem);
+
     g_tri_mem = clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(triangle)*trianglecount, NULL, &cl::error);
-    g_tri_smem = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(triangle)*trianglecount, NULL, &cl::error);
-    g_tri_fstorage = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_float4)*trianglecount*3, NULL, &cl::error);
     g_cut_tri_mem= clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_float4)*trianglecount*3, NULL, &cl::error);
-    //g_valid_fragment_mem = clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(cl_uint)*trianglecount*3, NULL, &cl::error);
 
     if(cl::error!=0)
     {
@@ -311,17 +299,8 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         exit(cl::error);
     }
 
-    int p0=0;
-
-    clReleaseMemObject(g_tri_num);
-    clReleaseMemObject(g_cut_tri_num);
-    clReleaseMemObject(g_tri_anum);
-    //clReleaseMemObject(g_valid_tri_num);
-
     g_tri_num = clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR , sizeof(cl_uint), &trianglecount, &cl::error);
     g_cut_tri_num = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_uint), NULL, &cl::error);
-    g_tri_anum = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR , sizeof(cl_uint), &p0, &cl::error);
-    //g_valid_tri_num = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR , sizeof(cl_uint), &p0, &cl::error);
 
 
     if(cl::error!=0)

@@ -32,8 +32,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    sponza->set_active(true);
+
 
     obj_mem_manager g_manage;
+    g_manage.init();
 
 
     engine window;
@@ -46,8 +49,12 @@ int main(int argc, char *argv[])
         g_manage.obj_list.push_back(&(*it));
     }
 
-    g_manage.g_arrange_mem();
+    //g_manage.g_arrange_textures();
 
+    g_manage.g_arrange_mem();
+    g_manage.g_changeover();
+    //g_manage.g_arrange_mem();
+    //g_manage.g_changeover();
 
     sf::Event Event;
 

@@ -11,6 +11,10 @@ struct texture_array_descriptor;
 
 struct obj_mem_manager
 {
+
+
+    obj_mem_manager* temporary_objects;
+
     static texture_array_descriptor tdescrip;
 
     static cl_uint tri_num;
@@ -40,7 +44,13 @@ struct obj_mem_manager
     static cl_mem g_texture_sizes;
     static cl_mem g_texture_nums;
 
+    void init();
+
+    void g_arrange_textures();
+
     void g_arrange_mem();
+
+    void g_changeover();
 };
 
 

@@ -41,7 +41,7 @@ texture_array_descriptor obj_mem_manager::tdescrip;
 
 cl_uint return_max_num(int size)
 {
-    return (max_tex_size/size) *(max_tex_size/size);
+    return (max_tex_size/size) * (max_tex_size/size);
 }
 
 ///this may resize obj_mem_manager::c_texture_array
@@ -166,7 +166,7 @@ void add_texture(texture &tex, int &newid)
 }
 
 
-void add_texture_and_mipmaps(texture &tex, cl_uint4 &newmips, int &newid)
+void add_texture_and_mipmaps(texture &tex, int newmips[], int &newid)
 {
     add_texture(tex, newid);
 
@@ -180,7 +180,7 @@ void add_texture_and_mipmaps(texture &tex, cl_uint4 &newmips, int &newid)
             gen_miplevel(mip[n-1], mip[n]);
 
         mip[n].init();
-        add_texture(mip[n], ((int*)&newmips)[n]); ///totally legit
+        add_texture(mip[n], newmips[n]); ///totally legit
     }
 }
 
@@ -197,8 +197,15 @@ int num_to_divide(int target, int tsize)
     return f;
 }
 
+void obj_mem_manager::init()
+{
+    temporary_objects = new obj_mem_manager;
+}
 
-void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture ids
+///arrange textures here and update texture ids
+//void obj_mem_manager::g_arrange_textures()
+//{
+void obj_mem_manager::g_arrange_mem()
 {
     cl_uint trianglecount=0;
 
@@ -208,21 +215,24 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     std::vector<int> newtexid;
     std::vector<int> mtexids; ///mipmaps
 
-    int osize=texture::texturelist.size();
 
 
-
-    for(int i=0; i<osize; i++)
+    for(int i=0; i<texture::active_textures.size(); i++)
     {
-        int t=0;
-        cl_uint4 mipmaps;
-        add_texture_and_mipmaps(texture::texturelist[i], mipmaps, t);
+        if(texture::texturelist[texture::active_textures[i]].loaded == false)
+        {
+            texture::texturelist[texture::active_textures[i]].loadtomaster();
+        }
 
+        int t=0;
+        int mipmaps[MIP_LEVELS];
+        add_texture_and_mipmaps(texture::texturelist[texture::active_textures[i]], mipmaps, t);
         newtexid.push_back(t);
-        mtexids.push_back(mipmaps.x);
-        mtexids.push_back(mipmaps.y);
-        mtexids.push_back(mipmaps.z);
-        mtexids.push_back(mipmaps.w);
+
+        for(int n=0; n<MIP_LEVELS; n++)
+        {
+            mtexids.push_back(mipmaps[n]);
+        }
     }
 
 
@@ -238,11 +248,11 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     {
         desc[n].tri_num=(*it)->tri_num;
         desc[n].start=trianglecount;
-        desc[n].tid=(*it)->tid;
+        desc[n].tid=(*it)->atid;
 
         for(int i=0; i<MIP_LEVELS; i++)
         {
-            desc[n].mip_level_ids[i]=texture::texturelist[mipbegin + desc[n].tid*MIP_LEVELS + i].id;
+            desc[n].mip_level_ids[i]=mipbegin + desc[n].tid*MIP_LEVELS + i;
         }
 
         desc[n].world_pos=(*it)->pos;
@@ -253,19 +263,8 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     }
 
 
-    clReleaseMemObject(g_texture_sizes);
-    clReleaseMemObject(g_texture_nums);
-    clReleaseMemObject(g_obj_desc);
-    clReleaseMemObject(g_obj_num);
-    clReleaseMemObject(g_tri_mem);
-    clReleaseMemObject(g_cut_tri_mem);
-    clReleaseMemObject(g_tri_num);
-    clReleaseMemObject(g_cut_tri_num);
-    clReleaseMemObject(g_texture_array);
-
-
-    g_texture_sizes  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int)*obj_mem_manager::tdescrip.texture_sizes.size(), obj_mem_manager::tdescrip.texture_sizes.data(), &cl::error);
-    g_texture_nums   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,                                sizeof(int)*newtexid.size(),                                newtexid.data(), &cl::error);
+    temporary_objects->g_texture_sizes  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int)*obj_mem_manager::tdescrip.texture_sizes.size(), obj_mem_manager::tdescrip.texture_sizes.data(), &cl::error);
+    temporary_objects->g_texture_nums   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,                                sizeof(int)*newtexid.size(),                                newtexid.data(), &cl::error);
 
 
 
@@ -274,24 +273,20 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
     fermat.image_channel_data_type=CL_UNSIGNED_INT8;
 
     ///2048*4 2048*2048*4 are row pitch and row size
-    g_texture_array=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 2048, 2048, obj_mem_manager::tdescrip.texture_sizes.size(), 2048*4, (2048*2048*4), obj_mem_manager::c_texture_array, &cl::error);
+    temporary_objects->g_texture_array=clCreateImage3D(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &fermat, 2048, 2048, obj_mem_manager::tdescrip.texture_sizes.size(), 2048*4, (2048*2048*4), obj_mem_manager::c_texture_array, &cl::error);
 
 
     ///now, we need to lump texture sizes into catagories
 
 
-    cl_mem g_obj_d  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(obj_g_descriptor)*n, desc, &cl::error);
-    cl_mem g_obj_n  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint),              &n, &cl::error);
-
-    g_obj_desc =  g_obj_d;
-    g_obj_num  =  g_obj_n;
-
+    temporary_objects->g_obj_desc  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(obj_g_descriptor)*n, desc, &cl::error);
+    temporary_objects->g_obj_num   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint),              &n, &cl::error);
 
     delete [] desc; /// memory release here ///
 
 
-    g_tri_mem = clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(triangle)*trianglecount, NULL, &cl::error);
-    g_cut_tri_mem= clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_float4)*trianglecount*3, NULL, &cl::error);
+    temporary_objects->g_tri_mem    = clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(triangle)*trianglecount, NULL, &cl::error);
+    temporary_objects->g_cut_tri_mem= clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_float4)*trianglecount*3, NULL, &cl::error);
 
     if(cl::error!=0)
     {
@@ -299,8 +294,8 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
         exit(cl::error);
     }
 
-    g_tri_num = clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR , sizeof(cl_uint), &trianglecount, &cl::error);
-    g_cut_tri_num = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_uint), NULL, &cl::error);
+    temporary_objects->g_tri_num     = clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR , sizeof(cl_uint), &trianglecount, &cl::error);
+    temporary_objects->g_cut_tri_num = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_uint), NULL, &cl::error);
 
 
     if(cl::error!=0)
@@ -320,13 +315,45 @@ void obj_mem_manager::g_arrange_mem()//arrange textures here and update texture 
             (*it)->tri_list[i].vertices[0].pad[1]=obj_id;
         }
 
-        clEnqueueWriteBuffer(cl::cqueue, g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it)->tri_num, (*it)->tri_list.data(), 0, NULL, NULL);
+        clEnqueueWriteBuffer(cl::cqueue, temporary_objects->g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it)->tri_num, (*it)->tri_list.data(), 0, NULL, NULL);
         running+=(*it)->tri_num;
         obj_id++;
     }
 
 
-    tri_num=trianglecount;
+    temporary_objects->tri_num=trianglecount;
 
     clFinish(cl::cqueue);
+}
+
+void obj_mem_manager::g_changeover()
+{
+    static int allocated_once = 0;
+
+    if(allocated_once)
+    {
+        clReleaseMemObject(g_texture_sizes);
+        clReleaseMemObject(g_texture_nums);
+        clReleaseMemObject(g_obj_desc);
+        clReleaseMemObject(g_obj_num);
+        clReleaseMemObject(g_tri_mem);
+        clReleaseMemObject(g_cut_tri_mem);
+        clReleaseMemObject(g_tri_num);
+        clReleaseMemObject(g_cut_tri_num);
+        clReleaseMemObject(g_texture_array);
+    }
+    else
+    {
+        allocated_once++;
+    }
+
+    g_texture_sizes = temporary_objects->g_texture_sizes;
+    g_texture_nums  = temporary_objects->g_texture_nums;
+    g_obj_desc      = temporary_objects->g_obj_desc;
+    g_obj_num       = temporary_objects->g_obj_num;
+    g_tri_mem       = temporary_objects->g_tri_mem;
+    g_cut_tri_mem   = temporary_objects->g_cut_tri_mem;
+    g_tri_num       = temporary_objects->g_tri_num;
+    g_cut_tri_num   = temporary_objects->g_cut_tri_num;
+    g_texture_array = temporary_objects->g_texture_array;
 }

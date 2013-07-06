@@ -13,8 +13,10 @@ struct texture
     std::string location;
 
     static std::vector<texture> texturelist;
+    static std::vector<cl_uint> active_textures;
 
     bool loaded;
+    bool isactive;
 
     cl_uint id; ///starts from 0
     static cl_uint gidc;
@@ -27,13 +29,25 @@ struct texture
 
     static cl_uint idquerystring(std::string);
 
+    static cl_uint idqueryisactive(cl_uint);
+
+    static cl_uint idquerytexture(cl_uint);
+
     //static void generate_mipmaps();
 
     cl_uint get_largest_dimension();
 
-    cl_uint loadtomaster(std::string);
+    void set_texture_location(std::string);
 
-    cl_uint init();
+    cl_uint loadtomaster();
+
+    void init();
+
+    cl_uint get_id();
+
+    cl_uint push();
+
+    cl_uint set_active(bool);
 
     void unload();
 };

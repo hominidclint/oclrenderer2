@@ -8,13 +8,14 @@ struct object
 {
     cl_float4 pos;
     cl_float4 rot;
-    bool onvector;
+
+    bool isactive;
 
     cl_mem g_mem;
     cl_mem g_tri_num;
 
-    std::string mtlname;
-    std::string tex_name;
+    //std::string mtlname;
+    //std::string tex_name;
     ///texture
     std::vector<triangle> tri_list;
 
@@ -22,8 +23,13 @@ struct object
 
     cl_uint tid; ///texture id
 
+    cl_uint atid;
+
     object();
+
     void alloc(int num);
+
+    void set_active(bool param);
 };
 
 

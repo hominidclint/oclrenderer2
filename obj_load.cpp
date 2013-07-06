@@ -286,12 +286,22 @@ objects_container* obj_load(std::string filename)
     for(int i=0; i<usemtl_pos.size()-1; i++)
     {
         object obj;
-        obj.mtlname = usemtl_name[i];
-        obj.tex_name = retrieve_diffuse_new(mtlf_contents, obj.mtlname);
+        //obj.mtlname = usemtl_name[i];
+        //obj.tex_name = retrieve_diffuse_new(mtlf_contents, obj.mtlname);
 
-        texture temp;
-        std::string full = dir + std::string("/") + obj.tex_name;
-        temp.loadtomaster(full);
+        std::string texture_name = retrieve_diffuse_new(mtlf_contents, usemtl_name[i]);
+
+        texture tex;
+        std::string full = dir + std::string("/") + texture_name;
+        //temp.loadtomaster(full);
+        tex.init();
+        tex.set_texture_location(full);
+        tex.get_id();
+        if(texture::idquerytexture(tex.id)==-1)
+        {
+            tex.set_active(true);
+            tex.push();
+        }
 
         obj.tri_list.reserve(usemtl_pos[i+1]-usemtl_pos[i]);
 
@@ -301,7 +311,7 @@ objects_container* obj_load(std::string filename)
         }
 
         obj.tri_num = obj.tri_list.size();
-        obj.tid = temp.id;
+        obj.tid = tex.id;
 
         obj.pos = (cl_float4){0,0,0,0};
         obj.rot = (cl_float4){0,0,0,0};

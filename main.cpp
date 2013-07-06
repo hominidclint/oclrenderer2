@@ -53,8 +53,8 @@ int main(int argc, char *argv[])
 
     g_manage.g_arrange_mem();
     g_manage.g_changeover();
-    //g_manage.g_arrange_mem();
-    //g_manage.g_changeover();
+    g_manage.g_arrange_mem();
+    g_manage.g_changeover();
 
     sf::Event Event;
 

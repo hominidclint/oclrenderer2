@@ -80,11 +80,9 @@ void texture::init()
 cl_uint texture::get_id()
 {
     cl_uint temp_id = idquerystring(location);
+
     if(temp_id == -1)
-    {
         id = gidc++;
-        std::cout << id << std::endl;
-    }
     else
         id = temp_id;
 
@@ -93,7 +91,6 @@ cl_uint texture::get_id()
 
 cl_uint texture::push()
 {
-    //id = gidc++;
     texturelist.push_back(*this);
     return id;
 }

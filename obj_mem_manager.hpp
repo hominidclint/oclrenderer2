@@ -11,8 +11,6 @@ struct texture_array_descriptor;
 
 struct obj_mem_manager
 {
-
-
     obj_mem_manager* temporary_objects;
 
     static texture_array_descriptor tdescrip;

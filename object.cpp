@@ -37,8 +37,17 @@ void object::set_active(bool param)
         if(isactive)
         {
             isactive = param;
-            atid = 0;
+
+            std::vector<cl_uint>::iterator it = texture::active_textures.begin();
+            for(int i=0; i<atid; i++)
+            {
+                it++;
+            }
+
+            texture::active_textures.erase(it);
             ///remove from active texturelist
+
+            atid = 0;
         }
         else
         {

@@ -299,7 +299,6 @@ objects_container* obj_load(std::string filename)
         tex.get_id();
         if(texture::idquerytexture(tex.id)==-1)
         {
-            tex.set_active(true);
             tex.push();
         }
 

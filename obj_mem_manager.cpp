@@ -27,7 +27,7 @@ cl_mem obj_mem_manager::g_texture_array;
 cl_mem obj_mem_manager::g_texture_sizes;
 cl_mem obj_mem_manager::g_texture_nums;
 
-cl_uchar4* obj_mem_manager::c_texture_array;
+cl_uchar4* obj_mem_manager::c_texture_array = NULL;
 
 struct texture_array_descriptor
 {
@@ -132,7 +132,6 @@ void add_texture(texture &tex, int &newid)
     int num=0;
     cl_uchar4 *firstfree=return_first_free(size, num);
 
-
     sf::Image *T=&tex.c_image;
     texture_array_descriptor *Td=&obj_mem_manager::tdescrip;
 
@@ -215,8 +214,6 @@ void obj_mem_manager::g_arrange_mem()
     std::vector<int> newtexid;
     std::vector<int> mtexids; ///mipmaps
 
-
-
     for(int i=0; i<texture::active_textures.size(); i++)
     {
         if(texture::texturelist[texture::active_textures[i]].loaded == false)
@@ -234,6 +231,10 @@ void obj_mem_manager::g_arrange_mem()
             mtexids.push_back(mipmaps[n]);
         }
     }
+
+
+
+
 
 
     int mipbegin=newtexid.size();
@@ -263,9 +264,10 @@ void obj_mem_manager::g_arrange_mem()
     }
 
 
+
+
     temporary_objects->g_texture_sizes  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int)*obj_mem_manager::tdescrip.texture_sizes.size(), obj_mem_manager::tdescrip.texture_sizes.data(), &cl::error);
     temporary_objects->g_texture_nums   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,                                sizeof(int)*newtexid.size(),                                newtexid.data(), &cl::error);
-
 
 
     cl_image_format fermat;
@@ -323,7 +325,13 @@ void obj_mem_manager::g_arrange_mem()
 
     temporary_objects->tri_num=trianglecount;
 
+
+
     clFinish(cl::cqueue);
+    delete [] c_texture_array; ///instead of reallocating this entire thing, keep it in memory and simply add bits on?
+    c_texture_array = NULL;
+
+
 }
 
 void obj_mem_manager::g_changeover()
@@ -344,8 +352,11 @@ void obj_mem_manager::g_changeover()
     }
     else
     {
-        allocated_once++;
+       allocated_once++;
     }
+
+    std::vector<int>().swap(obj_mem_manager::tdescrip.texture_nums);
+    std::vector<int>().swap(obj_mem_manager::tdescrip.texture_sizes);
 
     g_texture_sizes = temporary_objects->g_texture_sizes;
     g_texture_nums  = temporary_objects->g_texture_nums;

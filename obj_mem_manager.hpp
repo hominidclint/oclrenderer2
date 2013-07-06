@@ -8,10 +8,32 @@ static cl_uint max_tex_size=2048;
 
 struct texture_array_descriptor;
 
+struct temporaries
+{
+    cl_uint tri_num;
+
+    cl_mem g_tri_mem;
+    cl_mem g_tri_num;
+
+    cl_mem g_obj_desc;
+    cl_mem g_obj_num;
+
+    cl_mem g_light_mem;
+    cl_mem g_light_num;
+    cl_mem g_light_buf;
+
+    cl_mem g_cut_tri_mem;
+    cl_mem g_cut_tri_num;
+
+    cl_mem g_texture_array;
+    cl_mem g_texture_sizes;
+    cl_mem g_texture_nums;
+};
+
 
 struct obj_mem_manager
 {
-    obj_mem_manager* temporary_objects;
+    static temporaries temporary_objects[2];
 
     static texture_array_descriptor tdescrip;
 
@@ -41,6 +63,8 @@ struct obj_mem_manager
     static cl_mem g_texture_array;
     static cl_mem g_texture_sizes;
     static cl_mem g_texture_nums;
+
+    static int which_temp_object;
 
     void init();
 

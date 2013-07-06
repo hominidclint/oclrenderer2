@@ -13,6 +13,7 @@ unsigned int engine::gl_framebuffer_id=0;
 unsigned int engine::gl_screen_id=0;
 
 
+
 void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string name)
 {
 

@@ -36,8 +36,6 @@ int main(int argc, char *argv[])
 
 
     obj_mem_manager g_manage;
-    g_manage.init();
-
 
     engine window;
     oclstuff();
@@ -53,8 +51,8 @@ int main(int argc, char *argv[])
 
     g_manage.g_arrange_mem();
     g_manage.g_changeover();
-    g_manage.g_arrange_mem();
-    g_manage.g_changeover();
+    //g_manage.g_arrange_mem();
+    //g_manage.g_changeover();
 
     sf::Event Event;
 
@@ -72,7 +70,6 @@ int main(int argc, char *argv[])
 
     //l.shadow=0;
     //window.add_light(l);
-
 
     window.construct_shadowmaps();
 
@@ -106,6 +103,5 @@ int main(int argc, char *argv[])
         }
 
         std::cout << c.getElapsedTime().asMicroseconds() << std::endl;
-
     }
 }

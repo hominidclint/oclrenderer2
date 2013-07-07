@@ -74,11 +74,12 @@ cl_uchar4 * return_first_free(int size, int &num) ///texture ids need to be embe
     length++;
 
     cl_uchar4 *newarray=new cl_uchar4[max_tex_size*max_tex_size*length];
-
     memcpy(newarray, obj_mem_manager::c_texture_array, sizeof(cl_uchar4)*max_tex_size*max_tex_size*(length-1));
+
 
     delete [] obj_mem_manager::c_texture_array;
     obj_mem_manager::c_texture_array=newarray;
+
 
     T->texture_sizes.push_back(size);
     T->texture_nums.push_back(0);
@@ -228,7 +229,6 @@ void obj_mem_manager::g_arrange_mem()
         {
             obj_load(&objects_container::obj_container_list[i]);
             objects_container::obj_container_list[i].set_active_subobjs(true);
-            //std::cout << objects_container::obj_container_list[i].file << std::endl;
         }
     }
 
@@ -237,7 +237,6 @@ void obj_mem_manager::g_arrange_mem()
         if(texture::texturelist[texture::active_textures[i]].loaded == false)
         {
             texture::texturelist[texture::active_textures[i]].loadtomaster();
-            //std::cout << texture::texturelist[texture::active_textures[i]].location << std::endl;
         }
 
         int t=0;
@@ -259,25 +258,6 @@ void obj_mem_manager::g_arrange_mem()
         newtexid.push_back(mtexids[i]);
     }
 
-    ///turn this into a for obj_container_list loop
-
-    /*for(std::vector<object*>::iterator it=obj_list.begin(); it!=obj_list.end(); it++) ///if you call this more than once, it will break. Need to store how much it has already done, and start it again from there to prevent issues with mipmaps
-    {
-        desc[n].tri_num=(*it)->tri_num;
-        desc[n].start=trianglecount;
-        desc[n].tid=(*it)->atid;
-
-        for(int i=0; i<MIP_LEVELS; i++)
-        {
-            desc[n].mip_level_ids[i]=mipbegin + desc[n].tid*MIP_LEVELS + i;
-        }
-
-        desc[n].world_pos=(*it)->pos;
-        desc[n].world_rot=(*it)->rot;
-
-        trianglecount+=(*it)->tri_num;
-        n++;
-    }*/
 
     for(std::vector<objects_container>::iterator it2 = objects_container::obj_container_list.begin(); it2!=objects_container::obj_container_list.end(); it2++)
     {
@@ -304,9 +284,6 @@ void obj_mem_manager::g_arrange_mem()
         }
     }
 
-    //exit(1);
-
-
     temporary_objects[wt].g_texture_sizes  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int)*obj_mem_manager::tdescrip.texture_sizes.size(), obj_mem_manager::tdescrip.texture_sizes.data(), &cl::error);
     temporary_objects[wt].g_texture_nums   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,                                sizeof(int)*newtexid.size(),                                newtexid.data(), &cl::error);
 
@@ -324,8 +301,6 @@ void obj_mem_manager::g_arrange_mem()
 
     temporary_objects[wt].g_obj_desc  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(obj_g_descriptor)*n, desc.data(), &cl::error);
     temporary_objects[wt].g_obj_num   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint),              &n, &cl::error);
-
-    //delete [] desc; /// memory release here ///
 
 
     temporary_objects[wt].g_tri_mem    = clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(triangle)*trianglecount, NULL, &cl::error);
@@ -367,11 +342,25 @@ void obj_mem_manager::g_arrange_mem()
         }
     }
 
+
+    ///opencl basically has special needs, to force it to actually write the memory (rather than just stupidly keep it allocated somewhere), you have call a trivial kernel to force it to be written
+
+    clSetKernelArg(cl::trivial_kernel, 0, sizeof(cl_mem), &temporary_objects[wt].g_tri_mem);
+    clSetKernelArg(cl::trivial_kernel, 1, sizeof(cl_mem), &temporary_objects[wt].g_texture_array);
+    clSetKernelArg(cl::trivial_kernel, 2, sizeof(cl_mem), &temporary_objects[wt].g_cut_tri_num);
+
+    size_t num = 100;
+    size_t local = 1;
+
+    clEnqueueNDRangeKernel(cl::cqueue, cl::trivial_kernel, 1, NULL, &num, &local, 0, NULL, NULL);
+
+
+
     temporary_objects[wt].tri_num=trianglecount;
 
     clFinish(cl::cqueue);
-    delete [] c_texture_array; ///instead of reallocating this entire thing, keep it in memory and simply add bits on?
-    c_texture_array = NULL;
+    delete [] obj_mem_manager::c_texture_array; ///instead of reallocating this entire thing, keep it in memory and simply add bits on?
+    obj_mem_manager::c_texture_array = NULL;
 }
 
 void obj_mem_manager::g_changeover()

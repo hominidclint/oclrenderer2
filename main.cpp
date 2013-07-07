@@ -50,18 +50,11 @@ int main(int argc, char *argv[])
     oclstuff();
     window.load(800,600,1000, "turtles");
 
-
-    /*for(std::vector<object>::iterator it=sponza.objs.begin(); it!=sponza.objs.end(); it++)
-    {
-        g_manage.obj_list.push_back(&(*it));
-    }*/
-
-    //g_manage.g_arrange_textures();
+    g_manage.g_arrange_mem();
+    g_manage.g_changeover();
 
     g_manage.g_arrange_mem();
     g_manage.g_changeover();
-    //g_manage.g_arrange_mem();
-    //g_manage.g_changeover();
 
     sf::Event Event;
 

@@ -363,6 +363,15 @@ void oclstuff()
     }
 
 
+    cl::trivial_kernel = clCreateKernel(cl::program, "trivial_kernel", &cl::error);
+
+
+    if(cl::error!=0)
+    {
+        std::cout << "kernelcreation trivial" << cl::error << std::endl;
+    }
+
+
 
 }
 

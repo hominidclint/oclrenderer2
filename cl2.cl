@@ -1540,6 +1540,17 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 }
 
 
+__kernel void trivial_kernel(__global struct triangle* triangles, __read_only image3d_t texture, __global uint* someout)
+{
+    sampler_t sam = CLK_NORMALIZED_COORDS_FALSE |
+                    CLK_ADDRESS_CLAMP_TO_EDGE   |
+                    CLK_FILTER_NEAREST;
+
+    float4 coord = {0,0,0,0};
+    uint4 col = read_imageui(texture, sam, coord);
+    uint useless = triangles->vertices[0].pos.x + col.x;
+    someout[0] = useless;
+}
 
 __kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global uint* light_depth_buffer, __global uint* lnum, __global struct light *lights)
 {

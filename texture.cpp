@@ -140,24 +140,14 @@ void texture::set_texture_location(std::string loc)
 
 cl_uint texture::loadtomaster()
 {
-    cl_uint idq;
+    c_image.loadFromFile(location);
 
-    //if((idq=idqueryisactive(id))==-1)
+    if(get_largest_dimension()>max_tex_size)
     {
-        c_image.loadFromFile(location);
-
-        if(get_largest_dimension()>max_tex_size)
-        {
-            std::cout << "maxsize limit " << location << std::endl;
-        }
-
-        //id=gidc++;
-        loaded=true;
-        //texturelist.push_back(*this);
-
-        return id;
+        std::cout << "maxsize limit " << location << std::endl;
     }
 
-    id=idq;
-    return idq;
+    loaded=true;
+
+    return id;
 }

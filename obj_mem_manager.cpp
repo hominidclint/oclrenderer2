@@ -212,6 +212,8 @@ void obj_mem_manager::g_arrange_mem()
     std::vector<int>().swap(obj_mem_manager::tdescrip.texture_nums);
     std::vector<int>().swap(obj_mem_manager::tdescrip.texture_sizes);
 
+    ///int maxnum = return_max_num(size);
+
     int wt = which_temp_object;
 
     cl_uint trianglecount=0;
@@ -233,6 +235,7 @@ void obj_mem_manager::g_arrange_mem()
         }
     }
 
+    ///what to do with bumpmaps?
     ///process textures in active texture list
     for(int i=0; i<texture::active_textures.size(); i++)
     {
@@ -240,18 +243,22 @@ void obj_mem_manager::g_arrange_mem()
         {
             texture::texturelist[texture::active_textures[i]].loadtomaster();
         }
-
-        int t=0;
-        int mipmaps[MIP_LEVELS];
-        add_texture_and_mipmaps(texture::texturelist[texture::active_textures[i]], mipmaps, t);
-        newtexid.push_back(t);
-
-        for(int n=0; n<MIP_LEVELS; n++)
+    }
+    for(int i=0; i<texture::active_textures.size(); i++)
+    {
+        if(texture::texturelist[texture::active_textures[i]].type==0)
         {
-            mtexids.push_back(mipmaps[n]);
+            int t=0;
+            int mipmaps[MIP_LEVELS];
+            add_texture_and_mipmaps(texture::texturelist[texture::active_textures[i]], mipmaps, t);
+            newtexid.push_back(t);
+
+            for(int n=0; n<MIP_LEVELS; n++)
+            {
+                mtexids.push_back(mipmaps[n]);
+            }
         }
     }
-
 
     int mipbegin=newtexid.size();
 
@@ -261,6 +268,7 @@ void obj_mem_manager::g_arrange_mem()
     }
 
     ///fill in obj_g_descriptors for all the subobjects of the objects in the scene
+    cl_uint cumulative_bump = 0;
     for(std::vector<objects_container>::iterator it2 = objects_container::obj_container_list.begin(); it2!=objects_container::obj_container_list.end(); it2++)
     {
         objects_container* obj = &(*it2);
@@ -280,6 +288,10 @@ void obj_mem_manager::g_arrange_mem()
 
             desc[n].world_pos=(it)->pos;
             desc[n].world_rot=(it)->rot;
+            desc[n].has_bump = it->has_bump;
+            desc[n].cumulative_bump = cumulative_bump;
+
+            cumulative_bump+=it->has_bump;
 
             trianglecount+=(it)->tri_num;
             n++;

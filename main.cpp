@@ -22,6 +22,7 @@
 
 int main(int argc, char *argv[])
 {
+    ///remember to make g_arrange_mem run faster!
     objects_container sponza;
 
     sponza.set_file("Sp2/sp2.obj");

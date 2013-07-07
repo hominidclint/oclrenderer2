@@ -9,6 +9,7 @@ object::object()
     tid = 0;
     atid = 0;
     isactive = false;
+    has_bump = 0;
 }
 
 ///activate the textures in an object

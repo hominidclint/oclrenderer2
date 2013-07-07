@@ -27,6 +27,29 @@ std::string retrieve_diffuse_new(std::vector<std::string> file, std::string name
     }
 }
 
+std::string retrieve_bumpmap(std::vector<std::string> file, std::string name)
+{
+    bool found = false;
+    for(int i=0; i<file.size(); i++)
+    {
+        ///found newmtl + name of material
+        if(strncmp(file[i].c_str(), "newmtl ", 7)==0 && file[i].substr(file[i].find_last_of(" ")+1, name.size()) == name)
+        {
+            found = true;
+            continue;
+        }
+        if(found && strncmp(file[i].c_str(), "map_Bump ", 9)==0)
+        {
+            return file[i].substr(file[i].find_last_of(" ")+1, std::string::npos);
+        }
+        if(found && strncmp(file[i].c_str(), "newmtl ", 7)==0)
+        {
+            return std::string("None");
+        }
+    }
+    return std::string("None");
+}
+
 
 
 ///vertex, texture coordinate, normal
@@ -290,17 +313,41 @@ void obj_load(objects_container* pobj)
         object obj;
 
         std::string texture_name = retrieve_diffuse_new(mtlf_contents, usemtl_name[i]);
+        std::string bumpmap_name = retrieve_bumpmap    (mtlf_contents, usemtl_name[i]);
 
         texture tex;
         std::string full = dir + std::string("/") + texture_name;
 
+        tex.type = 0;
         tex.init();
         tex.set_texture_location(full);
         tex.get_id();
 
+
         if(texture::idquerytexture(tex.id)==-1)
         {
             tex.push();
+        }
+
+        cl_uint isbump = 0;
+        cl_uint b_id = -1;
+
+        if(bumpmap_name!=std::string("None"))
+        {
+            isbump = 1;
+            texture bumpmap;
+            std::string bump_full = dir + std::string("/") + bumpmap_name;
+
+            bumpmap.type = 1;
+            bumpmap.init();
+            bumpmap.set_texture_location(bump_full);
+            b_id = bumpmap.get_id();
+
+
+            if(texture::idquerytexture(bumpmap.id)==-1)
+            {
+                bumpmap.push();
+            }
         }
 
         obj.tri_list.reserve(usemtl_pos[i+1]-usemtl_pos[i]);
@@ -313,6 +360,8 @@ void obj_load(objects_container* pobj)
         obj.tri_num = obj.tri_list.size();
 
         obj.tid = tex.id;
+        obj.bid = b_id;
+        obj.has_bump = isbump;
 
         obj.pos = c->pos;
         obj.rot = c->rot;

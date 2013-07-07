@@ -13,6 +13,8 @@ struct obj_g_descriptor
     cl_uint tid; ///texture id
     cl_uint size;
     cl_uint mip_level_ids[MIP_LEVELS];
+    cl_uint has_bump;
+    cl_uint cumulative_bump;
 };
 
 #endif // INCLUDED_H_OBJ_G_DESCRIPTOR

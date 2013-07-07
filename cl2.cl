@@ -75,6 +75,10 @@ struct obj_g_descriptor
     uint tid;           ///texture id
     uint size;
     uint mip_level_ids[MIP_LEVELS];
+    uint has_bump;
+    uint cumulative_bump;
+    ///cumulative id for how many have bumps before it so can be found in 3d texture. Just create another 3d texture. Is easier
+    ///in fact, do that.
 };
 
 
@@ -1551,6 +1555,8 @@ __kernel void trivial_kernel(__global struct triangle* triangles, __read_only im
     uint useless = triangles->vertices[0].pos.x + col.x;
     someout[0] = useless;
 }
+
+
 
 __kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global uint* light_depth_buffer, __global uint* lnum, __global struct light *lights)
 {

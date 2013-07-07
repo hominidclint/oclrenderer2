@@ -23,6 +23,8 @@ struct texture
     cl_uint id; ///starts from 0
     static cl_uint gidc;
 
+    cl_uint type;
+
     cl_uint mip_level_ids[MIP_LEVELS];
 
     texture();

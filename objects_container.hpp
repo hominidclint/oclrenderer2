@@ -16,19 +16,13 @@ struct objects_container
     cl_float4 rot;
 
     std::vector<object> objs;
-
     static std::vector<objects_container> obj_container_list;
 
     objects_container();
-
     cl_uint push();
-
     void set_file(std::string);
-
     cl_uint set_active(bool param);
-
     void set_active_subobjs(bool);
-
     void unload_tris();
 };
 

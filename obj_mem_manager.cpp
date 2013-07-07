@@ -67,7 +67,7 @@ cl_uchar4 * return_first_free(int size, int &num) ///texture ids need to be embe
         }
     }
 
-    ///we didn't find a suitable texture array, which means create a new one!
+    ///we didn't find a suitable location in the texture array, which means create a new one!
     ///Realloc array and return pointer, as well as update both new buffers. That means all we have to do now is actually write the textures
 
     int length=T->texture_nums.size();
@@ -186,7 +186,7 @@ void add_texture_and_mipmaps(texture &tex, int newmips[], int &newid)
             gen_miplevel(mip[n-1], mip[n]);
 
         mip[n].init();
-        add_texture(mip[n], newmips[n]); ///totally legit
+        add_texture(mip[n], newmips[n]);
     }
 }
 
@@ -216,13 +216,14 @@ void obj_mem_manager::g_arrange_mem()
 
     cl_uint trianglecount=0;
 
-    std::vector<obj_g_descriptor> desc;//=new obj_g_descriptor[obj_list.size()];
+    std::vector<obj_g_descriptor> desc;
     unsigned int n=0;
 
     std::vector<int> newtexid;
     std::vector<int> mtexids; ///mipmaps
 
 
+    ///process loaded objects
     for(int i=0; i<objects_container::obj_container_list.size(); i++)
     {
         if(objects_container::obj_container_list[i].isloaded == false)
@@ -232,6 +233,7 @@ void obj_mem_manager::g_arrange_mem()
         }
     }
 
+    ///process textures in active texture list
     for(int i=0; i<texture::active_textures.size(); i++)
     {
         if(texture::texturelist[texture::active_textures[i]].loaded == false)
@@ -258,7 +260,7 @@ void obj_mem_manager::g_arrange_mem()
         newtexid.push_back(mtexids[i]);
     }
 
-
+    ///fill in obj_g_descriptors for all the subobjects of the objects in the scene
     for(std::vector<objects_container>::iterator it2 = objects_container::obj_container_list.begin(); it2!=objects_container::obj_container_list.end(); it2++)
     {
         objects_container* obj = &(*it2);
@@ -284,6 +286,10 @@ void obj_mem_manager::g_arrange_mem()
         }
     }
 
+
+
+    ///allocate memory on the gpu
+
     temporary_objects[wt].g_texture_sizes  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int)*obj_mem_manager::tdescrip.texture_sizes.size(), obj_mem_manager::tdescrip.texture_sizes.data(), &cl::error);
     temporary_objects[wt].g_texture_nums   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,                                sizeof(int)*newtexid.size(),                                newtexid.data(), &cl::error);
 
@@ -297,7 +303,6 @@ void obj_mem_manager::g_arrange_mem()
 
 
     ///now, we need to lump texture sizes into catagories
-
 
     temporary_objects[wt].g_obj_desc  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(obj_g_descriptor)*n, desc.data(), &cl::error);
     temporary_objects[wt].g_obj_num   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint),              &n, &cl::error);
@@ -326,6 +331,10 @@ void obj_mem_manager::g_arrange_mem()
 
     int obj_id=0;
 
+
+
+    ///write triangle data to gpu
+
     for(std::vector<objects_container>::iterator it2 = objects_container::obj_container_list.begin(); it2!=objects_container::obj_container_list.end(); it2++)
     {
         objects_container* obj = &(*it2);
@@ -343,7 +352,7 @@ void obj_mem_manager::g_arrange_mem()
     }
 
 
-    ///opencl basically has special needs, to force it to actually write the memory (rather than just stupidly keep it allocated somewhere), you have call a trivial kernel to force it to be written
+    ///opencl is a tad stupid, to force it to actually write the memory (rather than just stupidly keep it allocated somewhere), you have call a trivial kernel to force it to be written
 
     clSetKernelArg(cl::trivial_kernel, 0, sizeof(cl_mem), &temporary_objects[wt].g_tri_mem);
     clSetKernelArg(cl::trivial_kernel, 1, sizeof(cl_mem), &temporary_objects[wt].g_texture_array);
@@ -365,9 +374,9 @@ void obj_mem_manager::g_arrange_mem()
 
 void obj_mem_manager::g_changeover()
 {
+    ///changeover is accomplished as a swapping of variables so that it can be done in parallel
+
     static int allocated_once = 0;
-
-
     int wt = obj_mem_manager::which_temp_object;
 
     temporaries *T = &temporary_objects[wt];

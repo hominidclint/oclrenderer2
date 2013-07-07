@@ -26,16 +26,13 @@ struct texture
     cl_uint mip_level_ids[MIP_LEVELS];
 
     texture();
+    void init();
 
     static bool t_compare(texture one, texture two);
 
     static cl_uint idquerystring(std::string);
-
     static cl_uint idqueryisactive(cl_uint);
-
     static cl_uint idquerytexture(cl_uint);
-
-    //static void generate_mipmaps();
 
     cl_uint get_largest_dimension();
 
@@ -43,12 +40,8 @@ struct texture
 
     cl_uint loadtomaster();
 
-    void init();
-
     cl_uint get_id();
-
     cl_uint push();
-
     cl_uint set_active(bool);
 
     void unload();

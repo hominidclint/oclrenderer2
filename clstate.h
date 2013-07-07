@@ -17,7 +17,6 @@ namespace cl
     extern cl_kernel light_smap;
     extern cl_kernel trivial_kernel;
 
-
     extern size_t optimum;
 }
 

@@ -32,9 +32,7 @@ struct temporaries
 struct obj_mem_manager
 {
     static temporaries temporary_objects[2];
-
     static texture_array_descriptor tdescrip;
-
     static cl_uint tri_num;
 
     static std::vector<object*> obj_list;
@@ -51,10 +49,8 @@ struct obj_mem_manager
     static cl_mem g_light_buf;
     ///array of lights in g_mem
 
-
     static cl_mem g_cut_tri_mem;
     static cl_mem g_cut_tri_num;
-
 
     static cl_uchar4* c_texture_array;
 
@@ -65,9 +61,7 @@ struct obj_mem_manager
     static int which_temp_object;
 
     void g_arrange_textures();
-
     void g_arrange_mem();
-
     void g_changeover();
 };
 

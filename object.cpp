@@ -2,8 +2,6 @@
 #include "clstate.h"
 #include "texture.hpp"
 
-cl_uint object::gid = 0;
-
 object::object()
 {
     pos.x=0, pos.y=0, pos.z=0;
@@ -13,12 +11,7 @@ object::object()
     isactive = false;
 }
 
-void object::alloc(int num)
-{
-    tri_list.reserve(num);
-    tri_num=(unsigned int)num;
-}
-
+///activate the textures in an object
 void object::set_active(bool param)
 {
     if(param)

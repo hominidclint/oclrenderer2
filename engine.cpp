@@ -455,6 +455,12 @@ void engine::draw_bulk_objs_n()
 
 
 
+
+
+
+
+
+
     cl_uint p1global_ws = obj_mem_manager::tri_num;
     cl_uint local=128;
 
@@ -466,10 +472,6 @@ void engine::draw_bulk_objs_n()
     }
 
 
-
-
-
-
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_cut_tri_num, CL_TRUE, 0, sizeof(cl_uint), &zero, 0, NULL, NULL);
 
 
@@ -477,6 +479,12 @@ void engine::draw_bulk_objs_n()
     run_kernel_with_args(cl::kernel_prearrange, &p1global_ws, &local, 1, prearglist, 9, true);
 
     //std::cout << "ptime " << c.getElapsedTime().asMicroseconds() << std::endl;
+
+
+
+
+
+
 
 
     sf::Clock p1;
@@ -500,15 +508,17 @@ void engine::draw_bulk_objs_n()
     cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem, &g_valid_fragment_num, &g_valid_fragment_mem};
     run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 11, true);
 
+
+
+
+
+
     //std::cout << "p1time " << p1.getElapsedTime().asMicroseconds() << std::endl;
 
 
 
 
     sf::Clock p2;
-
-
-
     int valid_tri_num = 0;
 
     clEnqueueReadBuffer(cl::cqueue, g_valid_fragment_num, CL_TRUE, 0, sizeof(cl_uint), &valid_tri_num, 0, NULL, NULL);
@@ -525,18 +535,21 @@ void engine::draw_bulk_objs_n()
     }
 
 
-
-
     cl_mem *p2arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &depth_buffer[nbuf], &g_id_screen_tex, &g_c_pos, &g_c_rot, &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem, &g_valid_fragment_num, &g_valid_fragment_mem};
     run_kernel_with_args(cl::kernel2, &p2global_ws, &local, 1, p2arglist, 12, true);
+
+
+
+
+
+
+
 
     //std::cout << "p2time " << p2.getElapsedTime().asMicroseconds() << std::endl;
 
     sf::Clock c3;
 
     clEnqueueWriteBuffer(cl::cqueue, g_tid_buf_atomic_count, CL_TRUE, 0, sizeof(cl_uint), &zero, 0, NULL, NULL); ///!!!/?!?-
-
-    //clEnqueueReadBuffer(cl::cqueue, g_id_screen, CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
 
 
     cl_uint p3global_ws[]= {g_size, g_size};
@@ -555,8 +568,16 @@ void engine::draw_bulk_objs_n()
     //std::cout << "p3 " << c3.getElapsedTime().asMicroseconds() << std::endl;
 
 
-    //clEnqueueReadBuffer(cl::cqueue, depth_buffer[nbuf], CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
-    //clEnqueueReadBuffer(cl::cqueue, g_id_screen, CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
+
+
+
+
+
+
+
+    #ifdef DEBUGGING
+    clEnqueueReadBuffer(cl::cqueue, depth_buffer[nbuf], CL_TRUE, 0, sizeof(cl_uint)*g_size*g_size, d_depth_buf, 0, NULL, NULL);
+    #endif
 
     nbuf++;
 
@@ -571,9 +592,6 @@ void engine::draw_bulk_objs_n()
 
 void engine::render_buffers()
 {
-
-
-
     PFNGLBINDFRAMEBUFFEREXTPROC glBindFramebufferEXT = (PFNGLBINDFRAMEBUFFEREXTPROC)wglGetProcAddress("glBindFramebufferEXT");
 
     PFNGLBLITFRAMEBUFFEREXTPROC glBlitFramebufferEXT = (PFNGLBLITFRAMEBUFFEREXTPROC)wglGetProcAddress("glBlitFramebufferEXT");
@@ -590,9 +608,6 @@ void engine::render_buffers()
 
     window.display();
     window.clear();
-
-
-
 }
 
 int engine::get_mouse_x()

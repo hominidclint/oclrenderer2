@@ -311,7 +311,7 @@ void obj_load(objects_container* pobj)
         }
 
         obj.tri_num = obj.tri_list.size();
-        //std::cout << obj.tri_num << std::endl;
+
         obj.tid = tex.id;
 
         obj.pos = c->pos;

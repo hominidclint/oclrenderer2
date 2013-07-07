@@ -6,6 +6,8 @@
 
 #include "obj_g_descriptor.hpp"
 
+static cl_uint max_tex_size=2048;
+
 struct texture
 {
     sf::Image c_image;

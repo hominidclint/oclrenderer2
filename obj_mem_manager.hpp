@@ -4,8 +4,6 @@
 #include "object.hpp"
 #include <vector>
 
-static cl_uint max_tex_size=2048;
-
 struct texture_array_descriptor;
 
 struct temporaries
@@ -65,8 +63,6 @@ struct obj_mem_manager
     static cl_mem g_texture_nums;
 
     static int which_temp_object;
-
-    void init();
 
     void g_arrange_textures();
 

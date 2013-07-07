@@ -2,6 +2,8 @@
 #include "clstate.h"
 #include "texture.hpp"
 
+cl_uint object::gid = 0;
+
 object::object()
 {
     pos.x=0, pos.y=0, pos.z=0;
@@ -23,8 +25,8 @@ void object::set_active(bool param)
     {
         if(!isactive)
         {
-            isactive = param;
             ///if object ! initialised, error
+            isactive = param;
             atid = texture::texturelist[tid].set_active(true);
         }
         else
@@ -44,9 +46,8 @@ void object::set_active(bool param)
                 it++;
             }
 
-            texture::active_textures.erase(it);
             ///remove from active texturelist
-
+            texture::active_textures.erase(it);
             atid = 0;
         }
         else
@@ -54,4 +55,10 @@ void object::set_active(bool param)
             return;
         }
     }
+}
+
+void object::set_pos_rot(cl_float4 _pos, cl_float4 _rot)
+{
+    pos = _pos;
+    rot = _rot;
 }

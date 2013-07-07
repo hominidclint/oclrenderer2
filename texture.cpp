@@ -146,7 +146,7 @@ cl_uint texture::loadtomaster()
     {
         c_image.loadFromFile(location);
 
-        if(get_largest_dimension()>2048)
+        if(get_largest_dimension()>max_tex_size)
         {
             std::cout << "maxsize limit " << location << std::endl;
         }

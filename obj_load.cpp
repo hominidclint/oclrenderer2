@@ -90,8 +90,9 @@ struct indices
     int vn[3];
 };
 
-objects_container* obj_load(std::string filename)
+void obj_load(objects_container* pobj)
 {
+    std::string filename = pobj->file;
     std::string mtlname;
     int tp = filename.find_last_of(".");
     mtlname = filename.substr(0, tp) + std::string(".mtl");
@@ -112,7 +113,8 @@ objects_container* obj_load(std::string filename)
     if(!file.is_open())
     {
         std::cout << filename << " could not be opened" << std::endl;
-        return NULL;
+        //return NULL;
+        return;
     }
 
     if(!mtlfile.is_open())
@@ -280,23 +282,22 @@ objects_container* obj_load(std::string filename)
     vnl.clear();
     fl.clear();
 
-    objects_container *c = new objects_container;
 
+    objects_container *c = pobj;
 
     for(int i=0; i<usemtl_pos.size()-1; i++)
     {
         object obj;
-        //obj.mtlname = usemtl_name[i];
-        //obj.tex_name = retrieve_diffuse_new(mtlf_contents, obj.mtlname);
 
         std::string texture_name = retrieve_diffuse_new(mtlf_contents, usemtl_name[i]);
 
         texture tex;
         std::string full = dir + std::string("/") + texture_name;
-        //temp.loadtomaster(full);
+
         tex.init();
         tex.set_texture_location(full);
         tex.get_id();
+
         if(texture::idquerytexture(tex.id)==-1)
         {
             tex.push();
@@ -310,20 +311,28 @@ objects_container* obj_load(std::string filename)
         }
 
         obj.tri_num = obj.tri_list.size();
+        //std::cout << obj.tri_num << std::endl;
         obj.tid = tex.id;
 
-        obj.pos = (cl_float4){0,0,0,0};
-        obj.rot = (cl_float4){0,0,0,0};
+        obj.pos = c->pos;
+        obj.rot = c->rot;
 
         c->objs.push_back(obj);
     }
 
-    c->pos[0] = 0;
-    c->pos[1] = 0;
-    c->pos[2] = 0;
-    c->rot[0] = 0;
-    c->rot[1] = 0;
-    c->rot[2] = 0;
+    /*c->pos.x = 0;
+    c->pos.y = 0;
+    c->pos.z = 0;
+    c->pos.w = 0;
 
-    return c;
+    c->rot.x = 0;
+    c->rot.y = 0;
+    c->rot.z = 0;
+    c->rot.w = 0;*/
+
+    //c->get_id();
+
+    c->isloaded = true;
+
+    //return c;
 }

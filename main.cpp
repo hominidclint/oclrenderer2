@@ -24,15 +24,24 @@ int main(int argc, char *argv[])
 {
     sf::Clock clo;
 
-    objects_container *sponza=obj_load("Sp2/sp2.obj");
+    //objects_container *sponza=obj_load("Sp2/sp2.obj");
 
-    if(sponza == NULL)
+    /*if(sponza == NULL)
     {
         std::cout << "could not load file" << std::endl;
         exit(1);
-    }
+    }*/
 
-    sponza->set_active(true);
+    objects_container sponza;
+
+    sponza.set_file("Sp2/sp2.obj");
+    sponza.pos = (cl_float4){0,0,0,0};
+    sponza.rot = (cl_float4){0,0,0,0};
+    sponza.set_active(true);
+
+
+    //cl_uint id = sponza.push();
+    ///pushes textures
 
 
     obj_mem_manager g_manage;
@@ -42,10 +51,10 @@ int main(int argc, char *argv[])
     window.load(800,600,1000, "turtles");
 
 
-    for(std::vector<object>::iterator it=sponza->objs.begin(); it!=sponza->objs.end(); it++)
+    /*for(std::vector<object>::iterator it=sponza.objs.begin(); it!=sponza.objs.end(); it++)
     {
         g_manage.obj_list.push_back(&(*it));
-    }
+    }*/
 
     //g_manage.g_arrange_textures();
 
@@ -75,7 +84,6 @@ int main(int argc, char *argv[])
 
     while(window.window.isOpen())
     {
-
         sf::Clock c;
 
         if(window.window.pollEvent(Event))

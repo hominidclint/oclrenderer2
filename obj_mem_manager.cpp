@@ -7,6 +7,8 @@
 #include <algorithm>
 #include "obj_g_descriptor.hpp"
 #include "texture.hpp"
+#include "objects_container.hpp"
+#include "obj_load.hpp"
 
 std::vector<object*> obj_mem_manager::obj_list;
 
@@ -200,15 +202,9 @@ int num_to_divide(int target, int tsize)
     return f;
 }
 
-void obj_mem_manager::init()
-{
-    //temporary_objects[0] = new temporaries;
-    //temporary_objects[1] = new temporaries;
-}
 
 ///arrange textures here and update texture ids
-//void obj_mem_manager::g_arrange_textures()
-//{
+
 void obj_mem_manager::g_arrange_mem()
 {
 
@@ -219,17 +215,29 @@ void obj_mem_manager::g_arrange_mem()
 
     cl_uint trianglecount=0;
 
-    obj_g_descriptor *desc=new obj_g_descriptor[obj_list.size()];
+    std::vector<obj_g_descriptor> desc;//=new obj_g_descriptor[obj_list.size()];
     unsigned int n=0;
 
     std::vector<int> newtexid;
     std::vector<int> mtexids; ///mipmaps
+
+
+    for(int i=0; i<objects_container::obj_container_list.size(); i++)
+    {
+        if(objects_container::obj_container_list[i].isloaded == false)
+        {
+            obj_load(&objects_container::obj_container_list[i]);
+            objects_container::obj_container_list[i].set_active_subobjs(true);
+            //std::cout << objects_container::obj_container_list[i].file << std::endl;
+        }
+    }
 
     for(int i=0; i<texture::active_textures.size(); i++)
     {
         if(texture::texturelist[texture::active_textures[i]].loaded == false)
         {
             texture::texturelist[texture::active_textures[i]].loadtomaster();
+            //std::cout << texture::texturelist[texture::active_textures[i]].location << std::endl;
         }
 
         int t=0;
@@ -244,10 +252,6 @@ void obj_mem_manager::g_arrange_mem()
     }
 
 
-
-
-
-
     int mipbegin=newtexid.size();
 
     for(unsigned int i=0; i<mtexids.size(); i++)
@@ -255,8 +259,9 @@ void obj_mem_manager::g_arrange_mem()
         newtexid.push_back(mtexids[i]);
     }
 
+    ///turn this into a for obj_container_list loop
 
-    for(std::vector<object*>::iterator it=obj_list.begin(); it!=obj_list.end(); it++) ///if you call this more than once, it will break. Need to store how much it has already done, and start it again from there to prevent issues with mipmaps
+    /*for(std::vector<object*>::iterator it=obj_list.begin(); it!=obj_list.end(); it++) ///if you call this more than once, it will break. Need to store how much it has already done, and start it again from there to prevent issues with mipmaps
     {
         desc[n].tri_num=(*it)->tri_num;
         desc[n].start=trianglecount;
@@ -272,9 +277,34 @@ void obj_mem_manager::g_arrange_mem()
 
         trianglecount+=(*it)->tri_num;
         n++;
+    }*/
+
+    for(std::vector<objects_container>::iterator it2 = objects_container::obj_container_list.begin(); it2!=objects_container::obj_container_list.end(); it2++)
+    {
+        objects_container* obj = &(*it2);
+        for(std::vector<object>::iterator it=obj->objs.begin(); it!=obj->objs.end(); it++) ///if you call this more than once, it will break. Need to store how much it has already done, and start it again from there to prevent issues with mipmaps
+        {
+            obj_g_descriptor g;
+            desc.push_back(g);
+
+            desc[n].tri_num=(it)->tri_num;
+            desc[n].start=trianglecount;
+            desc[n].tid=(it)->atid;
+
+            for(int i=0; i<MIP_LEVELS; i++)
+            {
+                desc[n].mip_level_ids[i]=mipbegin + desc[n].tid*MIP_LEVELS + i;
+            }
+
+            desc[n].world_pos=(it)->pos;
+            desc[n].world_rot=(it)->rot;
+
+            trianglecount+=(it)->tri_num;
+            n++;
+        }
     }
 
-
+    //exit(1);
 
 
     temporary_objects[wt].g_texture_sizes  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int)*obj_mem_manager::tdescrip.texture_sizes.size(), obj_mem_manager::tdescrip.texture_sizes.data(), &cl::error);
@@ -292,10 +322,10 @@ void obj_mem_manager::g_arrange_mem()
     ///now, we need to lump texture sizes into catagories
 
 
-    temporary_objects[wt].g_obj_desc  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(obj_g_descriptor)*n, desc, &cl::error);
+    temporary_objects[wt].g_obj_desc  =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(obj_g_descriptor)*n, desc.data(), &cl::error);
     temporary_objects[wt].g_obj_num   =  clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint),              &n, &cl::error);
 
-    delete [] desc; /// memory release here ///
+    //delete [] desc; /// memory release here ///
 
 
     temporary_objects[wt].g_tri_mem    = clCreateBuffer(cl::context, CL_MEM_READ_ONLY, sizeof(triangle)*trianglecount, NULL, &cl::error);
@@ -321,16 +351,20 @@ void obj_mem_manager::g_arrange_mem()
 
     int obj_id=0;
 
-    for(std::vector<object*>::iterator it=obj_list.begin(); it!=obj_list.end(); it++)
+    for(std::vector<objects_container>::iterator it2 = objects_container::obj_container_list.begin(); it2!=objects_container::obj_container_list.end(); it2++)
     {
-        for(int i=0; i<(*it)->tri_num; i++)
+        objects_container* obj = &(*it2);
+        for(std::vector<object>::iterator it=obj->objs.begin(); it!=obj->objs.end(); it++)
         {
-            (*it)->tri_list[i].vertices[0].pad[1]=obj_id;
-        }
+            for(int i=0; i<(*it).tri_num; i++)
+            {
+                (*it).tri_list[i].vertices[0].pad[1]=obj_id;
+            }
 
-        clEnqueueWriteBuffer(cl::cqueue, temporary_objects[wt].g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it)->tri_num, (*it)->tri_list.data(), 0, NULL, NULL);
-        running+=(*it)->tri_num;
-        obj_id++;
+            clEnqueueWriteBuffer(cl::cqueue, temporary_objects[wt].g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it).tri_num, (*it).tri_list.data(), 0, NULL, NULL);
+            running+=(*it).tri_num;
+            obj_id++;
+        }
     }
 
     temporary_objects[wt].tri_num=trianglecount;

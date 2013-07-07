@@ -4,6 +4,6 @@
 #include "object.hpp"
 #include "objects_container.hpp"
 
-objects_container *obj_load(std::string);
+void obj_load(objects_container* obj);
 
 #endif

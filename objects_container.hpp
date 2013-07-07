@@ -1,20 +1,35 @@
 #ifndef INCLUDED_HPP_OBJECTS_CONTAINER
 #define INCLUDED_HPP_OBJECTS_CONTAINER
 #include "object.hpp"
+
 struct objects_container
 {
-    int id;
-    static int gid;
+    cl_uint id;
+    static cl_uint gid;
+
+    std::string file;
 
     bool isactive;
-    double pos[3];
-    double rot[3];
+    bool isloaded;
+
+    cl_float4 pos;
+    cl_float4 rot;
 
     std::vector<object> objs;
 
+    static std::vector<objects_container> obj_container_list;
+
     objects_container();
 
-    void set_active(bool param);
+    cl_uint push();
+
+    void set_file(std::string);
+
+    cl_uint set_active(bool param);
+
+    void set_active_subobjs(bool);
+
+    void unload_tris();
 };
 
 

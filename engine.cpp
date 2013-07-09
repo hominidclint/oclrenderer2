@@ -115,23 +115,17 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     depth_buffer[0]=    clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
     depth_buffer[1]=    clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
     g_id_screen=        clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint)*g_size*g_size, arr, &cl::error);
-    //g_normals_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_float4)*g_size*g_size, blank, &cl::error);
-    //g_texture_screen=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint4)*g_size*g_size, blank, &cl::error);
-    //d_triangle_buf=     clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(triangle), NULL, &cl::error);
-    //dc_triangle_buf = new triangle;
 
 
+    g_tid_buf              = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, size_of_uid_buffer*sizeof(cl_uint), NULL, &cl::error);
 
+    g_tid_buf_max_len      = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &size_of_uid_buffer, &cl::error);
 
-    g_tid_buf       =   clCreateBuffer(cl::context, CL_MEM_READ_WRITE, size_of_uid_buffer*sizeof(cl_uint), NULL, &cl::error);
+    g_tid_buf_atomic_count = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, &cl::error);
 
-    g_tid_buf_max_len=  clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &size_of_uid_buffer, &cl::error);
+    g_valid_fragment_num   = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, &cl::error);
 
-    g_tid_buf_atomic_count=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, &cl::error);
-
-    g_valid_fragment_num=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &zero, &cl::error);
-
-    g_valid_fragment_mem=   clCreateBuffer(cl::context, CL_MEM_READ_WRITE, size_of_uid_buffer*sizeof(cl_uint), NULL, &cl::error);
+    g_valid_fragment_mem   = clCreateBuffer(cl::context, CL_MEM_READ_WRITE, size_of_uid_buffer*sizeof(cl_uint), NULL, &cl::error);
 
 
     c_tid_buf_len = size_of_uid_buffer;

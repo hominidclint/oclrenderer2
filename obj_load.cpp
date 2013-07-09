@@ -308,6 +308,8 @@ void obj_load(objects_container* pobj)
 
     objects_container *c = pobj;
 
+    usemtl_pos.push_back(tris.size());
+
     for(int i=0; i<usemtl_pos.size()-1; i++)
     {
         object obj;
@@ -342,7 +344,6 @@ void obj_load(objects_container* pobj)
             bumpmap.init();
             bumpmap.set_texture_location(bump_full);
             b_id = bumpmap.get_id();
-
 
             if(texture::idquerytexture(bumpmap.id)==-1)
             {

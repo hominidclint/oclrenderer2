@@ -21,7 +21,14 @@ void object::set_active(bool param)
         {
             ///if object ! initialised, error
             isactive = param;
+            texture::texturelist[tid].type = 0;
             atid = texture::texturelist[tid].set_active(true);
+
+            if(has_bump)
+            {
+                texture::texturelist[bid].type = 1;
+                abid = texture::texturelist[bid].set_active(true);
+            }
         }
         else
         {
@@ -39,10 +46,21 @@ void object::set_active(bool param)
             {
                 it++;
             }
-
             ///remove from active texturelist
             texture::active_textures.erase(it);
             atid = 0;
+
+            if(has_bump)
+            {
+                std::vector<cl_uint>::iterator it2 = texture::active_textures.begin();
+                for(int i=0; i<abid; i++)
+                {
+                    it2++;
+                }
+                ///remove from active texturelist
+                texture::active_textures.erase(it2);
+                abid = 0;
+            }
         }
         else
         {

@@ -15,7 +15,7 @@
 
 //#define MAXDEPTH 100000
 
-__constant float depth_far=3500;
+__constant float depth_far=35000;
 __constant uint mulint=UINT_MAX;
 __constant int depth_icutoff=50;
 
@@ -767,7 +767,7 @@ void full_rotate(__global struct triangle *triangle, struct triangle *passback, 
 
 
 ////all texture code was not rewritten for time, does not use proper functions
-float4 read_tex_array(float4 coords, uint tid, global uint *num, global uint *size, __read_only image3d_t array)
+float4 read_tex_array(float2 coords, uint tid, global uint *num, global uint *size, __read_only image3d_t array)
 {
 
     sampler_t sam = CLK_NORMALIZED_COORDS_FALSE |
@@ -847,18 +847,18 @@ float return_bilinear_shadf(float2 coord, float values[4])
 }
 
 
-float4 return_bilinear_col(float4 coord, uint tid, global uint *nums, global uint *sizes, __read_only image3d_t array) ///takes a normalised input
+float4 return_bilinear_col(float2 coord, uint tid, global uint *nums, global uint *sizes, __read_only image3d_t array) ///takes a normalised input
 {
-    float4 mcoord;
+    float2 mcoord;
 
     int which=nums[tid];
     float width=sizes[which >> 16];
 
     mcoord.x=coord.x*width - 0.5;
     mcoord.y=coord.y*width - 0.5;
-    mcoord.z=coord.z;
+    //mcoord.z=coord.z;
 
-    float4 coords[4];
+    float2 coords[4];
 
     int2 pos= {floor(mcoord.x), floor(mcoord.y)};
 
@@ -874,7 +874,7 @@ float4 return_bilinear_col(float4 coord, uint tid, global uint *nums, global uin
     {
         coords[i].x/=width;
         coords[i].y/=width;
-        coords[i].z=coord.z;
+        //coords[i].z=coord.z;
         colours[i]=read_tex_array(coords[i], tid, nums, sizes, array);
     }
 
@@ -894,33 +894,14 @@ float4 return_bilinear_col(float4 coord, uint tid, global uint *nums, global uin
 
 }
 
-float4 texture_filter(struct triangle* c_tri, int2 spos, float4 vt, float depth, float4 c_pos, float4 c_rot, int tid2, global uint* mipd , global uint *nums, global uint *sizes, __read_only image3d_t array)
+float4 texture_filter(struct triangle* c_tri, int2 spos, float4 vt, float depth, float4 c_pos, float4 c_rot, int tid2, global uint* mipd, global uint *nums, global uint *sizes, __read_only image3d_t array)
 {
 
-    ///find z coord of texture pixel, work out distance of transition between the adjacent 2 texture levels (+ which 2 texture levels), bilinearly interpolate the two pixels, then interpolate the result
+    int slice=nums[tid2] >> 16;
+    int tsize=sizes[slice];
 
-    //global struct triangle *tri;
-    //tri=&triangles[id];
-    struct triangle *tri=c_tri;
+    float dropdistance=FOV_CONST;
 
-    int width=SCREENWIDTH;
-    int height=SCREENHEIGHT;
-
-    //depth = 0.01;
-
-    float4 rotpoints[3];
-    rotpoints[0]=c_tri->vertices[0].pos;
-    rotpoints[1]=c_tri->vertices[1].pos;
-    rotpoints[2]=c_tri->vertices[2].pos;
-
-    //float adepth=(rotpoints[0].z + rotpoints[1].z + rotpoints[2].z)/3.0f;
-
-    float adepth = idcalc(depth);
-
-    //float adepth = depth;
-
-    ///maths works out to be z = 700*n where n is 1/2, 1/4 of the size etc
-    ///so, if z of pixel is between 0-700, use least, then first, then second, etc
 
     int tids[MIP_LEVELS+1];
     tids[0]=tid2;
@@ -930,23 +911,12 @@ float4 texture_filter(struct triangle* c_tri, int2 spos, float4 vt, float depth,
         tids[i]=mipd[i-1];
     }
 
-    float mipdistance=FOV_CONST;
 
-    float part=0;
 
-    if(adepth<1)
-    {
-        adepth=1;
-    }
-
-    int wc=0;
-    int wc1;
-    float mdist;
-    float fdist;
-
-    int slice=nums[tid2] >> 16;
-    int twidth=sizes[slice];
-
+    float4 rotpoints[3];
+    rotpoints[0]=c_tri->vertices[0].pos;
+    rotpoints[1]=c_tri->vertices[1].pos;
+    rotpoints[2]=c_tri->vertices[2].pos;
 
 
     float minvx=min3(rotpoints[0].x, rotpoints[1].x, rotpoints[2].x); ///these are screenspace coordinates, used relative to each other so +width/2.0 cancels
@@ -955,80 +925,15 @@ float4 texture_filter(struct triangle* c_tri, int2 spos, float4 vt, float depth,
     float minvy=min3(rotpoints[0].y, rotpoints[1].y, rotpoints[2].y);
     float maxvy=max3(rotpoints[0].y, rotpoints[1].y, rotpoints[2].y);
 
-    float mintx=min3(tri->vertices[0].vt.x, tri->vertices[1].vt.x, tri->vertices[2].vt.x);
-    float maxtx=max3(tri->vertices[0].vt.x, tri->vertices[1].vt.x, tri->vertices[2].vt.x);
 
-    float minty=min3(tri->vertices[0].vt.y, tri->vertices[1].vt.y, tri->vertices[2].vt.y);
-    float maxty=max3(tri->vertices[0].vt.y, tri->vertices[1].vt.y, tri->vertices[2].vt.y);
+    float mintx=min3(c_tri->vertices[0].vt.x, c_tri->vertices[1].vt.x, c_tri->vertices[2].vt.x);
+    float maxtx=max3(c_tri->vertices[0].vt.x, c_tri->vertices[1].vt.x, c_tri->vertices[2].vt.x);
 
-    float txdif=maxtx-mintx;
-    float tydif=maxty-minty;
-
-
-    float vxdif=maxvx-minvx;
-    float vydif=maxvy-minvy;
-
-    float xtexelsperpixel=txdif*twidth/vxdif;
-    float ytexelsperpixel=tydif*twidth/vydif;
-
-    float texelsperpixel = xtexelsperpixel > ytexelsperpixel ? xtexelsperpixel : ytexelsperpixel;
-
-
-    float effectivedistance=mipdistance*texelsperpixel;
-
-    if(effectivedistance<0)
-    {
-        float4 col;
-        col.x=0;
-        col.y=0;
-        col.z=0;
-        return col;
-    }
-
-    float corrected_depth=adepth + effectivedistance;
+    float minty=min3(c_tri->vertices[0].vt.y, c_tri->vertices[1].vt.y, c_tri->vertices[2].vt.y);
+    float maxty=max3(c_tri->vertices[0].vt.y, c_tri->vertices[1].vt.y, c_tri->vertices[2].vt.y);
 
 
 
-    for(int i=0; i<5; i++) //fundementally broken, using width of polygon when it needs to be using
-        //texture width to calculate miplevel
-    {
-        wc=i;
-
-        if(i==4)
-        {
-            mdist=(pow(2.0f, (float)i) - 1)*mipdistance;
-            fdist=(pow(2.0f, (float)i) - 1)*mipdistance;
-            break;
-        }
-
-        mdist=(pow(2.0f, (float)i) - 1)*mipdistance;
-        fdist=(pow(2.0f, (float)i+1.0f) - 1)*mipdistance;
-
-        if(corrected_depth > mdist && corrected_depth < fdist)
-        {
-            break;
-        }
-    }
-
-    //every FOV_CONST, the texture size halves
-
-
-    wc1=wc+1;
-    part=(fdist-corrected_depth)/(fdist-mdist);
-
-    if(wc==4)
-    {
-        wc1=4;
-        part=1;
-    }
-
-
-    //vt.x = 0.5;
-    //vt.y = 0.5;
-
-
-    ///how far away from the upper mip level are we, between 0 and 1;
-    //x, y, tid, num, size, array;
 
     float2 vtm = {vt.x, vt.y};
 
@@ -1055,19 +960,83 @@ float4 texture_filter(struct triangle* c_tri, int2 spos, float4 vt, float depth,
     }
 
 
-    float4 coord= {vtm.x, vtm.y, 0, 0};
+    float2 tdiff = {fabs(maxtx - mintx), fabs(maxty - minty)};
+
+    tdiff*=tsize;
+
+    float2 vdiff = {fabs(maxvx - minvx), fabs(maxvy - minvy)};
 
 
-    float4 col1=return_bilinear_col(coord, tids[wc], nums, sizes, array);
+    float2 tex_per_pix = {tdiff.x / vdiff.x, tdiff.y / vdiff.y};
 
-    float4 col2=return_bilinear_col(coord, tids[wc1], nums, sizes, array);
+    float worst = max(tex_per_pix.x, tex_per_pix.y);
 
-    float4 final=col1*(part) + col2*(1-part);
+    int tpp[MIP_LEVELS+1];
 
-    //float4 final = read_tex_array(coord, tids[wc], nums, sizes, array);
+    for(int i=0; i<MIP_LEVELS+1; i++)
+    {
+        tpp[i] = pow(2.0, i);
+    }
 
-    return final;
+    ///if < 1 bilinear, but nvm
+
+
+    int mip_lower=0;
+    int mip_higher=0;
+    float fractional_mipmap_distance = 0;
+    int end_level = 0;
+
+    bool mip_found = false;
+
+    for(int i=1; i<MIP_LEVELS+1; i++)
+    {
+        if(worst < tpp[i-1])
+        {
+            mip_found = true;
+            break;
+        }
+        if(worst < tpp[i] && worst > tpp[i-1])
+        {
+           mip_lower = i-1;
+           mip_higher = i;
+           fractional_mipmap_distance = fabs(worst - tpp[i-1]) / fabs((float)(tpp[i] - tpp[i-1]));
+           mip_found = true;
+           break;
+        }
+    }
+
+    ///off the end of mipmap scale, use highest res
+    if(!mip_found)
+    {
+        mip_lower = MIP_LEVELS;
+        mip_higher = MIP_LEVELS;
+        fractional_mipmap_distance = 0;
+    }
+
+    ///If the texel to pixel ratio is < 1, use highest res texture
+    if(worst < 1)
+    {
+        mip_lower = 0;
+        mip_higher = 0;
+        fractional_mipmap_distance = 0;
+    }
+
+
+
+    float fmd = fractional_mipmap_distance;
+
+
+    float4 col1=return_bilinear_col(vtm, tids[mip_lower], nums, sizes, array);
+
+    float4 col2=return_bilinear_col(vtm, tids[mip_higher], nums, sizes, array);
+
+    float4 finalcol = col1*(1.0-fmd) + col2*(fmd);
+
+
+    return finalcol;
 }
+
+
 ///end of unrewritten code
 
 ///Shadow mapping works like this
@@ -1697,19 +1666,10 @@ __kernel void construct_smap(__global struct triangle* triangles, __global uint*
 
                 ///slice*ldbm^2 + lnum*6*lbdm^2 + y*ldbm + x
 
-
                 float fmydepth=1.0/interpolate(depths, &icontainer, x, y);
-
-                //fmydepth = dcalc(fmydepth);
 
                 uint mydepth=fmydepth*mulint;
 
-
-
-                /*if(mydepth==0)
-                {
-                    continue;
-                }*/
 
                 if(mydepth!=0)
                 {
@@ -2168,12 +2128,14 @@ __kernel void part3(__global struct triangle *triangles,__global uint *tri_num, 
         };
 
 
-        //__global struct triangle *c_tri=&screen_triangles[*fi];
+
 
         struct interp_container icontainer;
         float odepth[3];
 
         __global struct triangle* T = &triangles[fragment_id_buffer[id_val*4]];
+
+        __global struct triangle *g_tri=T;
 
 
         ///split the different steps to have different full_rotate functions. Prearrange only needs areas not full triangles, part 1-2 do not need texture or normal information
@@ -2194,7 +2156,7 @@ __kernel void part3(__global struct triangle *triangles,__global uint *tri_num, 
 
         uint pid = fragment_id_buffer[id_val*4];
 
-        __global struct triangle *g_tri=&triangles[pid];
+        //__global struct triangle *g_tri=&triangles[pid];
 
 
         int o_id=c_tri->vertices[0].pad.y;

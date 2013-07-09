@@ -9,6 +9,7 @@
 #include "texture.hpp"
 #include "objects_container.hpp"
 #include "obj_load.hpp"
+#include <math.h>
 
 std::vector<object*> obj_mem_manager::obj_list;
 
@@ -44,6 +45,20 @@ struct texture_array_descriptor
 } tad;
 
 texture_array_descriptor obj_mem_manager::tdescrip;
+
+float bilinear_filter(cl_float2 coord, float values[4])
+{
+    float mx, my;
+    mx = coord.x*1 - 0.5;
+    my = coord.y*1 - 0.5;
+    cl_float2 uvratio = (cl_float2){mx - floor(mx), my - floor(my)};
+    cl_float2 buvr =  (cl_float2){1.0-uvratio.x, 1.0-uvratio.y};
+
+    float result;
+    result=(values[0]*buvr.x + values[1]*uvratio.x)*buvr.y + (values[2]*buvr.x + values[3]*uvratio.x)*uvratio.y;
+
+    return result;
+}
 
 cl_uint return_max_num(int size)
 {
@@ -126,6 +141,7 @@ void gen_miplevel(texture &tex, texture &gen) ///call from main mem_alloc func?
 
             sf::Color m=pixel4(p4[0], p4[1], p4[2], p4[3]);
 
+
             gen.c_image.setPixel(i, j, m);
         }
     }
@@ -206,9 +222,12 @@ int num_to_divide(int target, int tsize)
 
 ///arrange textures here and update texture ids
 
+///fix texturing
+
+///do memory optimisation
+
 void obj_mem_manager::g_arrange_mem()
 {
-
     std::vector<int>().swap(obj_mem_manager::tdescrip.texture_nums);
     std::vector<int>().swap(obj_mem_manager::tdescrip.texture_sizes);
 
@@ -244,6 +263,12 @@ void obj_mem_manager::g_arrange_mem()
             texture::texturelist[texture::active_textures[i]].loadtomaster();
         }
     }
+
+    std::vector<cl_uint> tex_num_ids;
+    std::vector<cl_uint> tex_active_ids;
+
+    int b = 0;
+
     for(int i=0; i<texture::active_textures.size(); i++)
     {
         if(texture::texturelist[texture::active_textures[i]].type==0)
@@ -253,10 +278,15 @@ void obj_mem_manager::g_arrange_mem()
             add_texture_and_mipmaps(texture::texturelist[texture::active_textures[i]], mipmaps, t);
             newtexid.push_back(t);
 
+            tex_num_ids.push_back(b);
+            tex_active_ids.push_back(texture::active_textures[i]);
+
             for(int n=0; n<MIP_LEVELS; n++)
             {
                 mtexids.push_back(mipmaps[n]);
             }
+
+            b++;
         }
     }
 
@@ -266,6 +296,11 @@ void obj_mem_manager::g_arrange_mem()
     {
         newtexid.push_back(mtexids[i]);
     }
+
+    b = 0;
+
+
+    ///if active texture increment and then do the check
 
     ///fill in obj_g_descriptors for all the subobjects of the objects in the scene
     cl_uint cumulative_bump = 0;
@@ -279,7 +314,18 @@ void obj_mem_manager::g_arrange_mem()
 
             desc[n].tri_num=(it)->tri_num;
             desc[n].start=trianglecount;
-            desc[n].tid=(it)->atid;
+
+            cl_uint num_id = 0;
+
+            for(int i=0; i<tex_active_ids.size(); i++)
+            {
+                if(tex_active_ids[i] == it->tid && texture::texturelist[it->tid].type == 0)
+                {
+                    num_id = tex_num_ids[i];
+                }
+            }
+
+            desc[n].tid = num_id;
 
             for(int i=0; i<MIP_LEVELS; i++)
             {

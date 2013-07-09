@@ -17,6 +17,7 @@ struct object
     cl_uint tid; ///texture id
     cl_uint atid; ///texture id in the active texturelist
     cl_uint bid; ///bumpmap_id
+    cl_uint abid; ///active bumpmap_id
 
     cl_mem g_mem;
     cl_mem g_tri_num;

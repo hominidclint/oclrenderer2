@@ -2,7 +2,6 @@
 #include <string>
 #include <iostream>
 
-
 #include <windows.h>
 #include <gl/gl.h>
 
@@ -20,15 +19,27 @@
 ///todo
 ///modify textures to return largest dimension
 
+///texturing
+///shadowing
+///moving models
+
 int main(int argc, char *argv[])
 {
     ///remember to make g_arrange_mem run faster!
     objects_container sponza;
+    objects_container sponza2;
 
     sponza.set_file("Sp2/sp2.obj");
+
+    //sponza.set_file("Sp2/player.obj");
     sponza.pos = (cl_float4){0,0,0,0};
     sponza.rot = (cl_float4){0,0,0,0};
     sponza.set_active(true);
+
+    sponza2.set_file("Sp2/boringroom.obj");
+    sponza2.pos = (cl_float4){0,0,0,0};
+    sponza2.rot = (cl_float4){0,0,0,0};
+    //sponza2.set_active(true);
 
     obj_mem_manager g_manage;
 

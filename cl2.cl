@@ -1526,166 +1526,9 @@ __kernel void trivial_kernel(__global struct triangle* triangles, __read_only im
 }
 
 
-
-__kernel void construct_smap(__global struct triangle* triangles, __global uint* tri_num, __global uint* light_depth_buffer, __global uint* lnum, __global struct light *lights)
-{
-
-    ///there are 6 pieces on my cubemap
-    ///6 slices form a light's buffer, each slice is defined in the order up down left foward right back
-
-
-
-    ///rotate triangles into screenspace, clip, and probably perform rough hierarchical depth buffering
-    ///lighting normals give you backface culling
-
-    uint id = get_global_id(0);
-
-    struct interp_container icontainer;
-
-    __global float4 *l_pos = &lights[*lnum].pos;
-
-
-    int valid_tri=0;
-
-    if(id >= *tri_num)
-    {
-        return;
-    }
-
-
-    __global struct triangle *c_tri = &triangles[id];
-
-    float4 r_struct[6];
-    r_struct[0]=(float4)
-    {
-        0.0,            0.0,            0.0,0.0
-    };
-    r_struct[1]=(float4)
-    {
-        M_PI/2.0,       0.0,            0.0,0.0
-    };
-    r_struct[2]=(float4)
-    {
-        0.0,            M_PI,           0.0,0.0
-    };
-    r_struct[3]=(float4)
-    {
-        3.0*M_PI/2.0,   0.0,            0.0,0.0
-    };
-    r_struct[4]=(float4)
-    {
-        0.0,            3.0*M_PI/2.0,   0.0,0.0
-    };
-    r_struct[5]=(float4)
-    {
-        0.0,            M_PI/2.0,       0.0,0.0
-    };
-
-
-    int bslice=0;
-
-
-
-
-    if(ret_cubeface(c_tri->vertices[0].pos, *l_pos)!=ret_cubeface(c_tri->vertices[1].pos, *l_pos) || ret_cubeface(c_tri->vertices[1].pos, *l_pos)!=ret_cubeface(c_tri->vertices[2].pos, *l_pos) ||ret_cubeface(c_tri->vertices[0].pos, *l_pos)!=ret_cubeface(c_tri->vertices[2].pos, *l_pos))
-    {
-        return;
-    }
-
-    bslice = ret_cubeface(c_tri->vertices[0].pos, *l_pos);
-
-    float4 l_arot = r_struct[bslice];
-
-
-    int cont=0;
-
-    struct triangle tris[2];
-
-
-    int num = 0;
-
-    full_rotate(&triangles[id], tris, &num, *l_pos, l_arot, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
-
-    if(num==0)
-    {
-        return;
-    }
-
-    struct triangle tri = tris[0];
-
-    //struct triangle tri = t.t[0];
-
-    icontainer = construct_interpolation(tris[0], LIGHTBUFFERDIM, LIGHTBUFFERDIM);
-
-    //struct triangle tri=full_rotate(&triangles[id], l_pos, l_rot, &icontainer, odepth, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM);
-
-
-    if(icontainer.ybounds[1]-icontainer.ybounds[0] > MTRI_SIZE || icontainer.xbounds[1] - icontainer.xbounds[0] > MTRI_SIZE)
-    {
-        return;
-    }
-
-
-    ///near plane intersection
-
-
-    if((tri.vertices[0].pos.z) < (depth_icutoff) && (tri.vertices[1].pos.z) < (depth_icutoff) && (tri.vertices[2].pos.z) < (depth_icutoff))
-    {
-        return;
-    }
-
-    ///begin backface culling!
-
-
-
-    if(backface_cull(&tri, LFOV_CONST, LIGHTBUFFERDIM, LIGHTBUFFERDIM)!=1)
-    {
-        return;
-    }
-
-
-    ///end backface
-
-    ///OOB check can go here
-
-    ///begin drawing to depth buffer
-
-    float depths[3]= {1.0/dcalc(tri.vertices[0].pos.z), 1.0/dcalc(tri.vertices[1].pos.z), 1.0/dcalc(tri.vertices[2].pos.z)};
-    //float depths[3]={dcalc(tri.vertices[0].pos.z), dcalc(tri.vertices[1].pos.z), dcalc(tri.vertices[2].pos.z)};
-    //float depths[3]={odepth[0], odepth[1], odepth[2]};
-
-    for(int y=icontainer.ybounds[0]; y<icontainer.ybounds[1]; y++)
-    {
-        for(int x=icontainer.xbounds[0]; x<icontainer.xbounds[1]; x++)
-        {
-            float s1=calc_third_areas(&icontainer, x, y);
-
-            if(s1 > icontainer.area - 2 && s1 < icontainer.area + 2)
-            {
-                __global uint *ft=&light_depth_buffer[(bslice)*LIGHTBUFFERDIM*LIGHTBUFFERDIM + ((*lnum)*6)*LIGHTBUFFERDIM*LIGHTBUFFERDIM +  y*LIGHTBUFFERDIM + x];
-
-                ///slice*ldbm^2 + lnum*6*lbdm^2 + y*ldbm + x
-
-                float fmydepth=1.0/interpolate(depths, &icontainer, x, y);
-
-                uint mydepth=fmydepth*mulint;
-
-
-                if(mydepth!=0)
-                {
-                    atomic_min(ft, mydepth);
-                }
-            }
-        }
-    }
-
-    ///end drawing to depth buffer
-
-}
-
 __constant int op_size = 200;
 
-__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global uint* id_cutdown_tris, __global float4* cutdown_tris)
+__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* is_light)
 {
     uint id = get_global_id(0);
 
@@ -1702,12 +1545,26 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
     ///void depth_project(float4 rotated[3], int width, int height, float fovc, float4 ret[3])
 
 
+    float efov = FOV_CONST;
+    float ewidth = SCREENWIDTH;
+    float eheight = SCREENHEIGHT;
+
+    if(*is_light == 1)
+    {
+        efov = LFOV_CONST;
+        ewidth = LIGHTBUFFERDIM;
+        eheight = LIGHTBUFFERDIM;
+    }
+
+
 
     float4 tris_proj[2][3];
 
     int num=0;
 
-    full_rotate_n_extra(T, tris_proj, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+    ///needs to be changed for lights
+
+    full_rotate_n_extra(T, tris_proj, &num, *c_pos, *c_rot, efov, ewidth, eheight);
 
     if(num == 0)
     {
@@ -1720,7 +1577,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
     for(int i=0; i<num; i++)
     {
-        ooany[i] = backface_cull_expanded(tris_proj[i][0], tris_proj[i][1], tris_proj[i][2], FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+        ooany[i] = backface_cull_expanded(tris_proj[i][0], tris_proj[i][1], tris_proj[i][2], efov, ewidth, eheight);
     }
 
 
@@ -1739,7 +1596,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
                 ooxmin++;
             }
 
-            if(tris_proj[j][i].x >= SCREENWIDTH)
+            if(tris_proj[j][i].x >= ewidth)
             {
                 ooxmax++;
             }
@@ -1749,7 +1606,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
                 ooymin++;
             }
 
-            if(tris_proj[j][i].y >= SCREENHEIGHT)
+            if(tris_proj[j][i].y >= eheight)
             {
                 ooymax++;
             }
@@ -1774,7 +1631,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
         }
 
         int min_max[4];
-        calc_min_max(tris_proj[i], SCREENWIDTH, SCREENHEIGHT, min_max);
+        calc_min_max(tris_proj[i], ewidth, eheight, min_max);
 
         int area = (min_max[1]-min_max[0])*(min_max[3]-min_max[2]);
 
@@ -1828,7 +1685,7 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
 }
 
-__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global uint* valid_tri_mem)
+__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global uint* valid_tri_mem, __global uint* is_light)
 {
     uint id = get_global_id(0);
 
@@ -1836,6 +1693,20 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     {
         return;
     }
+
+
+    float efov = FOV_CONST;
+    float ewidth = SCREENWIDTH;
+    float eheight = SCREENHEIGHT;
+
+    if(*is_light == 1)
+    {
+        efov = LFOV_CONST;
+        ewidth = LIGHTBUFFERDIM;
+        eheight = LIGHTBUFFERDIM;
+    }
+
+
 
 
     uint tid = fragment_id_buffer[id*4];
@@ -1862,7 +1733,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     tris_proj_n[2] = cutdown_tris[ctri*3 + 2];
 
     int min_max[4];
-    calc_min_max(tris_proj_n, SCREENWIDTH, SCREENHEIGHT, min_max);
+    calc_min_max(tris_proj_n, ewidth, eheight, min_max);
 
 
     int width  = min_max[1] - min_max[0];
@@ -1911,7 +1782,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
         if(s1 > area - 2 && s1 < area + 2)
         {
 
-            __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
+            __global uint *ft=&depth_buffer[y*(int)ewidth + x];
 
             float fmydepth = interpolate_p(depths, x, y, xp, yp, rconst);
 
@@ -2346,6 +2217,11 @@ __kernel void part3(__global struct triangle *triangles,__global uint *tri_num, 
 
         float hbao = 0;
 
+        float lightdepth = light_depth_buffer[y*LIGHTBUFFERDIM + x + 1*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
+
+        lightdepth=(lightdepth/mulint);
+
+        float4 lcol = {lightdepth, lightdepth, lightdepth, 0};
 
         //float4 dcol = {dcalc(namydepth), dcalc(namydepth), dcalc(namydepth), 0};
 

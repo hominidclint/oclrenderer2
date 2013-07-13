@@ -328,6 +328,11 @@ void engine::input()
         std::cout << "rerr: " << c_pos.x << " " << c_pos.y << " " << c_pos.z << std::endl;
     }
 
+    if(keyboard.isKeyPressed(sf::Keyboard::N))
+    {
+        std::cout << "rotation: " << c_rot.x << " " << c_rot.y << " " << c_rot.z << std::endl;
+    }
+
     clEnqueueWriteBuffer(cl::cqueue, g_c_pos, true, 0, sizeof(cl_float4), &c_pos, 0, NULL, NULL);
     clEnqueueWriteBuffer(cl::cqueue, g_c_rot, true, 0, sizeof(cl_float4), &c_rot, 0, NULL, NULL);
 }

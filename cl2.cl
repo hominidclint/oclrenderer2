@@ -3,8 +3,6 @@
 #define FOV_CONST 400.0f
 
 
-#define IDENTIFICATION_BITS 10
-
 #define SCREENWIDTH 800
 #define SCREENHEIGHT 600
 
@@ -516,8 +514,6 @@ void full_rotate_n_extra(__global struct triangle *triangle, float4 passback[2][
     ///void depth_project(float4 rotated[3], int width, int height, float fovc, float4 ret[3])
 
     float4 tris[2][3];
-
-    //float4 triback[2][3];
 
     float4 pr[3];
 
@@ -1081,75 +1077,49 @@ int ret_cubeface(float4 point, float4 light)
         0.0,            M_PI/2.0,       0.0,0.0
     };
 
-    float4 r_pl;
-    r_pl=point-light;
+    float4 r_pl = point - light;
 
-    float4 pnormal;
-    pnormal = (float4)
-    {
-        0, 1, 0, 0
-    };
-
-
-    //return 0;
 
     float angle = atan2(r_pl.y, r_pl.x);
-    ///need to find angle between line to point and thing, not otherwise broken
-    ///
-    ///acos(m(n.u)/m(n)*m(u))
 
-    angle = acos(length(dot(pnormal, r_pl))/(length(pnormal)*length(r_pl)));
+    angle = angle + M_PI/4.0f;
 
     if(angle < 0)
     {
         angle = M_PI - fabs(angle) + M_PI;
     }
 
-    angle = angle + M_PI/4.0f;
 
-    if(angle < 0)
+    float angle2 = atan2(r_pl.y, r_pl.z);
+
+    angle2 = angle2 + M_PI/4.0f;
+
+    if(angle2 < 0)
     {
-        angle = angle + 2.0f*M_PI;
+        angle2 = M_PI - fabs(angle2) + M_PI;
     }
 
 
-    if(angle > 0 && angle < M_PI/2.0f)
-    {
-        return 1;
-    }
-
-    if(angle < 2.0f*M_PI && angle > 3.0f*M_PI/2.0f)
+    if(angle > M_PI/2.0f && angle < M_PI && angle2 > M_PI/2.0f && angle2 < M_PI)
     {
         return 3;
     }
 
-    /*if(angle >= M_PI/2.0f && angle < M_PI)
+    if(angle < 2.0f*M_PI && angle > 3.0f*M_PI/2.0f && angle2 < 2.0f*M_PI && angle2 > 3.0f*M_PI/2.0f)
     {
         return 1;
     }
-
-    if(angle >= 3.0f*M_PI/2.0f && angle < 2.0f*M_PI)
-    {
-        return 3;
-    }*/
-
 
 
     float zangle = atan2(r_pl.z, r_pl.x);
+
+    zangle = zangle + M_PI/4.0f;
 
     if(zangle < 0)
     {
         zangle = M_PI - fabs(zangle) + M_PI;
     }
 
-    zangle = zangle + M_PI/4.0f;
-
-    if(zangle < 0)
-    {
-        zangle = zangle + 2.0f*M_PI;
-    }
-
-    //zangle = 2*M_PI-zangle;
 
     if(zangle >= 0 && zangle < M_PI/2.0f)
     {
@@ -1165,12 +1135,12 @@ int ret_cubeface(float4 point, float4 light)
     {
         return 4;
     }
-    else
+    else if(zangle >= 3*M_PI/2.0f && zangle <= 2*M_PI)
     {
         return 2;
         //return 0;
     }
-
+    return -1;
 }
 
 //screenspace triangles
@@ -1389,6 +1359,11 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
 
         uint ldepth_map_id = ret_cubeface(global_position, lpos);
+        if(ldepth_map_id==-1)
+        {
+            return 0;
+        }
+
         float4 *rotation = &r_struct[ldepth_map_id];
 
         float4 local_pos = rot(global_position, lpos, *rotation);
@@ -1422,7 +1397,7 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
         __global uint* ldepth_map = &light_depth_buffer[(ldepth_map_id + shnum*6)*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
 
 
-        if(postrotate_pos.y < 1 || postrotate_pos.y >= LIGHTBUFFERDIM-1 || postrotate_pos.x < 1 || postrotate_pos.x >= LIGHTBUFFERDIM-1)
+        if(postrotate_pos.y < 0 || postrotate_pos.y > LIGHTBUFFERDIM-1 || postrotate_pos.x < 0 || postrotate_pos.x > LIGHTBUFFERDIM-1 || postrotate_pos.z <= 0)
         {
             return 0;
         }
@@ -1496,17 +1471,16 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
             occamount+=fin;
         }
-        else
-            if(depthpass > 0 && dpth > ldp + len)
-            {
-                float fx = postrotate_pos.x - floor(postrotate_pos.x);
-                float fy = postrotate_pos.y - floor(postrotate_pos.y);
+        else if(depthpass > 0 && dpth > ldp + len)
+        {
+            float fx = postrotate_pos.x - floor(postrotate_pos.x);
+            float fy = postrotate_pos.y - floor(postrotate_pos.y);
 
-                float dx = fx*pass_arr[2] + (1.0-fx)*pass_arr[3];
-                float dy = fy*pass_arr[0] + (1.0-fy)*pass_arr[1];
+            float dx = fx*pass_arr[2] + (1.0-fx)*pass_arr[3];
+            float dy = fy*pass_arr[0] + (1.0-fy)*pass_arr[1];
 
-                occamount += dx*dy;
-            }
+            occamount += dx*dy;
+        }
     }
 
     return occamount;
@@ -1771,7 +1745,7 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
         int x = ((pixel_along + pcount) % width) + min_max[0];
         int y = ((pixel_along + pcount) / width) + min_max[2];
 
-        if(y < 0 || y >= SCREENHEIGHT)
+        if(y < 0 || y >= eheight)
         {
             pcount++;
             continue;
@@ -1938,7 +1912,7 @@ __kernel void part3(__global struct triangle *triangles,__global uint *tri_num, 
 {
     ///widthxheight kernel
     sampler_t sam = CLK_NORMALIZED_COORDS_FALSE |
-                    CLK_ADDRESS_CLAMP_TO_EDGE        |
+                    CLK_ADDRESS_CLAMP_TO_EDGE   |
                     CLK_FILTER_NEAREST;
 
 
@@ -2022,28 +1996,19 @@ __kernel void part3(__global struct triangle *triangles,__global uint *tri_num, 
         icontainer = construct_interpolation(tris[wtri], SCREENWIDTH, SCREENHEIGHT);
 
 
-
         struct triangle *c_tri = &tris[wtri];
 
         uint pid = fragment_id_buffer[id_val*4];
 
-        //__global struct triangle *g_tri=&triangles[pid];
 
 
         int o_id=c_tri->vertices[0].pad.y;
-
 
 
         int4 coord= {x, y, 0, 0};
 
 
         float cz[3] = {c_tri->vertices[0].pos.z, c_tri->vertices[1].pos.z, c_tri->vertices[2].pos.z};
-        //float icz[3] = {1.0/c_tri->vertices[0].pos.z, 1.0/c_tri->vertices[1].pos.z, 1.0/c_tri->vertices[2].pos.z};
-
-
-
-
-        //float ldepth = interpolate(icz, &icontainer, x, y);
 
 
         float ldepth = idcalc((float)*ft/mulint);
@@ -2130,19 +2095,16 @@ __kernel void part3(__global struct triangle *triangles,__global uint *tri_num, 
 
             float average_occ = 0;
 
+            uint ldepth_map_id;
 
-            if(lights[i].shadow==1)
+
+            if(lights[i].shadow==1 && (ldepth_map_id = ret_cubeface(global_position, lpos))!=-1)
             {
 
 
-                average_occ = generate_hard_occlusion((float4)
-                {
-                    x, y, 0, 0
-                }, normal, actual_depth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
+                average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, actual_depth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
 
 
-
-                uint ldepth_map_id = ret_cubeface(global_position, lpos);
                 float4 *rotation = &r_struct[ldepth_map_id];
 
 
@@ -2217,7 +2179,7 @@ __kernel void part3(__global struct triangle *triangles,__global uint *tri_num, 
 
         float hbao = 0;
 
-        float lightdepth = light_depth_buffer[y*LIGHTBUFFERDIM + x + 1*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
+        float lightdepth = light_depth_buffer[(y)*LIGHTBUFFERDIM + x + 2*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
 
         lightdepth=(lightdepth/mulint);
 
@@ -2226,6 +2188,7 @@ __kernel void part3(__global struct triangle *triangles,__global uint *tri_num, 
         //float4 dcol = {dcalc(namydepth), dcalc(namydepth), dcalc(namydepth), 0};
 
         write_imagef(screen, scoord, col*(lightaccum)*(1.0-hbao));
+        //write_imagef(screen, scoord, col*(lightaccum)*(1.0-hbao)*0.001 + lcol*20);
     }
 
 }

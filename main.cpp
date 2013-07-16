@@ -57,10 +57,11 @@ int main(int argc, char *argv[])
     l.set_shadow_bright(1, 1);
     //l.set_pos((cl_float4){0, 1000, 0, 0});
     //l.set_pos((cl_float4){-800, 150, -800, 0});
-    l.set_pos((cl_float4){-200, 250, -100, 0});
+    l.set_pos((cl_float4){-200, 200, -100, 0});
     window.add_light(l);
 
-    l.set_pos((cl_float4){0, 300, 800, 0});
+    //l.set_pos((cl_float4){-200, 700, -100, 0});
+    l.set_pos((cl_float4){0, 200, -450, 0});
     l.shadow=0;
     //window.add_light(l);
 

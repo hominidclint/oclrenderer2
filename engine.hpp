@@ -28,6 +28,7 @@ struct engine
     cl_mem g_normals_screen;
     cl_mem g_texture_screen;
     cl_mem g_shadow_light_buffer;
+    cl_mem g_shadow_occlusion_screen;
 
     cl_mem g_tid_buf;
     cl_mem g_tid_buf_max_len;

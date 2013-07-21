@@ -1388,7 +1388,7 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
     __global uint* ldepth_map = &light_depth_buffer[(ldepth_map_id + shnum*6)*LIGHTBUFFERDIM*LIGHTBUFFERDIM];
 
 
-    if(postrotate_pos.y < 0 || postrotate_pos.y > LIGHTBUFFERDIM-1 || postrotate_pos.x < 0 || postrotate_pos.x > LIGHTBUFFERDIM-1 || postrotate_pos.z <= 0)
+    if(floor(postrotate_pos.y) < 0 || floor(postrotate_pos.y) > LIGHTBUFFERDIM-1 || floor(postrotate_pos.x) < 0 || floor(postrotate_pos.x) > LIGHTBUFFERDIM-1 || postrotate_pos.z <= 0)
     {
         return 0;
     }
@@ -1424,7 +1424,7 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
     int depthpass=0;
     int cdepthpass=0; //corners
-    float len = dcalc(4);
+    float len = dcalc(12);
 
     for(int i=0; i<4; i++)
     {
@@ -1493,7 +1493,9 @@ __kernel void trivial_kernel(__global struct triangle* triangles, __read_only im
 
 __constant int op_size = 200;
 
-__kernel void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* is_light)
+__kernel
+__attribute__((reqd_work_group_size(128, 1, 1)))
+void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* is_light)
 {
     uint id = get_global_id(0);
 
@@ -1650,7 +1652,9 @@ __kernel void prearrange(__global struct triangle* triangles, __global uint* tri
 
 }
 
-__kernel void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global uint* valid_tri_mem, __global uint* is_light)
+__kernel
+__attribute__((reqd_work_group_size(128, 1, 1)))
+void part1(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* depth_buffer, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global uint* valid_tri_mem, __global uint* is_light)
 {
     uint id = get_global_id(0);
 
@@ -1788,7 +1792,9 @@ __kernel void part1(__global struct triangle* triangles, __global uint* fragment
     }
 }
 
-__kernel void part2(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global uint* depth_buffer, __global __write_only image2d_t id_buffer, __global float4* c_pos, __global float4* c_rot, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global uint* valid_tri_mem)
+__kernel
+__attribute__((reqd_work_group_size(128, 1, 1)))
+void part2(__global struct triangle* triangles, __global uint* fragment_id_buffer, __global uint* tri_num, __global uint* depth_buffer, __global __write_only image2d_t id_buffer, __global float4* c_pos, __global float4* c_rot, __global uint* f_len, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* valid_tri_num, __global uint* valid_tri_mem)
 {
     uint id = get_global_id(0);
 
@@ -1897,7 +1903,9 @@ __kernel void part2(__global struct triangle* triangles, __global uint* fragment
 
 
 
-__kernel void part3(__global struct triangle *triangles,__global uint *tri_num, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global __read_only image2d_t id_buffer,
+__kernel
+__attribute__((reqd_work_group_size(16, 16, 1)))
+void part3(__global struct triangle *triangles,__global uint *tri_num, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global __read_only image2d_t id_buffer,
                     __read_only image3d_t array, __write_only image2d_t screen, __global uint *nums, __global uint *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights, __global uint* light_depth_buffer, __global uint * to_clear, __global uint* fragment_id_buffer)
 ///__global uint sacrifice_children_to_argument_god
 {

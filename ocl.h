@@ -294,7 +294,7 @@ void oclstuff()
     size_t *optimum=new size_t[200];
 
 
-    std::string buildoptions = " ";
+    std::string buildoptions = "-cl-fast-relaxed-math";
 
     cl::error = clBuildProgram(cl::program, 1, &cl::device, buildoptions.c_str(), NULL, NULL);
 

@@ -69,8 +69,12 @@ void object::set_active(bool param)
     }
 }
 
-void object::set_pos_rot(cl_float4 _pos, cl_float4 _rot)
+void object::set_pos(cl_float4 _pos)
 {
     pos = _pos;
+}
+
+void object::set_rot(cl_float4 _rot)
+{
     rot = _rot;
 }

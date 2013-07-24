@@ -126,7 +126,7 @@ int calc_third_areas(struct interp_container *C, int x, int y)
     //return calc_third_area(C->x[0], C->y[0], C->x[1], C->y[1], C->x[2], C->y[2], x, y, 1) + calc_third_area(C->x[0], C->y[0], C->x[1], C->y[1], C->x[2], C->y[2], x, y, 2) + calc_third_area(C->x[0], C->y[0], C->x[1], C->y[1], C->x[2], C->y[2], x, y, 3);
 }
 
-
+///store coses and sines
 float4 rot(float4 point, float4 c_pos, float4 c_rot)
 {
     float4 ret;
@@ -370,11 +370,11 @@ int backface_cull(struct triangle *tri, int fov, float w, float h)
 }
 
 
-void rot_3(__global struct triangle *triangle, float4 c_pos, float4 c_rot, float4 ret[3])
+void rot_3(__global struct triangle *triangle, float4 c_pos, float4 c_rot, float4 offset, float4 ret[3])
 {
-    ret[0]=rot(triangle->vertices[0].pos, c_pos, c_rot);
-    ret[1]=rot(triangle->vertices[1].pos, c_pos, c_rot);
-    ret[2]=rot(triangle->vertices[2].pos, c_pos, c_rot);
+    ret[0]=rot(triangle->vertices[0].pos + offset, c_pos, c_rot);
+    ret[1]=rot(triangle->vertices[1].pos + offset, c_pos, c_rot);
+    ret[2]=rot(triangle->vertices[2].pos + offset, c_pos, c_rot);
 }
 
 void rot_3_normal(__global struct triangle *triangle, float4 c_rot, float4 ret[3])
@@ -506,7 +506,7 @@ void generate_new_triangles(float4 points[3], int ids[3], float rconst[2], int *
     }
 }
 
-void full_rotate_n_extra(__global struct triangle *triangle, float4 passback[2][3], int *num, float4 c_pos, float4 c_rot, float fovc, int width, int height)
+void full_rotate_n_extra(__global struct triangle *triangle, float4 passback[2][3], int *num, float4 c_pos, float4 c_rot, float4 offset, float fovc, int width, int height)
 {
     ///void rot_3(__global struct triangle *triangle, float4 c_pos, float4 c_rot, float4 ret[3])
     ///void generate_new_triangles(float4 points[3], int ids[3], float lconst[2], int *num, float4 ret[2][3])
@@ -520,7 +520,7 @@ void full_rotate_n_extra(__global struct triangle *triangle, float4 passback[2][
 
     float rconst[2];
 
-    rot_3(triangle, c_pos, c_rot, pr);
+    rot_3(triangle, c_pos, c_rot, offset, pr);
 
     int n = 0;
 
@@ -537,13 +537,13 @@ void full_rotate_n_extra(__global struct triangle *triangle, float4 passback[2][
 }
 
 
-void full_rotate(__global struct triangle *triangle, struct triangle *passback, int *num, float4 c_pos, float4 c_rot, float fovc, int width, int height)
+void full_rotate(__global struct triangle *triangle, struct triangle *passback, int *num, float4 c_pos, float4 c_rot, float4 offset, float fovc, int width, int height)
 {
 
     __global struct triangle *T=triangle;
 
     float4 rotpoints[3];
-    rot_3(T, c_pos, c_rot, rotpoints);
+    rot_3(T, c_pos, c_rot, offset, rotpoints);
 
     ///this will cause errors, need to fix lighting to use rotated normals rather than globals
     float4 normalrot[3];
@@ -1099,12 +1099,12 @@ int ret_cubeface(float4 point, float4 light)
     }
 
 
-    if(angle > M_PI/2.0f && angle < M_PI && angle2 > M_PI/2.0f && angle2 < M_PI)
+    if(angle >= M_PI/2.0f && angle < M_PI && angle2 >= M_PI/2.0f && angle2 < M_PI)
     {
         return 3;
     }
 
-    if(angle < 2.0f*M_PI && angle > 3.0f*M_PI/2.0f && angle2 < 2.0f*M_PI && angle2 > 3.0f*M_PI/2.0f)
+    if(angle <= 2.0f*M_PI && angle > 3.0f*M_PI/2.0f && angle2 <= 2.0f*M_PI && angle2 > 3.0f*M_PI/2.0f)
     {
         return 1;
     }
@@ -1495,7 +1495,7 @@ __constant int op_size = 200;
 
 __kernel
 __attribute__((reqd_work_group_size(128, 1, 1)))
-void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* is_light)
+void prearrange(__global struct triangle* triangles, __global uint* tri_num, __global float4* c_pos, __global float4* c_rot, __global uint* fragment_id_buffer, __global uint* id_buffer_maxlength, __global uint* id_buffer_atomc, __global uint* id_cutdown_tris, __global float4* cutdown_tris, __global uint* is_light,  __global struct obj_g_descriptor* gobj)
 {
     uint id = get_global_id(0);
 
@@ -1507,10 +1507,14 @@ void prearrange(__global struct triangle* triangles, __global uint* tri_num, __g
     __global struct triangle *T=&triangles[id];
 
 
+    int o_id = T->vertices[0].pad.y;
+
+
     ///void rot_3(__global struct triangle *triangle, float4 c_pos, float4 c_rot, float4 ret[3])
     ///void generate_new_triangles(float4 points[3], int ids[3], float lconst[2], int *num, float4 ret[2][3])
     ///void depth_project(float4 rotated[3], int width, int height, float fovc, float4 ret[3])
 
+    ///handle g_obj_descriptors
 
     float efov = FOV_CONST;
     float ewidth = SCREENWIDTH;
@@ -1531,7 +1535,11 @@ void prearrange(__global struct triangle* triangles, __global uint* tri_num, __g
 
     ///needs to be changed for lights
 
-    full_rotate_n_extra(T, tris_proj, &num, *c_pos, *c_rot, efov, ewidth, eheight);
+
+    __global struct obj_g_descriptor *G =  &gobj[o_id];
+
+
+    full_rotate_n_extra(T, tris_proj, &num, *c_pos, *c_rot, G->world_pos, efov, ewidth, eheight);
 
     if(num == 0)
     {
@@ -1906,7 +1914,9 @@ void part2(__global struct triangle* triangles, __global uint* fragment_id_buffe
 __kernel
 __attribute__((reqd_work_group_size(16, 16, 1)))
 void part3(__global struct triangle *triangles,__global uint *tri_num, __global float4 *c_pos, __global float4 *c_rot, __global uint* depth_buffer, __global __read_only image2d_t id_buffer,
-                    __read_only image3d_t array, __write_only image2d_t screen, __global uint *nums, __global uint *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum, __global uint *lnum, __global struct light *lights, __global uint* light_depth_buffer, __global uint * to_clear, __global uint* fragment_id_buffer)
+           __read_only image3d_t array, __write_only image2d_t screen, __global uint *nums, __global uint *sizes, __global struct obj_g_descriptor* gobj, __global uint * gnum,
+           __global uint *lnum, __global struct light *lights, __global uint* light_depth_buffer, __global uint * to_clear, __global uint* fragment_id_buffer)
+
 ///__global uint sacrifice_children_to_argument_god
 {
     ///widthxheight kernel
@@ -1988,7 +1998,11 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
 
         int num = 0;
 
-        full_rotate(T, tris, &num, *c_pos, *c_rot, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+        int o_id=T->vertices[0].pad.y;
+
+        __global struct obj_g_descriptor *G = &gobj[o_id];
+
+        full_rotate(T, tris, &num, *c_pos, *c_rot, G->world_pos, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
         uint wtri = fragment_id_buffer[id_val*4 + 2];
 
@@ -2001,7 +2015,7 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
 
 
 
-        int o_id=c_tri->vertices[0].pad.y;
+
 
 
         int4 coord= {x, y, 0, 0};
@@ -2099,29 +2113,18 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
             if(lights[i].shadow==1 && (ldepth_map_id = ret_cubeface(global_position, lpos))!=-1)
             {
 
-
-                float4 l_o_pos;
-
-                average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, actual_depth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
-
-
                 float err;
 
-                if((err=dot(normalize(normal), normalize(global_position - lpos))) >= 0)
+                if((dot(fast_normalize(normal), fast_normalize(global_position - lpos))) >= 0)
                 {
                     skip=1;
                 }
-
-                err = fabs(err);
-
-
-                if(thisocc!=0)
-                    thisocc = (thisocc + (1.0-err))/2.0f;
                 else
-                    thisocc+=1.0-err;
+                {
+                    average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, actual_depth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
+                }
 
                 shnum++;
-
             }
 
             //thisocc = 0;
@@ -2129,10 +2132,9 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
             float ambient = 0.2;
 
             if(light>0)
-                lightaccum+=(1.0-ambient)*light*lights[i].col*lights[i].brightness*(1.0-thisocc)*(1.0-skip)*(1.0-average_occ) + ambient*1.0f;
+                lightaccum+=(1.0-ambient)*light*light*lights[i].col*lights[i].brightness*(1.0-skip)*(1.0-average_occ) + ambient*1.0f;
             else
                 lightaccum+=ambient*1.0f;
-
 
         }
 

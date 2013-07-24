@@ -12,6 +12,8 @@ struct object
     bool isactive;
     int tri_num;
 
+    int graphics_obj_g_descriptor_id;
+
     std::vector<triangle> tri_list;
 
     cl_uint tid; ///texture id
@@ -26,7 +28,8 @@ struct object
 
     object();
     void set_active(bool param);
-    void set_pos_rot(cl_float4, cl_float4);
+    void set_pos   (cl_float4);
+    void set_rot   (cl_float4);
 };
 
 

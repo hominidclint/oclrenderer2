@@ -30,15 +30,11 @@ int main(int argc, char *argv[])
     objects_container sponza2;
 
     sponza.set_file("Sp2/sp2.obj");
-
     //sponza.set_file("Sp2/player.obj");
-    sponza.pos = (cl_float4){0,0,0,0};
-    sponza.rot = (cl_float4){0,0,0,0};
     sponza.set_active(true);
+    //sponza.set_pos((cl_float4){100, -100, 200, 0});
 
     sponza2.set_file("Sp2/boringroom.obj");
-    sponza2.pos = (cl_float4){0,0,0,0};
-    sponza2.rot = (cl_float4){0,0,0,0};
     //sponza2.set_active(true);
 
     obj_mem_manager g_manage;

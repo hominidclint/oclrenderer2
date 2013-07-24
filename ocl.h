@@ -319,6 +319,7 @@ void oclstuff()
     delete[] build_log;
 
 
+
     // Extracting the kernel
     cl::kernel = clCreateKernel(cl::program, "part1", &cl::error);
 
@@ -326,7 +327,6 @@ void oclstuff()
     {
         std::cout << "kernelcreation  part1" << cl::error << std::endl;
     }
-
 
     cl::kernel2 = clCreateKernel(cl::program, "part2", &cl::error);
 

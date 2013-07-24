@@ -309,6 +309,7 @@ void obj_mem_manager::g_arrange_mem()
         objects_container* obj = &(*it2);
         for(std::vector<object>::iterator it=obj->objs.begin(); it!=obj->objs.end(); it++) ///if you call this more than once, it will break. Need to store how much it has already done, and start it again from there to prevent issues with mipmaps
         {
+            it->graphics_obj_g_descriptor_id = n;
             obj_g_descriptor g;
             desc.push_back(g);
 

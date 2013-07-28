@@ -1366,14 +1366,6 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
 
     ///find the absolute distance as an angle between 0 and 1 that would be required to make it backface, that approximates occlusion
-    float err;
-
-    if((err=dot(fast_normalize(rot(normal, zero, *rotation)), fast_normalize(postrotate_pos))) >= 0)
-    {
-        smoothskip=1; ///we only want hard shadows
-    }
-
-    err = fabs(err);
 
 
     postrotate_pos.z = dcalc(postrotate_pos.z);
@@ -1506,6 +1498,7 @@ void prearrange(__global struct triangle* triangles, __global uint* tri_num, __g
 
     __global struct triangle *T=&triangles[id];
 
+    struct triangle local_triangle = *T;
 
     int o_id = T->vertices[0].pad.y;
 
@@ -2121,7 +2114,7 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
                 }
                 else
                 {
-                    average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, actual_depth, lights, light_depth_buffer, c_pos, c_rot, i, shnum);
+                    average_occ = generate_hard_occlusion((float4){x, y, 0, 0}, normal, actual_depth, lights, light_depth_buffer, c_pos, c_rot, i, shnum); ///copy occlusion into local memory
                 }
 
                 shnum++;

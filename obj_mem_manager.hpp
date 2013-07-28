@@ -37,6 +37,8 @@ struct obj_mem_manager
 
     static std::vector<object*> obj_list;
 
+    static std::vector<int>     obj_sub_nums; ///after g_arrange
+
     static cl_mem g_tri_mem;
     static cl_mem g_tri_num;
 
@@ -63,6 +65,7 @@ struct obj_mem_manager
     void g_arrange_textures();
     void g_arrange_mem();
     void g_changeover();
+    void g_update_obj(object*);
 };
 
 

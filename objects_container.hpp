@@ -7,6 +7,8 @@ struct objects_container
     cl_uint id;
     static cl_uint gid;
 
+    cl_uint arrange_id; ///ie position in desc
+
     std::string file;
 
     bool isactive;
@@ -26,6 +28,8 @@ struct objects_container
     cl_uint set_active(bool param);
     void    set_active_subobjs(bool);
     void    unload_tris();
+
+    void g_flush_objects(); ///calls g_flush for all objects
 };
 
 

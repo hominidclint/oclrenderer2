@@ -61,6 +61,8 @@ int main(int argc, char *argv[])
     l.shadow=0;
     //window.add_light(l);
 
+    int z = 0;
+
     window.construct_shadowmaps();
 
     while(window.window.isOpen())

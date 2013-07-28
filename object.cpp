@@ -1,6 +1,9 @@
 #include "object.hpp"
 #include "clstate.h"
 #include "texture.hpp"
+#include "obj_mem_manager.hpp"
+#include "objects_container.hpp"
+#include <iostream>
 
 object::object()
 {
@@ -77,4 +80,23 @@ void object::set_pos(cl_float4 _pos)
 void object::set_rot(cl_float4 _rot)
 {
     rot = _rot;
+}
+
+void object::g_flush(cl_uint arrange_id)
+{
+    ///get id
+    //objects_container *T = &objects_container::obj_container_list[object_g_id];
+
+    //object *Tobj = &T->objs[object_sub_position];
+
+    int cumulative = 0;
+
+    for(int i=0; i<arrange_id; i++)
+    {
+        cumulative+=obj_mem_manager::obj_sub_nums[i];
+    }
+
+    ///need cumulative sub object position
+
+    clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_obj_desc, CL_TRUE, sizeof(obj_g_descriptor)*(cumulative + object_sub_position), sizeof(cl_float4), &pos, 0, NULL, NULL);
 }

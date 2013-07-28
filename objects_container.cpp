@@ -18,7 +18,7 @@ cl_uint objects_container::push()
     return obj_container_list.size() - 1;
 }
 
-void objects_container::set_pos(cl_float4 _pos)
+void objects_container::set_pos(cl_float4 _pos) ///both remote and local
 {
     pos = _pos;
     for(int i=0; i<objs.size(); i++)
@@ -34,9 +34,6 @@ void objects_container::set_pos(cl_float4 _pos)
             obj_container_list[id].objs[i].pos = _pos;
         }
     }
-
-
-
 }
 
 void objects_container::set_file(std::string f)
@@ -84,5 +81,28 @@ void objects_container::unload_tris()
     for(unsigned int i=0; i<objs.size(); i++)
     {
         std::vector<triangle>().swap(objs[i].tri_list);
+    }
+}
+
+void objects_container::g_flush_objects()
+{
+    if(isactive)
+    {
+        objects_container *T = &objects_container::obj_container_list[id];
+
+        for(unsigned int i=0; i<T->objs.size(); i++)
+        {
+            T->objs[i].object_g_id = id;
+            T->objs[i].object_sub_position = i;
+        }
+
+        for(unsigned int i=0; i<T->objs.size(); i++)
+        {
+            T->objs[i].g_flush(arrange_id);
+        }
+    }
+    else
+    {
+        std::cout << "Warning (objects_container.hpp) " << __LINE__ << " g_flush_objects called on object not pushed to global storage" << std::endl;
     }
 }

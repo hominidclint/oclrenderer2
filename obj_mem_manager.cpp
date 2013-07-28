@@ -12,6 +12,7 @@
 #include <math.h>
 
 std::vector<object*> obj_mem_manager::obj_list;
+std::vector<int>     obj_mem_manager::obj_sub_nums;
 
 cl_uint obj_mem_manager::tri_num;
 
@@ -226,10 +227,16 @@ int num_to_divide(int target, int tsize)
 
 ///do memory optimisation
 
+void obj_mem_manager::g_update_obj(object *obj)
+{
+
+}
+
 void obj_mem_manager::g_arrange_mem()
 {
     std::vector<int>().swap(obj_mem_manager::tdescrip.texture_nums);
     std::vector<int>().swap(obj_mem_manager::tdescrip.texture_sizes);
+    std::vector<int>().swap(obj_mem_manager::obj_sub_nums);
 
     ///int maxnum = return_max_num(size);
 
@@ -304,14 +311,18 @@ void obj_mem_manager::g_arrange_mem()
 
     ///fill in obj_g_descriptors for all the subobjects of the objects in the scene
     cl_uint cumulative_bump = 0;
-    for(std::vector<objects_container>::iterator it2 = objects_container::obj_container_list.begin(); it2!=objects_container::obj_container_list.end(); it2++)
+    for(int i=0; i<objects_container::obj_container_list.size(); i++)
     {
-        objects_container* obj = &(*it2);
+        objects_container* obj = &objects_container::obj_container_list[i];
+        obj_sub_nums.push_back(obj->objs.size());
+        obj->arrange_id = i;
+
         for(std::vector<object>::iterator it=obj->objs.begin(); it!=obj->objs.end(); it++) ///if you call this more than once, it will break. Need to store how much it has already done, and start it again from there to prevent issues with mipmaps
         {
-            it->graphics_obj_g_descriptor_id = n;
+            it->object_g_id = n;
             obj_g_descriptor g;
             desc.push_back(g);
+
 
             desc[n].tri_num=(it)->tri_num;
             desc[n].start=trianglecount;

@@ -10,6 +10,9 @@
 #include "objects_container.hpp"
 #include "obj_load.hpp"
 #include <math.h>
+#include <utility>
+#include <iostream>
+
 
 std::vector<object*> obj_mem_manager::obj_list;
 std::vector<int>     obj_mem_manager::obj_sub_nums;
@@ -96,10 +99,8 @@ cl_uchar4 * return_first_free(int size, int &num) ///texture ids need to be embe
     delete [] obj_mem_manager::c_texture_array;
     obj_mem_manager::c_texture_array=newarray;
 
-
     T->texture_sizes.push_back(size);
     T->texture_nums.push_back(0);
-
 
     return return_first_free(size, num);
 }
@@ -227,16 +228,22 @@ int num_to_divide(int target, int tsize)
 
 ///do memory optimisation
 
-void obj_mem_manager::g_update_obj(object *obj)
-{
 
+int calc_num_slices(int tsize, int tnum)
+{
+    int max_num = return_max_num(tsize);
+    ///number of textures per page
+    int pages = ceil((float)tnum / max_num);
+    return pages;
 }
+
 
 void obj_mem_manager::g_arrange_mem()
 {
     std::vector<int>().swap(obj_mem_manager::tdescrip.texture_nums);
     std::vector<int>().swap(obj_mem_manager::tdescrip.texture_sizes);
     std::vector<int>().swap(obj_mem_manager::obj_sub_nums);
+
 
     ///int maxnum = return_max_num(size);
 
@@ -252,7 +259,7 @@ void obj_mem_manager::g_arrange_mem()
 
 
     ///process loaded objects
-    for(int i=0; i<objects_container::obj_container_list.size(); i++)
+    for(unsigned int i=0; i<objects_container::obj_container_list.size(); i++)
     {
         if(objects_container::obj_container_list[i].isloaded == false)
         {
@@ -261,9 +268,10 @@ void obj_mem_manager::g_arrange_mem()
         }
     }
 
+
     ///what to do with bumpmaps?
     ///process textures in active texture list
-    for(int i=0; i<texture::active_textures.size(); i++)
+    for(unsigned int i=0; i<texture::active_textures.size(); i++)
     {
         if(texture::texturelist[texture::active_textures[i]].loaded == false)
         {
@@ -271,12 +279,56 @@ void obj_mem_manager::g_arrange_mem()
         }
     }
 
+    std::vector<std::pair<int, int> > unique_sizes;
+
+    ///obj_mem_manager::c_texture_array
+
+    for(int i=0; i<texture::active_textures.size(); i++)
+    {
+        texture *T = &texture::texturelist[texture::active_textures[i]];
+        int s = T->get_largest_dimension();
+        bool iswithin = false;
+        for(int j=0; j<unique_sizes.size(); j++)
+        {
+            if(unique_sizes[j].first == s)
+            {
+                unique_sizes[j].second++;
+                iswithin = true;
+            }
+        }
+        if(!iswithin)
+        {
+            unique_sizes.push_back(std::make_pair(s, 1));
+        }
+    }
+
+    unsigned int final_memory_size = 0; ///doesn't do mipmaps, eh
+
+    for(int i=0; i<unique_sizes.size(); i++)
+    {
+        int size = unique_sizes[i].first;
+        int num  = unique_sizes[i].second;
+        int num_pages = calc_num_slices(size, num);
+
+        for(int i=0; i<num_pages; i++)
+        {
+            obj_mem_manager::tdescrip.texture_sizes.push_back(size);
+            obj_mem_manager::tdescrip.texture_nums.push_back(0);
+        }
+
+        final_memory_size+=num_pages;
+    }
+
+    obj_mem_manager::c_texture_array = new cl_uchar4[max_tex_size*max_tex_size*final_memory_size];
+
+
+
     std::vector<cl_uint> tex_num_ids;
     std::vector<cl_uint> tex_active_ids;
 
     int b = 0;
 
-    for(int i=0; i<texture::active_textures.size(); i++)
+    for(unsigned int i=0; i<texture::active_textures.size(); i++)
     {
         if(texture::texturelist[texture::active_textures[i]].type==0)
         {

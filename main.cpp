@@ -16,12 +16,11 @@
 #include <math.h>
 #include <limits.h>
 
-///todo
-///modify textures to return largest dimension
+///todo eventually
+///split into dynamic and static objects
 
-///texturing
-///shadowing
-///moving models
+///todo
+///fix memory management to not be atrocious
 
 int main(int argc, char *argv[])
 {

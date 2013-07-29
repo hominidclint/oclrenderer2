@@ -98,5 +98,5 @@ void object::g_flush(cl_uint arrange_id)
 
     ///need cumulative sub object position
 
-    clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_obj_desc, CL_TRUE, sizeof(obj_g_descriptor)*(cumulative + object_sub_position), sizeof(cl_float4), &pos, 0, NULL, NULL);
+    clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_obj_desc, CL_FALSE, sizeof(obj_g_descriptor)*(cumulative + object_sub_position), sizeof(cl_float4), &pos, 0, NULL, NULL);
 }

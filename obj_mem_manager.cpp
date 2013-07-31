@@ -261,10 +261,11 @@ void obj_mem_manager::g_arrange_mem()
     ///process loaded objects
     for(unsigned int i=0; i<objects_container::obj_container_list.size(); i++)
     {
-        if(objects_container::obj_container_list[i].isloaded == false)
+        objects_container *obj = &objects_container::obj_container_list[i];
+        if(obj->isloaded == false)
         {
-            obj_load(&objects_container::obj_container_list[i]);
-            objects_container::obj_container_list[i].set_active_subobjs(true);
+            obj->call_load_func(&objects_container::obj_container_list[i]);
+            obj->set_active_subobjs(true);
         }
     }
 
@@ -273,9 +274,10 @@ void obj_mem_manager::g_arrange_mem()
     ///process textures in active texture list
     for(unsigned int i=0; i<texture::active_textures.size(); i++)
     {
-        if(texture::texturelist[texture::active_textures[i]].loaded == false)
+        texture *tex = &texture::texturelist[texture::active_textures[i]];
+        if(tex->loaded == false)
         {
-            texture::texturelist[texture::active_textures[i]].loadtomaster();
+            tex->call_load_func(tex);
         }
     }
 
@@ -283,12 +285,12 @@ void obj_mem_manager::g_arrange_mem()
 
     ///obj_mem_manager::c_texture_array
 
-    for(int i=0; i<texture::active_textures.size(); i++)
+    for(unsigned int i=0; i<texture::active_textures.size(); i++)
     {
         texture *T = &texture::texturelist[texture::active_textures[i]];
         int s = T->get_largest_dimension();
         bool iswithin = false;
-        for(int j=0; j<unique_sizes.size(); j++)
+        for(unsigned int j=0; j<unique_sizes.size(); j++)
         {
             if(unique_sizes[j].first == s)
             {
@@ -304,7 +306,7 @@ void obj_mem_manager::g_arrange_mem()
 
     unsigned int final_memory_size = 0; ///doesn't do mipmaps, eh
 
-    for(int i=0; i<unique_sizes.size(); i++)
+    for(unsigned int i=0; i<unique_sizes.size(); i++)
     {
         int size = unique_sizes[i].first;
         int num  = unique_sizes[i].second;
@@ -363,7 +365,7 @@ void obj_mem_manager::g_arrange_mem()
 
     ///fill in obj_g_descriptors for all the subobjects of the objects in the scene
     cl_uint cumulative_bump = 0;
-    for(int i=0; i<objects_container::obj_container_list.size(); i++)
+    for(unsigned int i=0; i<objects_container::obj_container_list.size(); i++)
     {
         objects_container* obj = &objects_container::obj_container_list[i];
         obj_sub_nums.push_back(obj->objs.size());
@@ -381,7 +383,7 @@ void obj_mem_manager::g_arrange_mem()
 
             cl_uint num_id = 0;
 
-            for(int i=0; i<tex_active_ids.size(); i++)
+            for(unsigned int i=0; i<tex_active_ids.size(); i++)
             {
                 if(tex_active_ids[i] == it->tid && texture::texturelist[it->tid].type == 0)
                 {

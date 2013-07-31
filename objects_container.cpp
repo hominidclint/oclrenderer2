@@ -1,5 +1,7 @@
 #include "objects_container.hpp"
 #include <iostream>
+#include <boost/bind.hpp>
+#include "obj_load.hpp"
 
 cl_uint objects_container::gid = 0;
 std::vector<objects_container> objects_container::obj_container_list;
@@ -10,6 +12,7 @@ objects_container::objects_container()
     isloaded = false;
     pos = (cl_float4){0,0,0,0};
     rot = (cl_float4){0,0,0,0};
+    set_load_func(boost::bind(obj_load, _1));
 }
 
 cl_uint objects_container::push()
@@ -21,7 +24,7 @@ cl_uint objects_container::push()
 void objects_container::set_pos(cl_float4 _pos) ///both remote and local
 {
     pos = _pos;
-    for(int i=0; i<objs.size(); i++)
+    for(unsigned int i=0; i<objs.size(); i++)
     {
         objs[i].pos = _pos;
     }
@@ -29,7 +32,7 @@ void objects_container::set_pos(cl_float4 _pos) ///both remote and local
     if(isactive)
     {
         obj_container_list[id].pos = _pos;
-        for(int i=0; i<obj_container_list[id].objs.size(); i++)
+        for(unsigned int i=0; i<obj_container_list[id].objs.size(); i++)
         {
             obj_container_list[id].objs[i].pos = _pos;
         }
@@ -83,6 +86,18 @@ void objects_container::unload_tris()
         std::vector<triangle>().swap(objs[i].tri_list);
     }
 }
+
+
+void objects_container::set_load_func(boost::function<void (objects_container*)> func)
+{
+    fp = func;
+}
+
+void objects_container::call_load_func(objects_container* c)
+{
+    fp(c);
+}
+
 
 void objects_container::g_flush_objects()
 {

@@ -1,21 +1,4 @@
-#include <cstdio>
-#include <string>
-#include <iostream>
-
-#include <windows.h>
-#include <gl/gl.h>
-
-#include "clstate.h"
-#include "obj_load.hpp"
-#include "objects_container.hpp"
-#include "texture.hpp"
-#include "ocl.h"
-#include "engine.hpp"
-#include "obj_mem_manager.hpp"
-#include "obj_g_descriptor.hpp"
-#include <math.h>
-#include <limits.h>
-
+#include "proj.hpp"
 ///todo eventually
 ///split into dynamic and static objects
 
@@ -29,12 +12,9 @@ int main(int argc, char *argv[])
     objects_container sponza2;
 
     sponza.set_file("Sp2/sp2.obj");
-    //sponza.set_file("Sp2/player.obj");
     sponza.set_active(true);
-    //sponza.set_pos((cl_float4){100, -100, 200, 0});
 
     sponza2.set_file("Sp2/boringroom.obj");
-    //sponza2.set_active(true);
 
     obj_mem_manager g_manage;
 
@@ -59,8 +39,6 @@ int main(int argc, char *argv[])
     l.set_pos((cl_float4){0, 200, -450, 0});
     l.shadow=0;
     //window.add_light(l);
-
-    int z = 0;
 
     window.construct_shadowmaps();
 

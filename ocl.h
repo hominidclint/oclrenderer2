@@ -291,7 +291,7 @@ void oclstuff()
 
     clGetDeviceInfo(cl::device, CL_DEVICE_EXTENSIONS, 2000, returnstring, NULL);
 
-    size_t *optimum=new size_t[200];
+    //size_t *optimum=new size_t[200];
 
 
     std::string buildoptions = "-cl-fast-relaxed-math";

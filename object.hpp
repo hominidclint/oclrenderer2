@@ -29,9 +29,9 @@ struct object
     cl_uint has_bump;
 
     object();
-    void set_active(bool param);
-    void set_pos   (cl_float4);
-    void set_rot   (cl_float4);
+    void set_active     (bool param);
+    void set_pos        (cl_float4);
+    void set_rot        (cl_float4);
 
     void g_flush(cl_uint); ///flush position (currently just) etc to gpu memory
 };

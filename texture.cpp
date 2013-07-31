@@ -2,6 +2,8 @@
 #include "clstate.h"
 #include <iostream>
 #include <math.h>
+#include <boost/bind.hpp>
+
 cl_uint texture::gidc=0;
 
 std::vector<texture> texture::texturelist;
@@ -11,9 +13,10 @@ std::vector<cl_uint> texture::active_textures;
 texture::texture()
 {
     loaded=false;
+    set_load_func(boost::bind(texture_load, _1));
 }
 
-cl_uint texture::idquerystring(std::string name)
+cl_int texture::idquerystring(std::string name)
 {
     cl_uint id=-1;
 
@@ -29,7 +32,7 @@ cl_uint texture::idquerystring(std::string name)
     return -1;
 }
 
-cl_uint texture::idqueryisactive(cl_uint pid)
+cl_int texture::idqueryisactive(cl_uint pid)
 {
     cl_uint id=-1;
 
@@ -45,7 +48,7 @@ cl_uint texture::idqueryisactive(cl_uint pid)
     return -1;
 }
 
-cl_uint texture::idquerytexture(cl_uint id)
+cl_int texture::idquerytexture(cl_uint id)
 {
     if(id < texturelist.size())
     {
@@ -79,7 +82,7 @@ void texture::init()
 
 cl_uint texture::get_id()
 {
-    cl_uint temp_id = idquerystring(location);
+    cl_int temp_id = idquerystring(location);
 
     if(temp_id == -1)
         id = gidc++;
@@ -116,7 +119,7 @@ cl_uint texture::set_active(bool param)
         {
             cl_uint a_id = idqueryisactive(id);
             std::vector<cl_uint>::iterator it = active_textures.begin();
-            for(int i=0; i<a_id; i++)
+            for(unsigned int i=0; i<a_id; i++)
             {
                 it++;
             }
@@ -130,24 +133,28 @@ cl_uint texture::set_active(bool param)
     }
 }
 
-
 void texture::set_texture_location(std::string loc)
 {
     location = loc;
 }
 
-///this really needs to be changed
-
-cl_uint texture::loadtomaster()
+void texture_load(texture* tex)
 {
-    c_image.loadFromFile(location);
+    tex->c_image.loadFromFile(tex->location);
+    tex->loaded = true;
 
-    if(get_largest_dimension()>max_tex_size)
+    if(tex->get_largest_dimension() > max_tex_size)
     {
-        std::cout << "maxsize limit " << location << std::endl;
+        std::cout << "Error, texture larger than max texture size @" << __LINE__ << " @" << __FILE__ << std::endl;
     }
+}
 
-    loaded=true;
+void texture::set_load_func(boost::function<void (texture*)> func)
+{
+    fp = func;
+}
 
-    return id;
+void texture::call_load_func(texture* tex)
+{
+    fp(tex);
 }

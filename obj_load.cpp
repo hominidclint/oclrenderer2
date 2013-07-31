@@ -10,11 +10,12 @@
 #include "texture.hpp"
 #include <math.h>
 #include <list>
+#include <boost/bind.hpp>
 
 std::string retrieve_diffuse_new(std::vector<std::string> file, std::string name)
 {
     bool found = false;
-    for(int i=0; i<file.size(); i++)
+    for(unsigned int i=0; i<file.size(); i++)
     {
         if(strncmp(file[i].c_str(), "newmtl ", 7)==0 && file[i].substr(file[i].find_last_of(" ")+1, name.size()) == name)
         {
@@ -25,12 +26,13 @@ std::string retrieve_diffuse_new(std::vector<std::string> file, std::string name
             return file[i].substr(file[i].find_last_of(" ")+1, std::string::npos);
         }
     }
+    return std::string("");
 }
 
 std::string retrieve_bumpmap(std::vector<std::string> file, std::string name)
 {
     bool found = false;
-    for(int i=0; i<file.size(); i++)
+    for(unsigned int i=0; i<file.size(); i++)
     {
         ///found newmtl + name of material
         if(strncmp(file[i].c_str(), "newmtl ", 7)==0 && file[i].substr(file[i].find_last_of(" ")+1, name.size()) == name)
@@ -310,7 +312,7 @@ void obj_load(objects_container* pobj)
 
     usemtl_pos.push_back(tris.size());
 
-    for(int i=0; i<usemtl_pos.size()-1; i++)
+    for(unsigned int i=0; i<usemtl_pos.size()-1; i++)
     {
         object obj;
 
@@ -370,19 +372,5 @@ void obj_load(objects_container* pobj)
         c->objs.push_back(obj);
     }
 
-    /*c->pos.x = 0;
-    c->pos.y = 0;
-    c->pos.z = 0;
-    c->pos.w = 0;
-
-    c->rot.x = 0;
-    c->rot.y = 0;
-    c->rot.z = 0;
-    c->rot.w = 0;*/
-
-    //c->get_id();
-
     c->isloaded = true;
-
-    //return c;
 }

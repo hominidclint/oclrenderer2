@@ -45,7 +45,7 @@ void object::set_active(bool param)
             isactive = param;
 
             std::vector<cl_uint>::iterator it = texture::active_textures.begin();
-            for(int i=0; i<atid; i++)
+            for(unsigned int i=0; i<atid; i++)
             {
                 it++;
             }
@@ -56,7 +56,7 @@ void object::set_active(bool param)
             if(has_bump)
             {
                 std::vector<cl_uint>::iterator it2 = texture::active_textures.begin();
-                for(int i=0; i<abid; i++)
+                for(unsigned int i=0; i<abid; i++)
                 {
                     it2++;
                 }
@@ -84,19 +84,12 @@ void object::set_rot(cl_float4 _rot)
 
 void object::g_flush(cl_uint arrange_id)
 {
-    ///get id
-    //objects_container *T = &objects_container::obj_container_list[object_g_id];
-
-    //object *Tobj = &T->objs[object_sub_position];
-
     int cumulative = 0;
 
-    for(int i=0; i<arrange_id; i++)
+    for(unsigned int i=0; i<arrange_id; i++)
     {
         cumulative+=obj_mem_manager::obj_sub_nums[i];
     }
-
-    ///need cumulative sub object position
 
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_obj_desc, CL_FALSE, sizeof(obj_g_descriptor)*(cumulative + object_sub_position), sizeof(cl_float4), &pos, 0, NULL, NULL);
 }

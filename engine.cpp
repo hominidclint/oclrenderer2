@@ -470,7 +470,7 @@ void engine::construct_shadowmaps()
     cl_mem is_light = clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint), &juan, NULL);
 
 
-    for(int i=0, n=0; i<light::lightlist.size(); i++)
+    for(unsigned int i=0, n=0; i<light::lightlist.size(); i++)
     {
         if(light::lightlist[i].shadow==1)
         {

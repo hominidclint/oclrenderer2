@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     obj_mem_manager g_manage;
 
     engine window;
-    oclstuff();
+    oclstuff("cl2.cl");
     window.load(800,600,1000, "turtles");
 
     g_manage.g_arrange_mem();
@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
     //l.set_pos((cl_float4){-200, 700, -100, 0});
     l.set_pos((cl_float4){0, 200, -450, 0});
     l.shadow=0;
-    //window.add_light(l);
 
     window.construct_shadowmaps();
 

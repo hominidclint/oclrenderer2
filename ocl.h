@@ -212,7 +212,7 @@ cl_program loadprogram(std::string relative_path, cl_context &context)
 
 ///everything above here is shamelessly stolen off a tutorial i used. In fact, most of everything in this file
 
-void oclstuff()
+void oclstuff(std::string file)
 {
 
 
@@ -280,7 +280,7 @@ void oclstuff()
     const char *source;
 
 
-    source=file_contents("cl2.cl", (int*)&src_size);
+    source=file_contents(file.c_str(), (int*)&src_size);
 
 
     cl::program = clCreateProgramWithSource(cl::context, 1, &source, &src_size, &cl::error);

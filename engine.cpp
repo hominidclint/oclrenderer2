@@ -33,6 +33,8 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
 
     l_size=1024; ///pass in as compilation parameter to opencl;
 
+    shadow_light_num = 0;
+
     //std::cout << g_size << std::endl;
 
     c_pos.x=0;
@@ -166,7 +168,7 @@ void engine::realloc_light_gmem() ///for the moment, just reallocate everything
     cl_uint lnum=light::lightlist.size();
     clReleaseMemObject(obj_mem_manager::g_light_mem);
     clReleaseMemObject(obj_mem_manager::g_light_buf);
-    clReleaseMemObject(g_shadow_light_buffer);
+
 
     obj_mem_manager::g_light_mem=clCreateBuffer(cl::context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(light)*lnum, light::lightlist.data(), &cl::error);
     clEnqueueWriteBuffer(cl::cqueue, obj_mem_manager::g_light_num, CL_TRUE, 0, sizeof(cl_uint), &lnum, 0, NULL, NULL);
@@ -175,7 +177,6 @@ void engine::realloc_light_gmem() ///for the moment, just reallocate everything
     ///g_light_buf
 
     obj_mem_manager::g_light_buf=clCreateBuffer(cl::context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(light)*lnum, light::lightlist.data(), &cl::error);
-
 
     int ln=0;
 
@@ -187,17 +188,21 @@ void engine::realloc_light_gmem() ///for the moment, just reallocate everything
         }
     }
 
-
-    shadow_light_num=ln;
-
-    delete [] blank_light_buf;
-    blank_light_buf = new cl_uint[l_size*l_size*6*ln];
-    memset(blank_light_buf, UINT_MAX, l_size*l_size*sizeof(cl_uint)*6*ln);
-
-    g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE , sizeof(cl_uint)*l_size*l_size*6*ln, NULL, &cl::error);
-    for(int i=0; i<ln; i++)
+    if(shadow_light_num!=ln)
     {
-        clEnqueueWriteBuffer(cl::cqueue, g_shadow_light_buffer, CL_TRUE, sizeof(cl_uint)*l_size*l_size*6*i, sizeof(cl_uint)*l_size*l_size*6, blank_light_buf, 0, NULL, NULL);
+        clReleaseMemObject(g_shadow_light_buffer);
+
+        shadow_light_num=ln;
+
+        delete [] blank_light_buf;
+        blank_light_buf = new cl_uint[l_size*l_size*6*ln];
+        memset(blank_light_buf, UINT_MAX, l_size*l_size*sizeof(cl_uint)*6*ln);
+
+        g_shadow_light_buffer=clCreateBuffer(cl::context, CL_MEM_READ_WRITE , sizeof(cl_uint)*l_size*l_size*6*ln, NULL, &cl::error);
+        for(int i=0; i<ln; i++)
+        {
+            clEnqueueWriteBuffer(cl::cqueue, g_shadow_light_buffer, CL_TRUE, sizeof(cl_uint)*l_size*l_size*6*i, sizeof(cl_uint)*l_size*l_size*6, blank_light_buf, 0, NULL, NULL);
+        }
     }
 }
 
@@ -342,7 +347,6 @@ void engine::input()
 
 void run_kernel_with_args(cl_kernel &kernel, cl_uint *global_ws, cl_uint *local_ws, int d, cl_mem **argv, int argc, bool blocking)
 {
-
     for(int i=0; i<argc; i++)
     {
         cl::error |= clSetKernelArg(kernel, i, sizeof(cl_mem), argv[i]);
@@ -365,66 +369,7 @@ void run_kernel_with_args(cl_kernel &kernel, cl_uint *global_ws, cl_uint *local_
         std::cout << "Error In kernel with " << argc << " args" << std::endl;
         exit(cl::error);
     }
-
-
-
 }
-
-/*void engine::construct_shadowmaps()
-{
-    cl_uint p1global_ws = obj_mem_manager::tri_num;
-    cl_uint local=256;
-
-    if(p1global_ws % local!=0)
-    {
-        int rem=p1global_ws % local;
-        p1global_ws-=(rem);
-        p1global_ws+=local;
-    }
-
-    int n=0;
-    cl_mem t2;
-    t2=clCreateBuffer(cl::context, CL_MEM_READ_WRITE, sizeof(cl_uint), NULL, &cl::error);
-
-
-    for(cl_uint i=0; i<light::lightlist.size(); i++)
-    {
-        if(light::lightlist[i].shadow==1)
-        {
-
-            clEnqueueWriteBuffer(cl::cqueue, t2, CL_TRUE, 0, sizeof(cl_uint), &n, 0, NULL, NULL);
-
-
-            cl::error |= clSetKernelArg(cl::light_smap, 0, sizeof(cl_mem), &obj_mem_manager::g_tri_mem);
-            cl::error |= clSetKernelArg(cl::light_smap, 1, sizeof(cl_mem), &obj_mem_manager::g_tri_num);
-            cl::error |= clSetKernelArg(cl::light_smap, 2, sizeof(cl_mem), &g_shadow_light_buffer);
-            cl::error |= clSetKernelArg(cl::light_smap, 3, sizeof(cl_mem), &t2);
-            cl::error |= clSetKernelArg(cl::light_smap, 4, sizeof(cl_mem), &obj_mem_manager::g_light_mem);
-
-            if(cl::error!=0)
-            {
-                std::cout << "Error In kernel setargs light" << std::endl;
-                exit(cl::error);
-            }
-
-            cl::error = clEnqueueNDRangeKernel(cl::cqueue, cl::light_smap, 1, NULL, &p1global_ws, &local, 0, NULL, NULL);
-
-
-
-            if(cl::error!=0)
-            {
-                std::cout << "Error In kernel Light" << std::endl;
-                exit(cl::error);
-            }
-
-
-            n++;
-        }
-    }
-
-    clFinish(cl::cqueue);
-    clReleaseMemObject(t2);
-}*/
 
 
 void engine::construct_shadowmaps()

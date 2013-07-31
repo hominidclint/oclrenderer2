@@ -20,4 +20,5 @@ void light::set_shadow_bright(cl_uint isshadowcasting, cl_float bright)
 light::light()
 {
     shadow=0;
+    col = (cl_float4){1.0, 1.0, 1.0, 0.0};
 }

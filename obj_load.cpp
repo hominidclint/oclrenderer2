@@ -314,19 +314,15 @@ void obj_load(objects_container* pobj)
 
     for(unsigned int i=0; i<usemtl_pos.size()-1; i++)
     {
-        object obj;
-
         std::string texture_name = retrieve_diffuse_new(mtlf_contents, usemtl_name[i]);
         std::string bumpmap_name = retrieve_bumpmap    (mtlf_contents, usemtl_name[i]);
-
-        texture tex;
         std::string full = dir + std::string("/") + texture_name;
 
+        texture tex;
         tex.type = 0;
         tex.init();
         tex.set_texture_location(full);
         tex.get_id();
-
 
         if(texture::idquerytexture(tex.id)==-1)
         {
@@ -353,6 +349,7 @@ void obj_load(objects_container* pobj)
             }
         }
 
+        object obj;
         obj.tri_list.reserve(usemtl_pos[i+1]-usemtl_pos[i]);
 
         for(int j=usemtl_pos[i]; j<usemtl_pos[i+1]; j++)
@@ -360,9 +357,9 @@ void obj_load(objects_container* pobj)
             obj.tri_list.push_back(tris[j]);
         }
 
-        obj.tri_num = obj.tri_list.size();
+        obj.tri_num = obj.tri_list.size(); ///needs to be removed
 
-        obj.tid = tex.id;
+        obj.tid = tex.id; ///this is potentially bad if textures are removed
         obj.bid = b_id;
         obj.has_bump = isbump;
 

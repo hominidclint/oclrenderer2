@@ -76,7 +76,7 @@
 		<Unit filename="objects_container.cpp" />
 		<Unit filename="objects_container.hpp" />
 		<Unit filename="ocl.h" />
-		<Unit filename="proj.h" />
+		<Unit filename="proj.hpp" />
 		<Unit filename="texture.cpp" />
 		<Unit filename="texture.hpp" />
 		<Unit filename="triangle.cpp" />

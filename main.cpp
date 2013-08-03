@@ -8,6 +8,7 @@
 int main(int argc, char *argv[])
 {
     ///remember to make g_arrange_mem run faster!
+
     objects_container sponza;
     objects_container sponza2;
 
@@ -21,6 +22,8 @@ int main(int argc, char *argv[])
     engine window;
     oclstuff("cl2.cl");
     window.load(800,600,1000, "turtles");
+
+    window.set_camera_pos((cl_float4){-800,150,-570});
 
     g_manage.g_arrange_mem();
     g_manage.g_changeover();

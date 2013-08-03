@@ -54,7 +54,7 @@ struct engine
 
     void load(cl_uint, cl_uint, cl_uint, std::string);
 
-    int add_light(light l);
+    int add_light(light&);
     void update_lights(); ///not implemented
     void realloc_light_gmem();
 
@@ -65,6 +65,9 @@ struct engine
     void input();
     int get_mouse_x();
     int get_mouse_y();
+
+    void set_camera_pos(cl_float4);
+    void set_camera_rot(cl_float4);
 };
 
 

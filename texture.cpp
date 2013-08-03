@@ -50,7 +50,7 @@ cl_int texture::idqueryisactive(cl_uint pid)
 
 cl_int texture::idquerytexture(cl_uint id)
 {
-    if(id < texturelist.size())
+    if(id < texturelist.size()) ///this is not a good way to do it at all
     {
         return id;
     }
@@ -80,7 +80,7 @@ void texture::init()
     //return id;
 }
 
-cl_uint texture::get_id()
+cl_uint texture::get_id() ///needs to be redone with uids
 {
     cl_int temp_id = idquerystring(location);
 

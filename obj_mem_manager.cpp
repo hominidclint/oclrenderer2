@@ -365,6 +365,7 @@ void obj_mem_manager::g_arrange_mem()
 
     ///fill in obj_g_descriptors for all the subobjects of the objects in the scene
     cl_uint cumulative_bump = 0;
+
     for(unsigned int i=0; i<objects_container::obj_container_list.size(); i++)
     {
         objects_container* obj = &objects_container::obj_container_list[i];
@@ -409,7 +410,6 @@ void obj_mem_manager::g_arrange_mem()
             n++;
         }
     }
-
 
 
     ///allocate memory on the gpu
@@ -459,6 +459,8 @@ void obj_mem_manager::g_arrange_mem()
 
     ///write triangle data to gpu
 
+    int p=0;
+
     for(std::vector<objects_container>::iterator it2 = objects_container::obj_container_list.begin(); it2!=objects_container::obj_container_list.end(); it2++)
     {
         objects_container* obj = &(*it2);
@@ -467,6 +469,7 @@ void obj_mem_manager::g_arrange_mem()
             for(int i=0; i<(*it).tri_num; i++)
             {
                 (*it).tri_list[i].vertices[0].pad[1]=obj_id;
+                p++;
             }
 
             clEnqueueWriteBuffer(cl::cqueue, temporary_objects[wt].g_tri_mem, CL_TRUE, sizeof(triangle)*running, sizeof(triangle)*(*it).tri_num, (*it).tri_list.data(), 0, NULL, NULL);

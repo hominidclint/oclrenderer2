@@ -15,7 +15,7 @@
 
 __constant float depth_far=35000;
 __constant uint mulint=UINT_MAX;
-__constant int depth_icutoff=100;
+__constant int depth_icutoff=150;
 
 
 struct interp_container;
@@ -75,6 +75,7 @@ struct obj_g_descriptor
     uint mip_level_ids[MIP_LEVELS];
     uint has_bump;
     uint cumulative_bump;
+    uint pad[2];
     ///cumulative id for how many have bumps before it so can be found in 3d texture. Just create another 3d texture. Is easier
     ///in fact, do that.
 };
@@ -101,7 +102,7 @@ struct interp_container
     int xbounds[2];
     int ybounds[2];
     float rconstant;
-    int area;
+    float area;
     int side;
     int sg[3];
 };
@@ -113,14 +114,14 @@ struct t_c
 };
 
 
-int calc_third_areas_i(int x1, int x2, int x3, int y1, int y2, int y3, int x, int y)
+float calc_third_areas_i(int x1, int x2, int x3, int y1, int y2, int y3, int x, int y)
 {
     //return (fabs((float)((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))/2.0f) + fabs((float)((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))/2.0f) + fabs((float)((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))/2.0f));
-    return (abs(((x2*y-x*y2)+(x3*y2-x2*y3)+(x*y3-x3*y))) + abs(((x*y1-x1*y)+(x3*y-x*y3)+(x1*y3-x3*y1))) + abs(((x2*y1-x1*y2)+(x*y2-x2*y)+(x1*y-x*y1))))/2;
+    return (fabs((float)x2*y-x*y2+x3*y2-x2*y3+x*y3-x3*y) + fabs((float)x*y1-x1*y+x3*y-x*y3+x1*y3-x3*y1) + fabs((float)x2*y1-x1*y2+x*y2-x2*y+x1*y-x*y1))/2.0f;
     ///form was written for this, i think
 }
 
-int calc_third_areas(struct interp_container *C, int x, int y)
+float calc_third_areas(struct interp_container *C, int x, int y)
 {
     return calc_third_areas_i(C->x[0], C->x[1], C->x[2], C->y[0], C->y[1], C->y[2], x, y);
     //return calc_third_area(C->x[0], C->y[0], C->x[1], C->y[1], C->x[2], C->y[2], x, y, 1) + calc_third_area(C->x[0], C->y[0], C->x[1], C->y[1], C->x[2], C->y[2], x, y, 2) + calc_third_area(C->x[0], C->y[0], C->x[1], C->y[1], C->x[2], C->y[2], x, y, 3);
@@ -312,7 +313,7 @@ struct interp_container construct_interpolation(struct triangle tri, int width, 
 
     float rconstant=1.0/(x2*y3+x1*(y2-y3)-x3*y2+(x3-x2)*y1);
 
-    int area=calc_third_area(x1, y1, x2, y2, x3, y3, 0, 0, 0);
+    float area=calc_third_area(x1, y1, x2, y2, x3, y3, 0, 0, 0);
 
 
     C.x[0]=x1;
@@ -344,11 +345,6 @@ struct interp_container construct_interpolation(struct triangle tri, int width, 
 
 int backface_cull_expanded(float4 p0, float4 p1, float4 p2, int fov, float width, float height)
 {
-    float4 arr[3];
-    arr[0] = p0;
-    arr[1] = p1;
-    arr[2] = p2;
-
     float4 p1p0=p1-p0;
     float4 p2p0=p2-p0;
 
@@ -535,6 +531,26 @@ void full_rotate_n_extra(__global struct triangle *triangle, float4 passback[2][
 
     *num = n;
 }
+
+
+/*void full_rotate(__global struct triangle *triangle, struct triangle *passback, int *num, float4 c_pos, float4 c_rot, float4 offset, float fovc, int width, int height)
+{
+    float4 tris[2][3];
+    full_rotate_n_extra(triangle, tris, num, c_pos, c_rot, offset, fovc, width, height);
+
+    for(int i=0; i<3; i++)
+    {
+        passback[0].vertices[i].normal = triangle->vertices[i].normal;
+        passback[1].vertices[i].normal = triangle->vertices[i].normal;
+
+        passback[0].vertices[i].pad = triangle->vertices[i].pad;
+        passback[1].vertices[i].pad = triangle->vertices[i].pad;
+
+        passback[0].vertices[i].vt = triangle->vertices[i].vt;
+        passback[1].vertices[i].vt = triangle->vertices[i].vt;
+    }
+
+}*/
 
 
 void full_rotate(__global struct triangle *triangle, struct triangle *passback, int *num, float4 c_pos, float4 c_rot, float4 offset, float fovc, int width, int height)
@@ -1232,10 +1248,7 @@ float generate_hbao(struct triangle* tri, int2 spos, __global uint *depth_buffer
     //tang = -1.0/normal;
 
 
-    float tangle = atan2(tang.z, length((float2)
-    {
-        tang.x, tang.y
-    }));
+    float tangle = atan2(tang.z, length((float2){tang.x, tang.y}));
 
 
 
@@ -1357,7 +1370,7 @@ float generate_hard_occlusion(float4 spos, float4 normal, float actual_depth, __
 
     float4 *rotation = &r_struct[ldepth_map_id];
 
-    float4 local_pos = rot(global_position, lpos, *rotation);
+    float4 local_pos = rot(global_position, lpos, *rotation); ///replace me with a n*90degree swizzle
 
     float4 postrotate_pos;
     postrotate_pos.x = local_pos.x * LFOV_CONST/local_pos.z;
@@ -1533,6 +1546,7 @@ void prearrange(__global struct triangle* triangles, __global uint* tri_num, __g
 
 
     full_rotate_n_extra(T, tris_proj, &num, *c_pos, *c_rot, G->world_pos, efov, ewidth, eheight);
+    ///can replace rotation with a swizzle for shadowing
 
     if(num == 0)
     {
@@ -1727,7 +1741,7 @@ void part1(__global struct triangle* triangles, __global uint* fragment_id_buffe
 
     float depths[3]= {1.0/dcalc(tris_proj_n[0].z), 1.0/dcalc(tris_proj_n[1].z), 1.0/dcalc(tris_proj_n[2].z)};
 
-    int area=calc_third_area(xp[0], yp[0], xp[1], yp[1], xp[2], yp[2], 0, 0, 0);
+    float area=calc_third_area(xp[0], yp[0], xp[1], yp[1], xp[2], yp[2], 0, 0, 0);
 
 
     int pcount=0;
@@ -1735,6 +1749,13 @@ void part1(__global struct triangle* triangles, __global uint* fragment_id_buffe
     float rconst = calc_rconstant(xp, yp);
 
     bool valid = false;
+
+    int mod = 2;
+
+    if(area < 50)
+    {
+        mod = 1;
+    }
 
     while(pcount <= op_size)
     {
@@ -1747,9 +1768,9 @@ void part1(__global struct triangle* triangles, __global uint* fragment_id_buffe
             continue;
         }
 
-        int s1 = calc_third_areas_i(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], x, y);
+        float s1 = calc_third_areas_i(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], x, y);
 
-        if(s1 > area - 2 && s1 < area + 2)
+        if(s1 > area - mod && s1 < area + mod)
         {
 
             __global uint *ft=&depth_buffer[y*(int)ewidth + x];
@@ -1847,12 +1868,19 @@ void part2(__global struct triangle* triangles, __global uint* fragment_id_buffe
 
     float depths[3]= {1.0/dcalc(tris_proj_n[0].z), 1.0/dcalc(tris_proj_n[1].z), 1.0/dcalc(tris_proj_n[2].z)};
 
-    int area=calc_third_area(xp[0], yp[0], xp[1], yp[1], xp[2], yp[2], 0, 0, 0);
+    float area=calc_third_area(xp[0], yp[0], xp[1], yp[1], xp[2], yp[2], 0, 0, 0);
 
 
     int pcount=0;
 
     float rconst = calc_rconstant(xp, yp);
+
+    int mod = 2;
+
+    if(area < 50)
+    {
+        mod = 1;
+    }
 
     while(pcount <= op_size)
     {
@@ -1865,9 +1893,9 @@ void part2(__global struct triangle* triangles, __global uint* fragment_id_buffe
             continue;
         }
 
-        int s1 = calc_third_areas_i(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], x, y);
+        float s1 = calc_third_areas_i(xp[0], xp[1], xp[2], yp[0], yp[1], yp[2], x, y);
 
-        if(s1 > area - 2 && s1 < area + 2)
+        if(s1 > area - mod && s1 < area + mod)
         {
             __global uint *ft=&depth_buffer[y*SCREENWIDTH + x];
 
@@ -1997,6 +2025,10 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
 
         full_rotate(T, tris, &num, *c_pos, *c_rot, G->world_pos, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
 
+        //full_rotate_n_extra(T, tris, &num, *c_pos, *c_rot, G->world_pos, FOV_CONST, SCREENWIDTH, SCREENHEIGHT);
+
+
+
         uint wtri = fragment_id_buffer[id_val*4 + 2];
 
         icontainer = construct_interpolation(tris[wtri], SCREENWIDTH, SCREENHEIGHT);
@@ -2013,7 +2045,7 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
 
         int4 coord= {x, y, 0, 0};
 
-
+        ///cz is corrupt somehow
         float cz[3] = {c_tri->vertices[0].pos.z, c_tri->vertices[1].pos.z, c_tri->vertices[2].pos.z};
 
 
@@ -2080,6 +2112,7 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
 
         float occamount=0;
 
+
         for(int i=0; i<*(lnum); i++)
         {
             float4 lpos=lights[i].pos;
@@ -2132,6 +2165,7 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
         }
 
 
+
         int2 scoord= {x, y};
 
         float4 col=texture_filter(c_tri, scoord, vt, (float)*ft/mulint, *c_pos, *c_rot, gobj[o_id].tid, gobj[o_id].mip_level_ids, nums, sizes, array);
@@ -2166,10 +2200,10 @@ void part3(__global struct triangle *triangles,__global uint *tri_num, __global 
 
         float4 lcol = {lightdepth, lightdepth, lightdepth, 0};
 
-        //float4 dcol = {dcalc(namydepth), dcalc(namydepth), dcalc(namydepth), 0};
+        //float4 dcol = {dcalc(ldepth), dcalc(ldepth), dcalc(ldepth), 0};
 
         write_imagef(screen, scoord, col*(lightaccum)*(1.0-hbao));
-        //write_imagef(screen, scoord, col*(lightaccum)*(1.0-hbao)*0.001 + lcol*20);
+        //write_imagef(screen, scoord, col*(lightaccum)*(1.0-hbao)*0.001 + (float4){cz[0]*10/depth_far, cz[1]*10/depth_far, cz[2]*10/depth_far, 0});
     }
 
 }

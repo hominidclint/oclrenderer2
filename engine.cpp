@@ -39,7 +39,7 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
 
     c_pos.x=0;
     c_pos.y=0;
-    c_pos.z=-5000;
+    c_pos.z=0;
 
     c_rot.x=0;
     c_rot.y=0;
@@ -87,21 +87,12 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
         exit(cl::error);
     }
 
-
-    cl_image_format fermat;
-    fermat.image_channel_order=CL_RGB;
-    fermat.image_channel_data_type=CL_FLOAT;
-
-
     if(cl::error!=0)
     {
         std::cout << "image creation (Engine.cpp uvw_coords)" << std::endl;
         exit(cl::error);
     }
 
-    c_pos.x=-800;
-    c_pos.y=150;
-    c_pos.z=-570;
     ///700
 
     cl_uint size_of_uid_buffer = 40*1024*1024;
@@ -143,10 +134,6 @@ void engine::load(cl_uint pwidth, cl_uint pheight, cl_uint pdepth, std::string n
     cl_image_format format;
     format.image_channel_order = CL_R;
     format.image_channel_data_type = CL_UNSIGNED_INT32;
-
-    cl_image_format format2;
-    format2.image_channel_order = CL_R;
-    format2.image_channel_data_type = CL_FLOAT;
 
 
     g_id_screen_tex=clCreateImage2D(cl::context, CL_MEM_READ_WRITE, &format, g_size, g_size, 0, NULL, &cl::error);
@@ -206,7 +193,7 @@ void engine::realloc_light_gmem() ///for the moment, just reallocate everything
     }
 }
 
-int engine::add_light(light l)
+int engine::add_light(light &l)
 {
     int id;
     light::lightlist.push_back(l);
@@ -458,6 +445,11 @@ void engine::construct_shadowmaps()
                     p1global_ws_new+=local;
                 }
 
+                if(p1global_ws_new == 0)
+                {
+                    p1global_ws_new += local;
+                }
+
 
                 cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &l_pos, &l_rot, &l_mem, &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem, &g_valid_fragment_num, &g_valid_fragment_mem, &is_light};
                 run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 12, true);
@@ -545,6 +537,14 @@ void engine::draw_bulk_objs_n()
         p1global_ws_new+=local;
     }
 
+    if(p1global_ws_new == 0)
+    {
+        p1global_ws_new += local;
+    }
+
+    //triangle tri;
+    //clEnqueueReadBuffer(cl::cqueue, obj_mem_manager::g_tri_mem, CL_TRUE, 0, sizeof(triangle), &tri, 0, NULL, NULL);
+
 
     cl_mem *p1arglist[]= {&obj_mem_manager::g_tri_mem, &g_tid_buf, &obj_mem_manager::g_tri_num, &g_c_pos, &g_c_rot, &depth_buffer[nbuf], &g_tid_buf_atomic_count, &obj_mem_manager::g_cut_tri_num, &obj_mem_manager::g_cut_tri_mem, &g_valid_fragment_num, &g_valid_fragment_mem, &is_light};
     run_kernel_with_args(cl::kernel, &p1global_ws_new, &local, 1, p1arglist, 12, true);
@@ -573,6 +573,11 @@ void engine::draw_bulk_objs_n()
         int rem=p2global_ws % local2;
         p2global_ws-=(rem);
         p2global_ws+=local2;
+    }
+
+    if(p2global_ws == 0)
+    {
+        p2global_ws += local2;
     }
 
 
@@ -660,3 +665,14 @@ int engine::get_mouse_y()
 {
     return mouse.getPosition(window).y;
 }
+
+void engine::set_camera_pos(cl_float4 p)
+{
+    c_pos = p;
+}
+
+void engine::set_camera_rot(cl_float4 r)
+{
+    c_rot = r;
+}
+
